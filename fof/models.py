@@ -99,15 +99,17 @@ class Filter:
         return False
 
 
+    
 @dataclass
 class FilterFeed(Feed):
     """A feed that filters articles from another feed."""
-    source_feed: Feed
+    source_feed: Feed = field(default=None)  # Field with no default, but technicallyy has one
     filters: List[Filter] = field(default_factory=list)
-    
+
     def __post_init__(self):
         self.feed_type = FeedType.FILTER
-    
+        if self.source_feed is None:
+            raise ValueError("FilterFeed requires a source_feed")
     def add_filter(self, filter_type: FilterType, pattern: str, is_inclusion: bool = True):
         """Add a filter to this filter feed."""
         self.filters.append(Filter(filter_type, pattern, is_inclusion))
