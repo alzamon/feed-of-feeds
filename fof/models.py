@@ -1,4 +1,5 @@
 """Core data models for FoF."""
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -28,31 +29,52 @@ class Article:
 
 
 @dataclass
-class Feed:
-    """Base feed class for all feed types."""
+class BaseFeed(ABC):
+    """Abstract base feed class for all feed types."""
     id: str
     title: str
     url: str
-    feed_type: FeedType = FeedType.REGULAR
     description: Optional[str] = None
     last_updated: Optional[datetime] = None
     weight: float = 1.0
     last_score: Optional[int] = None
 
+    @property
+    def feed_type(self) -> FeedType:
+        """Return the type of this feed."""
+        return NotImplementedError("Subclasses must implement this")
+
+    @abstractmethod
     def fetch(self) -> List[Article]:
         """Fetch articles from this feed."""
-        raise NotImplementedError("Subclasses must implement this")
+        pass
 
 
 @dataclass
-class UnionFeed(Feed):
+class RegularFeed(BaseFeed):
+    """A standard feed that fetches articles from a URL."""
+    
+    @property
+    def feed_type(self) -> FeedType:
+        return FeedType.REGULAR
+    
+    def fetch(self) -> List[Article]:
+        """Fetch articles from the feed URL."""
+        # Implementation for fetching RSS/Atom feeds goes here
+        # This will use feedparser or similar library
+        pass
+
+
+@dataclass
+class UnionFeed(BaseFeed):
     """A feed that combines multiple other feeds with weights."""
-    feeds: List[Feed] = field(default_factory=list)
+    feeds: List[BaseFeed] = field(default_factory=list)
     
-    def __post_init__(self):
-        self.feed_type = FeedType.UNION
+    @property
+    def feed_type(self) -> FeedType:
+        return FeedType.UNION
     
-    def add_feed(self, feed: Feed, weight: Optional[float] = None):
+    def add_feed(self, feed: BaseFeed, weight: Optional[float] = None):
         """Add a feed to this union feed."""
         if weight is not None:
             feed.weight = weight
@@ -61,7 +83,11 @@ class UnionFeed(Feed):
     def fetch(self) -> List[Article]:
         """Fetch articles from all child feeds based on weighting."""
         # Implementation will sample from child feeds based on weights
-        pass
+        all_articles = []
+        for feed in self.feeds:
+            articles = feed.fetch()
+            all_articles.extend(articles)
+        return all_articles  # Basic implementation, needs proper weighting
 
 
 class FilterType(Enum):
@@ -99,17 +125,20 @@ class Filter:
         return False
 
 
-    
 @dataclass
-class FilterFeed(Feed):
+class FilterFeed(BaseFeed):
     """A feed that filters articles from another feed."""
-    source_feed: Feed = field(default=None)  # Field with no default, but technicallyy has one
+    source_feed: BaseFeed = field(default=None)
     filters: List[Filter] = field(default_factory=list)
 
     def __post_init__(self):
-        self.feed_type = FeedType.FILTER
         if self.source_feed is None:
             raise ValueError("FilterFeed requires a source_feed")
+    
+    @property
+    def feed_type(self) -> FeedType:
+        return FeedType.FILTER
+    
     def add_filter(self, filter_type: FilterType, pattern: str, is_inclusion: bool = True):
         """Add a filter to this filter feed."""
         self.filters.append(Filter(filter_type, pattern, is_inclusion))
