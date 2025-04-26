@@ -3,8 +3,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Optional, Pattern, Union
+from typing import List, Optional, Pattern
 import re
+import time  # Ensure the `time` module is imported
 import feedparser
 
 
@@ -66,16 +67,28 @@ class RegularFeed(BaseFeed):
             articles = []
             
             for entry in parsed.entries:
-                article_id = entry.get('id', entry.get('link'))
+                # Handle optional attributes with defaults
+                article_id = entry.get('id', entry.get('link', ''))  # Fallback to 'link' if 'id' is missing
+                title = entry.get('title', 'No Title')
+                content = entry.get('summary', '')
+                link = entry.get('link', '')
+                author = entry.get('author', 'Unknown')
+
+                # Handle published date conversion using time.mktime
+                published_date = None
+                if entry.get('published_parsed'):
+                    published_date = datetime.fromtimestamp(
+                        time.mktime(entry.published_parsed)
+                    )
+
+                # Create the Article object
                 articles.append(Article(
                     id=article_id,
-                    title=entry.get('title', 'No Title'),
-                    content=entry.get('summary', ''),
-                    link=entry.get('link', ''),
-                    author=entry.get('author', 'Unknown'),
-                    published_date=datetime.fromtimestamp(
-                        entry.published_parsed.timestamp()
-                    ) if entry.get('published_parsed') else None,
+                    title=title,
+                    content=content,
+                    link=link,
+                    author=author,
+                    published_date=published_date,
                     feed_id=self.id
                 ))
             return articles
