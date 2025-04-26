@@ -43,3 +43,6 @@ Thumbs.db
 
 # ctags
 tags
+
+# assisted commit
+commit.message
