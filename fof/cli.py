@@ -2,6 +2,7 @@
 import argparse
 import os
 import sys
+from datetime import datetime
 from .feed_manager import FeedManager
 
 DEFAULT_CONFIG_PATH = "~/.config/fof/config.yaml"
@@ -46,6 +47,7 @@ def main():
             print(f"Title: {article.title}")
             print(f"Link: {article.link}")
             print(f"Author: {article.author or 'Unknown'}")
+            print(f"Published: {article.published_date or 'Unknown date'}")
             print("\nContent Preview:")
             print("---------------")
             preview = article.content[:200] + "..." if len(article.content) > 200 else article.content
@@ -76,10 +78,14 @@ def main():
         # manager.add_feed(args.id, args.url, args.title, args.weight)
         
     elif args.command == "list":
-        # TODO: Implement list command
         print("Available feeds:")
+        print("================")
         for feed_id, feed in manager.feeds.items():
-            print(f"- {feed_id}: {feed.title} (weight: {feed.weight})")
+            feed_type_str = feed.feed_type.value.capitalize()
+            print(f"- {feed_id}: {feed.title} ({feed_type_str}, weight: {feed.weight})")
+            print(f"  URL: {feed.url}")
+            if feed.last_updated:
+                print(f"  Last updated: {feed.last_updated}")
     
     else:
         parser.print_help()

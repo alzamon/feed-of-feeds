@@ -8,7 +8,7 @@ import logging
 import feedparser
 from pathlib import Path
 
-from .models import Feed, UnionFeed, FilterFeed, Article, FeedType, FilterType
+from .models import BaseFeed, RegularFeed, UnionFeed, FilterFeed, Article, FeedType, FilterType
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class FeedManager:
             config_path: Path to the YAML configuration file
         """
         self.config_path = os.path.expanduser(config_path)
-        self.feeds: Dict[str, Feed] = {}
+        self.feeds: Dict[str, BaseFeed] = {}
         self.articles: Dict[str, Article] = {}
         self.current_article_id: Optional[str] = None
         self.db_path = os.path.join(os.path.dirname(self.config_path), "fof.db")
@@ -51,7 +51,7 @@ class FeedManager:
         for feed_id, feed_data in config.get('feeds', {}).items():
             self._load_feed(feed_id, feed_data)
     
-    def _load_feed(self, feed_id: str, feed_data: dict) -> Feed:
+    def _load_feed(self, feed_id: str, feed_data: dict) -> BaseFeed:
         """Recursively load a feed from config data."""
         if feed_id in self.feeds:
             return self.feeds[feed_id]
@@ -59,7 +59,7 @@ class FeedManager:
         feed_type = FeedType(feed_data.get('type', 'regular'))
         
         if feed_type == FeedType.REGULAR:
-            feed = Feed(
+            feed = RegularFeed(
                 id=feed_id,
                 title=feed_data.get('title', feed_id),
                 url=feed_data['url'],
@@ -93,9 +93,16 @@ class FeedManager:
                 
         elif feed_type == FeedType.FILTER:
             # Get source feed
-            source_id = feed_data['source_feed']
+            source_id = feed_data.get('source_feed')
+            if not source_id:
+                raise ValueError(f"Filter feed {feed_id} missing source_feed")
+                
+            # Load source feed if not already loaded
             if source_id not in self.feeds:
-                # Load source feed if not already loaded
+                # Check if source feed is defined in config
+                config = yaml.safe_load(open(self.config_path, 'r'))
+                if source_id not in config.get('feeds', {}):
+                    raise ValueError(f"Source feed {source_id} not defined")
                 source_feed = self._load_feed(source_id, config['feeds'][source_id])
             else:
                 source_feed = self.feeds[source_id]
@@ -131,7 +138,9 @@ class FeedManager:
                     'url': 'https://example.com/feed.xml',
                     'weight': 1.0
                 }
-            }
+            },
+            'last_updated': datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            'created_by': 'alzamon'
         }
         
         with open(self.config_path, 'w') as f:
@@ -161,7 +170,7 @@ class FeedManager:
         self.current_article_id = article.id
         return article
     
-    def _sample_feed(self, feeds: List[Feed]) -> Feed:
+    def _sample_feed(self, feeds: List[BaseFeed]) -> BaseFeed:
         """Sample a feed based on weights."""
         if not feeds:
             raise ValueError("No feeds to sample from")
@@ -221,10 +230,10 @@ class FeedManager:
     def refresh_feeds(self):
         """Refresh all feeds to fetch new articles."""
         for feed_id, feed in self.feeds.items():
-            if feed.feed_type == FeedType.REGULAR:
+            if isinstance(feed, RegularFeed):
                 self._refresh_feed(feed)
     
-    def _refresh_feed(self, feed: Feed):
+    def _refresh_feed(self, feed: RegularFeed):
         """Refresh a single feed."""
         try:
             parsed = feedparser.parse(feed.url)
