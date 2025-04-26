@@ -5,6 +5,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Dict, Optional, Pattern, Union
 import re
+import feedparser
 
 
 class FeedType(Enum):
@@ -60,9 +61,29 @@ class RegularFeed(BaseFeed):
     
     def fetch(self) -> List[Article]:
         """Fetch articles from the feed URL."""
-        # Implementation for fetching RSS/Atom feeds goes here
-        # This will use feedparser or similar library
-        pass
+        try:
+            parsed = feedparser.parse(self.url)
+            articles = []
+            
+            for entry in parsed.entries:
+                article_id = entry.get('id', entry.get('link'))
+                articles.append(Article(
+                    id=article_id,
+                    title=entry.get('title', 'No Title'),
+                    content=entry.get('summary', ''),
+                    link=entry.get('link', ''),
+                    author=entry.get('author', 'Unknown'),
+                    published_date=datetime.fromtimestamp(
+                        entry.published_parsed.timestamp()
+                    ) if entry.get('published_parsed') else None,
+                    feed_id=self.id
+                ))
+            return articles
+        
+        except Exception as e:
+            # Log the error and return an empty list
+            print(f"Error fetching articles for feed {self.id}: {e}")
+            return []
 
 
 @dataclass
