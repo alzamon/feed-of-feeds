@@ -197,7 +197,7 @@ class FeedManager:
         if score < 0 or score > 100:
             raise ValueError("Score must be between 0 and 100")
             
-        # In a real implementation, this would update the database
+        # TODO In a real implementation, this would update the database
         # For now, just print
         print(f"Article {article_id} scored {score}")
         
