@@ -46,16 +46,17 @@ class FilterFeed(BaseFeed):
         """Add a filter to this filter feed."""
         self.filters.append(Filter(filter_type, pattern, is_inclusion))
 
-    def fetch(self) -> List[Article]:
-        """Fetch and filter articles from source feed."""
+    def fetch(self) -> Optional[Article]:
+        """Fetch and filter a single article from source feed."""
         articles = self.source_feed.fetch()
-        filtered_articles = []
+        if not articles:
+            return None
         
         for article in articles:
             should_include = all(
                 f.is_inclusion == f.matches(article) for f in self.filters
             )
             if should_include:
-                filtered_articles.append(article)
+                return article  # Return the first matching article
                 
-        return filtered_articles
+        return None  # Return None if no articles match

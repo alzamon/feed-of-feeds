@@ -19,10 +19,11 @@ class UnionFeed(BaseFeed):
             feed.weight = weight
         self.feeds.append(feed)
 
-    def fetch(self) -> List[Article]:
-        """Fetch articles from all child feeds based on weights."""
-        all_articles = []
+    def fetch(self) -> Optional[Article]:
+        """Fetch only one article from all child feeds."""
         for feed in self.feeds:
             articles = feed.fetch()
-            all_articles.extend(articles)
-        return all_articles  # Basic implementation, weighting can be added later
+            if articles:
+                return articles[0]  # Return the first article found
+        return None  # Return None if no articles are found
+

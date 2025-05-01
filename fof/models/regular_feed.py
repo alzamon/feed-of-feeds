@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Optional
 from datetime import datetime
 import feedparser
 import time
@@ -15,38 +15,39 @@ class RegularFeed(BaseFeed):
     def feed_type(self) -> FeedType:
         return FeedType.REGULAR
 
-    def fetch(self) -> List[Article]:
-        """Fetch articles from the feed URL."""
+    def fetch(self) -> Optional[Article]:
+        """Fetch a single article from the feed URL."""
         try:
             parsed = feedparser.parse(self.url)
-            articles = []
             
-            for entry in parsed.entries:
-                article_id = entry.get('id', entry.get('link', ''))  # Fallback to 'link' if 'id' is missing
-                title = entry.get('title', 'No Title')
-                content = entry.get('summary', '')
-                link = entry.get('link', '')
-                author = entry.get('author', 'Unknown')
+            if not parsed.entries:
+                return None
+            
+            entry = parsed.entries[0]  # Fetch the first article
+            article_id = entry.get('id', entry.get('link', ''))  # Fallback to 'link' if 'id' is missing
+            title = entry.get('title', 'No Title')
+            content = entry.get('summary', '')
+            link = entry.get('link', '')
+            author = entry.get('author', 'Unknown')
 
-                # Handle published date conversion using time.mktime
-                published_date = None
-                if entry.get('published_parsed'):
-                    published_date = datetime.fromtimestamp(
-                        time.mktime(entry.published_parsed)
-                    )
+            # Handle published date conversion using time.mktime
+            published_date = None
+            if entry.get('published_parsed'):
+                published_date = datetime.fromtimestamp(
+                    time.mktime(entry.published_parsed)
+                )
 
-                articles.append(Article(
-                    id=article_id,
-                    title=title,
-                    content=content,
-                    link=link,
-                    author=author,
-                    published_date=published_date,
-                    feed_id=self.id
-                ))
-            return articles
+            return Article(
+                id=article_id,
+                title=title,
+                content=content,
+                link=link,
+                author=author,
+                published_date=published_date,
+                feed_id=self.id
+            )
         
         except Exception as e:
-            # Log the error and return an empty list
+            # Log the error and return None
             print(f"Error fetching articles for feed {self.id}: {e}")
-            return []
+            return None

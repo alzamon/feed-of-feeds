@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 from .article import Article
 from .enums import FeedType
 
@@ -23,6 +23,6 @@ class BaseFeed(ABC):
         pass
 
     @abstractmethod
-    def fetch(self) -> List[Article]:
-        """Fetch articles from this feed."""
+    def fetch(self) -> Optional[Article]:
+        """Fetch a single article from this feed."""
         pass

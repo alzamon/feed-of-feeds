@@ -3,7 +3,7 @@ import random
 import yaml
 import os
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 import logging
 from pathlib import Path
 
@@ -42,7 +42,7 @@ class FeedManager:
         except Exception as e:
             logger.error(f"Failed to load config file at {self.config_path}: {e}")
 
-    def _initialize_feeds(self, feeds_config: List[Dict]):
+    def _initialize_feeds(self, feeds_config: list[Dict]):
         """Initialize feeds from the configuration data.
 
         Args:
@@ -102,16 +102,14 @@ class FeedManager:
 
         logger.info(f"Selected feed: {chosen_feed.id} ({chosen_feed.title})")
 
-        # Fetch articles from the chosen feed
+        # Fetch a single article from the chosen feed
         try:
-            articles = chosen_feed.fetch()
-            if articles:  # Ensure there's at least one article
-                # Pick the first article or a random one (based on your preference)
-                article = articles[0]
+            article = chosen_feed.fetch()
+            if article:  # Ensure an article is returned
                 logger.info(f"Fetched article: {article.id} ({article.title})")
                 return article
             else:
-                logger.warning(f"No articles fetched from feed: {chosen_feed.id}")
+                logger.warning(f"No article fetched from feed: {chosen_feed.id}")
         except Exception as e:
             logger.error(f"Error while fetching from feed {chosen_feed.id}: {e}")
 
