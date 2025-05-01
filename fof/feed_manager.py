@@ -8,7 +8,9 @@ import logging
 from pathlib import Path
 
 from .models.article import Article
-from .models.feed import BaseFeed, RegularFeed, UnionFeed
+from .models.base_feed import BaseFeed
+from .models.regular_feed import RegularFeed
+from .models.union_feed import UnionFeed
 from .models.filter import FilterFeed
 from .models.enums import FeedType, FilterType
 

@@ -3,7 +3,7 @@ from typing import List, Optional, Pattern
 import re
 from .article import Article
 from .enums import FilterType
-from .feed import BaseFeed
+from .base_feed import BaseFeed
 from .enums import FeedType
 
 @dataclass

@@ -1,34 +1,11 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from typing import List
 from datetime import datetime
-from typing import List, Optional
 import feedparser
 import time
+from .base_feed import BaseFeed
 from .article import Article
 from .enums import FeedType
-
-@dataclass
-class BaseFeed(ABC):
-    """Abstract base feed class for all feed types."""
-    id: str
-    title: str
-    url: str
-    description: Optional[str] = None
-    last_updated: Optional[datetime] = None
-    weight: float = 1.0
-    last_score: Optional[int] = None
-
-    @property
-    @abstractmethod
-    def feed_type(self) -> FeedType:
-        """Return the type of this feed."""
-        pass
-
-    @abstractmethod
-    def fetch(self) -> List[Article]:
-        """Fetch articles from this feed."""
-        pass
-
 
 @dataclass
 class RegularFeed(BaseFeed):
@@ -73,27 +50,3 @@ class RegularFeed(BaseFeed):
             # Log the error and return an empty list
             print(f"Error fetching articles for feed {self.id}: {e}")
             return []
-
-
-@dataclass
-class UnionFeed(BaseFeed):
-    """A feed that combines multiple other feeds with weights."""
-    feeds: List[BaseFeed] = field(default_factory=list)
-    
-    @property
-    def feed_type(self) -> FeedType:
-        return FeedType.UNION
-
-    def add_feed(self, feed: BaseFeed, weight: Optional[float] = None):
-        """Add a feed to this union feed."""
-        if weight is not None:
-            feed.weight = weight
-        self.feeds.append(feed)
-
-    def fetch(self) -> List[Article]:
-        """Fetch articles from all child feeds based on weights."""
-        all_articles = []
-        for feed in self.feeds:
-            articles = feed.fetch()
-            all_articles.extend(articles)
-        return all_articles  # Basic implementation, weighting can be added later
