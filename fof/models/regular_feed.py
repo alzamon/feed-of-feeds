@@ -10,6 +10,7 @@ from .enums import FeedType
 @dataclass
 class RegularFeed(BaseFeed):
     """A standard feed that fetches articles from a URL."""
+    url: Optional[str] = None  # Moved `url` here from `BaseFeed`
     
     @property
     def feed_type(self) -> FeedType:

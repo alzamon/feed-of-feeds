@@ -4,8 +4,34 @@ import os
 import sys
 from datetime import datetime
 from .feed_manager import FeedManager
+from .models.enums import FeedType
 
 DEFAULT_CONFIG_PATH = "~/.config/fof/config.yaml"
+
+def display_feed_tree(feed, indent=0):
+    """Recursively display feed information as a tree."""
+    prefix = " " * indent
+    feed_type_str = feed.feed_type.value.capitalize()
+    print(f"{prefix}- {feed.id}: {feed.title} ({feed_type_str}, weight: {feed.weight})")
+    
+    if feed.feed_type == FeedType.REGULAR:
+        print(f"{prefix}  URL: {feed.url}")
+        if feed.last_updated:
+            print(f"{prefix}  Last updated: {feed.last_updated}")
+    
+    elif feed.feed_type == FeedType.UNION:
+        print(f"{prefix}  Contained Feeds:")
+        for sub_feed in feed.feeds:
+            display_feed_tree(sub_feed, indent + 4)
+    
+    elif feed.feed_type == FeedType.FILTER:
+        print(f"{prefix}  Source Feed:")
+        display_feed_tree(feed.source_feed, indent + 4)
+        if feed.filters:
+            print(f"{prefix}  Filters:")
+            for f in feed.filters:
+                inclusion_str = "Include" if f.is_inclusion else "Exclude"
+                print(f"{prefix}    - {inclusion_str} {f.filter_type.value}: {f.pattern}")
 
 def main():
     """Main entry point for the application."""
@@ -78,14 +104,10 @@ def main():
         # manager.add_feed(args.id, args.url, args.title, args.weight)
         
     elif args.command == "list":
-        print("Available feeds:")
-        print("================")
+        print("Available feeds (Tree View):")
+        print("===========================")
         for feed_id, feed in manager.feeds.items():
-            feed_type_str = feed.feed_type.value.capitalize()
-            print(f"- {feed_id}: {feed.title} ({feed_type_str}, weight: {feed.weight})")
-            print(f"  URL: {feed.url}")
-            if feed.last_updated:
-                print(f"  Last updated: {feed.last_updated}")
+            display_feed_tree(feed)
     
     else:
         parser.print_help()

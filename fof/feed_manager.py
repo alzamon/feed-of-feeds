@@ -50,38 +50,57 @@ class FeedManager:
         """
         for feed_config in feeds_config:
             try:
-                feed_type = FeedType(feed_config["type"])
-                if feed_type == FeedType.REGULAR:
-                    feed = RegularFeed(
-                        id=feed_config["id"],
-                        url=feed_config["url"],
-                        title=feed_config.get("title"),
-                        weight=feed_config.get("weight", 1.0)
-                    )
-                elif feed_type == FeedType.UNION:
-                    feed = UnionFeed(
-                        id=feed_config["id"],
-                        feeds=feed_config["feeds"],
-                        title=feed_config.get("title"),
-                        weight=feed_config.get("weight", 1.0)
-                    )
-                elif feed_type == FeedType.FILTER:
-                    feed = FilterFeed(
-                        id=feed_config["id"],
-                        feed=feed_config["feed"],
-                        filter_type=FilterType(feed_config["filter_type"]),
-                        criteria=feed_config["criteria"],
-                        title=feed_config.get("title"),
-                        weight=feed_config.get("weight", 1.0)
-                    )
-                else:
-                    logger.warning(f"Unknown feed type: {feed_type}")
-                    continue
-
-                self.feeds[feed.id] = feed
-                logger.info(f"Loaded feed: {feed.id} ({feed.title})")
+                feed = self._create_feed(feed_config)
+                if feed:
+                    self.feeds[feed.id] = feed
+                    logger.info(f"Loaded feed: {feed.id} ({feed.title})")
             except Exception as e:
                 logger.error(f"Failed to initialize feed from config: {feed_config}. Error: {e}")
+
+    def _create_feed(self, feed_config: Dict) -> Optional[BaseFeed]:
+        """Create a feed object from the configuration.
+
+        Args:
+            feed_config (Dict): Feed configuration dictionary.
+
+        Returns:
+            BaseFeed: The initialized feed object or None if creation fails.
+        """
+        feed_type = FeedType(feed_config["type"])
+
+        if feed_type == FeedType.REGULAR:
+            return RegularFeed(
+                id=feed_config["id"],
+                url=feed_config["url"],
+                title=feed_config.get("title"),
+                weight=feed_config.get("weight", 1.0)
+            )
+        elif feed_type == FeedType.UNION:
+            # Recursively create feeds within the UnionFeed
+            member_feeds = [
+                self._create_feed(member_feed) for member_feed in feed_config["feeds"]
+            ]
+            # Filter out None values in case of errors during recursion
+            member_feeds = [feed for feed in member_feeds if feed is not None]
+
+            return UnionFeed(
+                id=feed_config["id"],
+                feeds=member_feeds,
+                title=feed_config.get("title"),
+                weight=feed_config.get("weight", 1.0)
+            )
+        elif feed_type == FeedType.FILTER:
+            return FilterFeed(
+                id=feed_config["id"],
+                feed=feed_config["feed"],
+                filter_type=FilterType(feed_config["filter_type"]),
+                criteria=feed_config["criteria"],
+                title=feed_config.get("title"),
+                weight=feed_config.get("weight", 1.0)
+            )
+        else:
+            logger.warning(f"Unknown feed type: {feed_type}")
+            return None
 
     def next_article(self) -> Optional[Article]:
         """Fetch the next article by sampling a feed based on weights.
