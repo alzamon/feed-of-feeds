@@ -80,16 +80,16 @@ def main():
             print(preview)
             
             # Prompt for score
-            try:
-                score = input("\nEnter score (0-100, default 0): ")
-                if score.strip():
-                    score = int(score.strip())
-                    manager.score_article(article.id, score)
-                else:
-                    manager.score_article(article.id, 0)
-            except ValueError:
-                print("Invalid score, using 0")
-                manager.score_article(article.id, 0)
+#            try:
+#                score = input("\nEnter score (0-100, default 0): ")
+#                if score.strip():
+#                    score = int(score.strip())
+#                    manager.score_article(article.id, score)
+#                else:
+#                    manager.score_article(article.id, 0)
+#            except ValueError:
+#                print("Invalid score, using 0")
+#                manager.score_article(article.id, 0)
         else:
             print("No unread articles found!")
             

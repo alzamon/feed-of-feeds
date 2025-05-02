@@ -2,16 +2,13 @@
 import random
 import yaml
 import os
-from datetime import datetime
 from typing import Dict, Optional
 import logging
-from pathlib import Path
-
 from .models.article import Article
 from .models.base_feed import BaseFeed
 from .models.regular_feed import RegularFeed
 from .models.union_feed import UnionFeed
-from .models.filter import FilterFeed
+from .models.filter import FilterFeed, Filter
 from .models.enums import FeedType, FilterType
 
 logger = logging.getLogger(__name__)
@@ -80,7 +77,6 @@ class FeedManager:
             member_feeds = [
                 self._create_feed(member_feed) for member_feed in feed_config["feeds"]
             ]
-            # Filter out None values in case of errors during recursion
             member_feeds = [feed for feed in member_feeds if feed is not None]
 
             return UnionFeed(
@@ -90,14 +86,35 @@ class FeedManager:
                 weight=feed_config.get("weight", 1.0)
             )
         elif feed_type == FeedType.FILTER:
-            return FilterFeed(
+            # Create the source feed inline
+            source_feed_config = feed_config["feed"]
+            source_feed = self._create_feed(source_feed_config)
+            if not source_feed:
+                logger.warning(
+                    f"Failed to create source feed for filter feed: {feed_config['id']}"
+                )
+                return None
+
+            # Create FilterFeed and add filters
+            filter_feed = FilterFeed(
+                source_feed=source_feed,
                 id=feed_config["id"],
-                feed=feed_config["feed"],
-                filter_type=FilterType(feed_config["filter_type"]),
-                criteria=feed_config["criteria"],
-                title=feed_config.get("title"),
-                weight=feed_config.get("weight", 1.0)
+                title=feed_config.get("title")  # Pass title here
             )
+            if "criteria" in feed_config:
+                for criterion in feed_config["criteria"]:
+                    try:
+                        filter_type = FilterType(criterion["filter_type"])
+                    except ValueError as e:
+                        logger.error(f"Invalid filter type: {criterion['filter_type']}. Error: {e}")
+                        continue
+
+                    filter_feed.add_filter(
+                        filter_type=filter_type,
+                        pattern=criterion["pattern"],
+                        is_inclusion=criterion.get("is_inclusion", True),
+                    )
+            return filter_feed
         else:
             logger.warning(f"Unknown feed type: {feed_type}")
             return None
@@ -112,23 +129,19 @@ class FeedManager:
             logger.warning("No feeds available to fetch articles.")
             return None
 
-        # Prepare weights for sampling
         feeds = list(self.feeds.values())
         weights = [feed.weight for feed in feeds]
-
-        # Sample a feed based on weights
         chosen_feed = random.choices(feeds, weights=weights, k=1)[0]
 
         logger.info(f"Selected feed: {chosen_feed.id} ({chosen_feed.title})")
 
-        # Fetch a single article from the chosen feed
         try:
             article = chosen_feed.fetch()
-            if article:  # Ensure an article is returned
+            if article:
                 logger.info(f"Fetched article: {article.id} ({article.title})")
                 return article
             else:
-                logger.warning(f"No article fetched from feed: {chosen_feed.id}")
+                logger.warning(f"No matching article fetched from feed: {chosen_feed.id}")
         except Exception as e:
             logger.error(f"Error while fetching from feed {chosen_feed.id}: {e}")
 
