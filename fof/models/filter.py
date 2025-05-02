@@ -48,15 +48,15 @@ class FilterFeed(BaseFeed):
 
     def fetch(self) -> Optional[Article]:
         """Fetch and filter a single article from source feed."""
-        articles = self.source_feed.fetch()
-        if not articles:
-            return None
-        
-        for article in articles:
+        while True:
+            article = self.source_feed.fetch()
+            if not article:  # If no article is returned, stop fetching
+                return None
+            
+            # Check if the article matches all filters
             should_include = all(
                 f.is_inclusion == f.matches(article) for f in self.filters
             )
+            
             if should_include:
                 return article  # Return the first matching article
-                
-        return None  # Return None if no articles match
