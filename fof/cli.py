@@ -8,8 +8,11 @@ from .models.enums import FeedType
 
 DEFAULT_CONFIG_PATH = "~/.config/fof/config.yaml"
 
-def display_feed_tree(feed, indent=0):
+def display_feed_tree(feed, indent=0, max_depth=None):
     """Recursively display feed information as a tree."""
+    if max_depth is not None and indent // 4 >= max_depth:
+        return
+
     prefix = " " * indent
     feed_type_str = feed.feed_type.value.capitalize()
     print(f"{prefix}- {feed.id}: {feed.title} ({feed_type_str}, weight: {feed.weight})")
@@ -19,14 +22,13 @@ def display_feed_tree(feed, indent=0):
         if feed.last_updated:
             print(f"{prefix}  Last updated: {feed.last_updated}")
     
-    elif feed.feed_type == FeedType.UNION:
-        print(f"{prefix}  Contained Feeds:")
+    elif feed.feed_type == FeedType.UNION and (max_depth is None or indent // 4 + 1 < max_depth):
         for sub_feed in feed.feeds:
-            display_feed_tree(sub_feed, indent + 4)
+            display_feed_tree(sub_feed, indent + 4, max_depth)
     
     elif feed.feed_type == FeedType.FILTER:
         print(f"{prefix}  Source Feed:")
-        display_feed_tree(feed.source_feed, indent + 4)
+        display_feed_tree(feed.source_feed, indent + 4, max_depth)
         if feed.filters:
             print(f"{prefix}  Filters:")
             for f in feed.filters:
@@ -58,8 +60,12 @@ def main():
     add_parser.add_argument("--title", help="Title for the feed (default: from feed)")
     add_parser.add_argument("--weight", type=float, default=1.0, help="Weight for the feed")
     
-    # List command
+    # list command
     list_parser = subparsers.add_parser("list", help="List feeds")
+    list_parser.add_argument(
+        "--depth", "-d", type=int, default=None,
+        help="Maximum depth to display (default: unlimited)"
+    )
     
     args = parser.parse_args()
     
@@ -79,17 +85,6 @@ def main():
             preview = article.content[:200] + "..." if len(article.content) > 200 else article.content
             print(preview)
             
-            # Prompt for score
-#            try:
-#                score = input("\nEnter score (0-100, default 0): ")
-#                if score.strip():
-#                    score = int(score.strip())
-#                    manager.score_article(article.id, score)
-#                else:
-#                    manager.score_article(article.id, 0)
-#            except ValueError:
-#                print("Invalid score, using 0")
-#                manager.score_article(article.id, 0)
         else:
             print("No unread articles found!")
             
@@ -99,15 +94,13 @@ def main():
         print("Done!")
         
     elif args.command == "add":
-        # TODO: Implement add command
         print(f"Adding feed: {args.url}")
         # manager.add_feed(args.id, args.url, args.title, args.weight)
         
     elif args.command == "list":
         print("Available feeds (Tree View):")
         print("===========================")
-        for feed_id, feed in manager.feeds.items():
-            display_feed_tree(feed)
+        display_feed_tree(manager.root_feed, max_depth=args.depth)
     
     else:
         parser.print_help()

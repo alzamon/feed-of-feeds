@@ -6,8 +6,8 @@ from typing import Dict, Optional
 import logging
 from .models.article import Article
 from .models.base_feed import BaseFeed
-from .models.regular_feed import RegularFeed
 from .models.union_feed import UnionFeed
+from .models.regular_feed import RegularFeed
 from .models.filter import FilterFeed, Filter
 from .models.enums import FeedType, FilterType
 
@@ -23,7 +23,7 @@ class FeedManager:
             config_path (str): Path to the configuration file.
         """
         self.config_path = os.path.expanduser(config_path)
-        self.feeds: Dict[str, BaseFeed] = {}
+        self.root_feed = UnionFeed(id="root", title="Root Feed", feeds=[])  # Root UnionFeed with title
         self._load_config()
 
     def _load_config(self):
@@ -49,7 +49,7 @@ class FeedManager:
             try:
                 feed = self._create_feed(feed_config)
                 if feed:
-                    self.feeds[feed.id] = feed
+                    self.root_feed.add_feed(feed)  # Add to root_feed
                     logger.info(f"Loaded feed: {feed.id} ({feed.title})")
             except Exception as e:
                 logger.error(f"Failed to initialize feed from config: {feed_config}. Error: {e}")
@@ -125,24 +125,18 @@ class FeedManager:
         Returns:
             The fetched article, or None if no feeds are available or fetch fails.
         """
-        if not self.feeds:
+        if not self.root_feed.feeds:
             logger.warning("No feeds available to fetch articles.")
             return None
 
-        feeds = list(self.feeds.values())
-        weights = [feed.weight for feed in feeds]
-        chosen_feed = random.choices(feeds, weights=weights, k=1)[0]
-
-        logger.info(f"Selected feed: {chosen_feed.id} ({chosen_feed.title})")
-
         try:
-            article = chosen_feed.fetch()
+            article = self.root_feed.fetch()
             if article:
                 logger.info(f"Fetched article: {article.id} ({article.title})")
-                return article
             else:
-                logger.warning(f"No matching article fetched from feed: {chosen_feed.id}")
+                logger.warning("No matching article fetched from the root feed.")
+            return article
         except Exception as e:
-            logger.error(f"Error while fetching from feed {chosen_feed.id}: {e}")
+            logger.error(f"Error while fetching from the root feed: {e}")
 
         return None
