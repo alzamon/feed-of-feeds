@@ -1,4 +1,8 @@
 from setuptools import setup, find_packages
+import sys
+
+# Conditional dependency for Windows
+extras_require = {"curses": ["windows-curses"]} if sys.platform == "win32" else {}
 
 setup(
     name="fof",
@@ -8,6 +12,7 @@ setup(
         "feedparser>=6.0.0",
         "pyyaml>=6.0",
     ],
+    extras_require=extras_require,  # Conditional curses dependency for Windows
     entry_points={
         "console_scripts": [
             "fof=fof.cli:main",

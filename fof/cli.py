@@ -2,38 +2,113 @@
 import argparse
 import os
 import sys
-from datetime import datetime
+import curses
 from .feed_manager import FeedManager
 from .models.enums import FeedType
 
 DEFAULT_CONFIG_PATH = "~/.config/fof/config.yaml"
 
-def display_feed_tree(feed, indent=0, max_depth=None):
-    """Recursively display feed information as a tree."""
-    if max_depth is not None and indent // 4 >= max_depth:
-        return
+def display_article(article):
+    """Return article details as a string."""
+    if article:
+        result = []
+        result.append(f"Title: {article.title}")
+        result.append(f"Link: {article.link}")
+        result.append(f"Author: {article.author or 'Unknown'}")
+        result.append(f"Published: {article.published_date or 'Unknown date'}")
+        result.append("")
+        result.append("Content Preview:")
+        result.append("---------------")
+        preview = article.content[:200] + "..." if len(article.content) > 200 else article.content
+        result.append(preview)
+        return "\n".join(result)
+    else:
+        return "No unread articles found!"
 
-    prefix = " " * indent
-    feed_type_str = feed.feed_type.value.capitalize()
-    print(f"{prefix}- {feed.id}: {feed.title} ({feed_type_str}, weight: {feed.weight})")
-    
-    if feed.feed_type == FeedType.REGULAR:
-        print(f"{prefix}  URL: {feed.url}")
-        if feed.last_updated:
-            print(f"{prefix}  Last updated: {feed.last_updated}")
-    
-    elif feed.feed_type == FeedType.UNION and (max_depth is None or indent // 4 + 1 < max_depth):
-        for sub_feed in feed.feeds:
-            display_feed_tree(sub_feed, indent + 4, max_depth)
-    
-    elif feed.feed_type == FeedType.FILTER:
-        print(f"{prefix}  Source Feed:")
-        display_feed_tree(feed.source_feed, indent + 4, max_depth)
-        if feed.filters:
-            print(f"{prefix}  Filters:")
-            for f in feed.filters:
-                inclusion_str = "Include" if f.is_inclusion else "Exclude"
-                print(f"{prefix}    - {inclusion_str} {f.filter_type.value}: {f.pattern}")
+def handle_key_input(manager, article):
+    """Handle user key inputs for article actions using curses."""
+    def main(stdscr):
+        # Hide the cursor
+        curses.curs_set(0)
+        stdscr.nodelay(True)  # Make getch() non-blocking
+        stdscr.timeout(100)  # Timeout for getch()
+
+        # Calculate the terminal height for proper placement of the prompt
+        max_y, max_x = stdscr.getmaxyx()
+
+        # Helper to display the article
+        def display_article_on_screen(article):
+            stdscr.clear()
+            if article:
+                lines = [
+                    f"Title: {article.title}",
+                    f"Link: {article.link}",
+                    f"Author: {article.author or 'Unknown'}",
+                    f"Published: {article.published_date or 'Unknown date'}",
+                    "",
+                    "Content Preview:",
+                    "---------------",
+                ]
+                preview = article.content[:200] + "..." if len(article.content) > 200 else article.content
+                lines.append(preview)
+
+                # Add lines to the screen
+                for i, line in enumerate(lines):
+                    if i < max_y - 3:  # Leave space for the prompt
+                        stdscr.addstr(i, 0, line[:max_x])  # Truncate to terminal width
+
+            else:
+                stdscr.addstr(0, 0, "No unread articles found!")
+
+        # Display the first article
+        article = manager.next_article()
+        display_article_on_screen(article)
+
+        # Display the prompt
+        def display_prompt():
+            prompt = "\n[n] Next | [o] Open | [+] Increase Weight | [-] Reduce Weight | [q] Quit"
+            prompt_lines = prompt.split("\n")
+            for i, line in enumerate(prompt_lines):
+                stdscr.addstr(max_y - len(prompt_lines) + i - 1, 0, line[:max_x])
+
+        display_prompt()
+
+        while True:
+            key = stdscr.getch()
+
+            if key == ord("n"):
+                article = manager.next_article()
+                display_article_on_screen(article)
+                display_prompt()
+
+            elif key == ord("o"):
+                try:
+                    if article and article.link:
+                        stdscr.addstr(max_y - 2, 0, f"Opening URL: {article.link}...".ljust(max_x))
+                        os.system(f"termux-open-url {article.link}")
+                        stdscr.addstr(max_y - 2, 0, "Opened link in browser.".ljust(max_x))
+                    else:
+                        stdscr.addstr(max_y - 2, 0, "No valid link to open.".ljust(max_x))
+                except Exception as e:
+                    stdscr.addstr(max_y - 2, 0, f"Failed to open browser: {e}".ljust(max_x))
+                display_prompt()
+
+            elif key == ord("+"):
+                stdscr.addstr(max_y - 4, 0, "TODO: Increase weight of feed providing this article.".ljust(max_x))
+
+            elif key == ord("-"):
+                stdscr.addstr(max_y - 4, 0, "TODO: Decrease weight of feed providing this article.".ljust(max_x))
+
+
+            elif key == ord("q"):
+                stdscr.addstr(max_y - 2, 0, "Exiting...".ljust(max_x))
+                stdscr.refresh()
+                curses.napms(1000)
+                break
+
+            stdscr.refresh()
+
+    curses.wrapper(main)
 
 def main():
     """Main entry point for the application."""
@@ -45,66 +120,21 @@ def main():
         help="Path to config file (default: ~/.config/fof/config.yaml)"
     )
     
-    subparsers = parser.add_subparsers(dest="command", help="Command to run")
-    
-    # next command
-    next_parser = subparsers.add_parser("next", help="Get next article")
-    
-    # refresh command
-    refresh_parser = subparsers.add_parser("refresh", help="Refresh feeds")
-    
-    # add command
-    add_parser = subparsers.add_parser("add", help="Add a new feed")
-    add_parser.add_argument("url", help="URL of the feed")
-    add_parser.add_argument("--id", help="ID for the feed (default: auto-generated)")
-    add_parser.add_argument("--title", help="Title for the feed (default: from feed)")
-    add_parser.add_argument("--weight", type=float, default=1.0, help="Weight for the feed")
-    
-    # list command
-    list_parser = subparsers.add_parser("list", help="List feeds")
-    list_parser.add_argument(
-        "--depth", "-d", type=int, default=None,
-        help="Maximum depth to display (default: unlimited)"
-    )
-    
     args = parser.parse_args()
     
     # Initialize feed manager
     manager = FeedManager(args.config)
     
-    # Handle commands
-    if args.command == "next":
-        article = manager.next_article()
-        if article:
-            print(f"Title: {article.title}")
-            print(f"Link: {article.link}")
-            print(f"Author: {article.author or 'Unknown'}")
-            print(f"Published: {article.published_date or 'Unknown date'}")
-            print("\nContent Preview:")
-            print("---------------")
-            preview = article.content[:200] + "..." if len(article.content) > 200 else article.content
-            print(preview)
-            
-        else:
-            print("No unread articles found!")
-            
-    elif args.command == "refresh":
-        print("Refreshing feeds...")
-        manager.refresh_feeds()
-        print("Done!")
-        
-    elif args.command == "add":
-        print(f"Adding feed: {args.url}")
-        # manager.add_feed(args.id, args.url, args.title, args.weight)
-        
-    elif args.command == "list":
-        print("Available feeds (Tree View):")
-        print("===========================")
-        display_feed_tree(manager.root_feed, max_depth=args.depth)
+    # Fetch and display the first article
+    article = manager.next_article()
     
-    else:
-        parser.print_help()
-        sys.exit(1)
+    # Ensure article is initialized
+    if not article:
+        print("No unread articles found! Exiting...")
+        sys.exit(0)
+
+    # Handle key-based interactions
+    handle_key_input(manager, article)
 
 if __name__ == "__main__":
     main()
