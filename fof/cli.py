@@ -85,14 +85,13 @@ def handle_key_input(manager, article):
                 try:
                     if article and article.link:
                         stdscr.addstr(max_y - 2, 0, f"Opening URL: {article.link}...".ljust(max_x))
-                        os.system(f"termux-open-url {article.link}")
+                        os.system(f"xdg-open {article.link}")
                         stdscr.addstr(max_y - 2, 0, "Opened link in browser.".ljust(max_x))
                     else:
                         stdscr.addstr(max_y - 2, 0, "No valid link to open.".ljust(max_x))
                 except Exception as e:
                     stdscr.addstr(max_y - 2, 0, f"Failed to open browser: {e}".ljust(max_x))
                 display_prompt()
-
             elif key == ord("+"):
                 stdscr.addstr(max_y - 4, 0, "TODO: Increase weight of feed providing this article.".ljust(max_x))
 
