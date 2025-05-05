@@ -50,9 +50,14 @@ class FilterFeed(BaseFeed):
 
     def fetch(self) -> Optional[Article]:
         """Fetch and filter a single article from source feed."""
+        if self.source_feed.weight == 0:
+            self.weight = 0  # Set weight to 0 if source feed has weight 0
+            return None
+
         while True:
             article = self.source_feed.fetch()
             if not article:  # If no article is returned, stop fetching
+                self.weight = 0  # Set weight to 0 if source feed is empty
                 return None
             
             # Check if the article is too old
