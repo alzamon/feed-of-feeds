@@ -25,6 +25,7 @@ class RegularFeed(BaseFeed):
             parsed = feedparser.parse(self.url)
             
             if not parsed.entries:
+                self.weight = 0  # Set weight to 0 if no articles are available
                 return None
             
             for entry in parsed.entries:
@@ -65,9 +66,11 @@ class RegularFeed(BaseFeed):
 
                     return article
             
-            return None  # No unread articles found
+            self.weight = 0  # Set weight to 0 if no unread articles are found
+            return None
         
         except Exception as e:
-            # Log the error and return None
+            # Log the error and set weight to 0
             print(f"Error fetching articles for feed {self.id}: {e}")
+            self.weight = 0
             return None

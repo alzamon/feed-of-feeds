@@ -29,10 +29,15 @@ class UnionFeed(BaseFeed):
         """Fetch one article from a randomly selected feed, based on weights."""
         if not self.feeds:
             logger.warning("No feeds available in this UnionFeed.")
+            self.weight = 0  # Set weight to 0 if no subfeeds are available
             return None
         
         # Collect weights and feeds
         weights = [getattr(feed, 'weight', 1.0) for feed in self.feeds]
+        if all(weight == 0 for weight in weights):
+            self.weight = 0  # Set weight to 0 if all subfeeds have weight 0
+            return None
+
         selected_feed = choices(self.feeds, weights=weights, k=1)[0]
         
         # Log the selected feed

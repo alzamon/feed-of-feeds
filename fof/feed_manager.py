@@ -122,23 +122,25 @@ class FeedManager:
             return None
 
     def next_article(self) -> Optional[Article]:
-        """Fetch the next article by sampling a feed based on weights.
+        """Fetch the next article by sampling feeds until an article is retrieved or root feed weight is 0.
 
         Returns:
-            The fetched article, or None if no feeds are available or fetch fails.
+            The fetched article, or None if no matching articles are available.
         """
         if not self.root_feed:
             logger.warning("No root feed available to fetch articles.")
             return None
 
-        try:
-            article = self.root_feed.fetch()
-            if article:
-                logger.info(f"Fetched article: {article.id} ({article.title})")
-            else:
-                logger.warning("No matching article fetched from the root feed.")
-            return article
-        except Exception as e:
-            logger.error(f"Error while fetching from the root feed: {e}")
+        while self.root_feed.weight > 0:
+            try:
+                article = self.root_feed.fetch()
+                if article:
+                    logger.info(f"Fetched article: {article.id} ({article.title})")
+                    return article
+                else:
+                    logger.warning("No matching article fetched from the root feed.")
+            except Exception as e:
+                logger.error(f"Error while fetching from the root feed: {e}")
 
+        logger.info("All caught up")
         return None
