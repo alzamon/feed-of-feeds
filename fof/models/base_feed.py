@@ -13,7 +13,6 @@ class BaseFeed(ABC):
     description: Optional[str] = None
     last_updated: Optional[datetime] = None
     weight: float = 1.0
-    last_score: Optional[int] = None
 
     @property
     @abstractmethod
