@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Pattern
 import re
+from datetime import timedelta
 from .article import Article
 from .enums import FilterType
 from .base_feed import BaseFeed
@@ -37,6 +38,7 @@ class FilterFeed(BaseFeed):
     """A feed that filters articles from another feed."""
     source_feed: BaseFeed = field(default=None)
     filters: List[Filter] = field(default_factory=list)
+    max_age: Optional[timedelta] = None  # Optional max age for filtering articles
 
     @property
     def feed_type(self) -> FeedType:
@@ -53,6 +55,11 @@ class FilterFeed(BaseFeed):
             if not article:  # If no article is returned, stop fetching
                 return None
             
+            # Check if the article is too old
+            if self.max_age and article.published_date:
+                if datetime.now() - article.published_date > self.max_age:
+                    continue
+
             # Check if the article matches all filters
             should_include = all(
                 f.is_inclusion == f.matches(article) for f in self.filters

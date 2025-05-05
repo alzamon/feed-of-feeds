@@ -3,6 +3,7 @@ import random
 import yaml
 import os
 from typing import Dict, Optional
+from datetime import timedelta
 import logging
 from .models.article import Article
 from .models.base_feed import BaseFeed
@@ -23,7 +24,6 @@ class FeedManager:
             config_path (str): Path to the configuration file.
         """
         self.config_path = os.path.expanduser(config_path)
-        self.root_feed = UnionFeed(id="root", title="Root Feed", feeds=[])  # Root UnionFeed with title
         self._load_config()
 
     def _load_config(self):
@@ -35,47 +35,47 @@ class FeedManager:
         try:
             with open(self.config_path, "r") as config_file:
                 config_data = yaml.safe_load(config_file)
-                self._initialize_feeds(config_data.get("feeds", []))
+
+                # Initialize root feed (UnionFeed)
+                root_feed_config = {
+                    "id": "root",
+                    "type": "union",
+                    "feeds": config_data.get("feeds", []),
+                    "max_age": config_data.get("max_age"),  # Root feed must have max_age set in config
+                }
+                if "max_age" not in root_feed_config:
+                    raise ValueError("Root feed must have a max_age defined in the configuration.")
+                
+                root_max_age = timedelta(seconds=root_feed_config["max_age"])
+                self.root_feed = self._create_feed(root_feed_config, parent_max_age=root_max_age)
         except Exception as e:
             logger.error(f"Failed to load config file at {self.config_path}: {e}")
 
-    def _initialize_feeds(self, feeds_config: list[Dict]):
-        """Initialize feeds from the configuration data.
-
-        Args:
-            feeds_config (List[Dict]): List of feed configuration dictionaries.
-        """
-        for feed_config in feeds_config:
-            try:
-                feed = self._create_feed(feed_config)
-                if feed:
-                    self.root_feed.add_feed(feed)  # Add to root_feed
-                    logger.info(f"Loaded feed: {feed.id} ({feed.title})")
-            except Exception as e:
-                logger.error(f"Failed to initialize feed from config: {feed_config}. Error: {e}")
-
-    def _create_feed(self, feed_config: Dict) -> Optional[BaseFeed]:
+    def _create_feed(self, feed_config: Dict, parent_max_age: timedelta) -> BaseFeed:
         """Create a feed object from the configuration.
 
         Args:
             feed_config (Dict): Feed configuration dictionary.
+            parent_max_age (timedelta): The max_age value inherited from the parent feed.
 
         Returns:
-            BaseFeed: The initialized feed object or None if creation fails.
+            BaseFeed: The initialized feed object.
         """
         feed_type = FeedType(feed_config["type"])
+        feed_max_age = timedelta(seconds=feed_config.get("max_age", parent_max_age.total_seconds()))
 
         if feed_type == FeedType.REGULAR:
             return RegularFeed(
                 id=feed_config["id"],
                 url=feed_config["url"],
                 title=feed_config.get("title"),
-                weight=feed_config.get("weight", 1.0)
+                weight=feed_config.get("weight", 1.0),
+                max_age=feed_max_age  # Explicit max_age passed
             )
         elif feed_type == FeedType.UNION:
-            # Recursively create feeds within the UnionFeed
+            # Recursively create child feeds with inherited max_age
             member_feeds = [
-                self._create_feed(member_feed) for member_feed in feed_config["feeds"]
+                self._create_feed(member_feed, parent_max_age=feed_max_age) for member_feed in feed_config["feeds"]
             ]
             member_feeds = [feed for feed in member_feeds if feed is not None]
 
@@ -83,12 +83,13 @@ class FeedManager:
                 id=feed_config["id"],
                 feeds=member_feeds,
                 title=feed_config.get("title"),
-                weight=feed_config.get("weight", 1.0)
+                weight=feed_config.get("weight", 1.0),
+                max_age=feed_max_age  # Explicit max_age passed
             )
         elif feed_type == FeedType.FILTER:
             # Create the source feed inline
             source_feed_config = feed_config["feed"]
-            source_feed = self._create_feed(source_feed_config)
+            source_feed = self._create_feed(source_feed_config, parent_max_age=feed_max_age)
             if not source_feed:
                 logger.warning(
                     f"Failed to create source feed for filter feed: {feed_config['id']}"
@@ -99,7 +100,8 @@ class FeedManager:
             filter_feed = FilterFeed(
                 source_feed=source_feed,
                 id=feed_config["id"],
-                title=feed_config.get("title")  # Pass title here
+                title=feed_config.get("title"),  # Pass title here
+                max_age=feed_max_age  # Explicit max_age passed
             )
             if "criteria" in feed_config:
                 for criterion in feed_config["criteria"]:
@@ -125,8 +127,8 @@ class FeedManager:
         Returns:
             The fetched article, or None if no feeds are available or fetch fails.
         """
-        if not self.root_feed.feeds:
-            logger.warning("No feeds available to fetch articles.")
+        if not self.root_feed:
+            logger.warning("No root feed available to fetch articles.")
             return None
 
         try:
