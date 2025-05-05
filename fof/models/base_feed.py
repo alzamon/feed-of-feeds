@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from .article import Article
 from .enums import FeedType
@@ -22,6 +22,14 @@ class BaseFeed(ABC):
         pass
 
     @abstractmethod
-    def fetch(self) -> Optional[Article]:
-        """Fetch a single article from this feed."""
+    def fetch(self, max_age: Optional[timedelta] = None) -> Optional[Article]:
+        """
+        Fetch a single article from this feed.
+
+        Args:
+            max_age (Optional[timedelta]): Ignore articles older than this age.
+
+        Returns:
+            Optional[Article]: The fetched article, or None if no suitable article is found.
+        """
         pass

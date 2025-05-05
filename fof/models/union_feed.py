@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import List, Optional
 from random import choices
+from datetime import timedelta, datetime
 from .base_feed import BaseFeed
 from .article import Article
 from .enums import FeedType
@@ -14,6 +15,7 @@ logger = logging.getLogger(__name__)
 class UnionFeed(BaseFeed):
     """A feed that combines multiple other feeds with weights."""
     feeds: List[BaseFeed] = field(default_factory=list)
+    max_age: Optional[timedelta] = None  # Optional max age for filtering articles
     
     @property
     def feed_type(self) -> FeedType:
@@ -40,6 +42,12 @@ class UnionFeed(BaseFeed):
         try:
             article = selected_feed.fetch()
             if article:
+                # Check if the article is too old
+                if self.max_age and article.published_date:
+                    if datetime.now() - article.published_date > self.max_age:
+                        logger.debug(f"Article {article.id} is too old and ignored due to max_age.")
+                        return None
+                
                 logger.debug(f"Fetched article: {article.id} from feed {selected_feed.id}")
             else:
                 logger.warning(f"No article fetched from selected feed: {selected_feed.id}")

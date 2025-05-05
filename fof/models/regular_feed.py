@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import feedparser
 import time
 from .base_feed import BaseFeed
@@ -11,7 +11,8 @@ from .article_manager import ArticleManager
 @dataclass
 class RegularFeed(BaseFeed):
     """A standard feed that fetches articles from a URL."""
-    url: Optional[str] = None  # Moved `url` here from `BaseFeed`
+    url: Optional[str] = None  # URL of the feed
+    max_age: Optional[timedelta] = None  # Optional max age for filtering articles
     article_manager: ArticleManager = ArticleManager()
     
     @property
@@ -29,19 +30,24 @@ class RegularFeed(BaseFeed):
             for entry in parsed.entries:
                 title = entry.get('title', 'No Title')
                 content = entry.get('summary', '')
+
+                # Handle published date conversion using time.mktime
+                published_date = None
+                if entry.get('published_parsed'):
+                    published_date = datetime.fromtimestamp(
+                        time.mktime(entry.published_parsed)
+                    )
                 
+                # Check if the article is too old
+                if self.max_age and published_date:
+                    if datetime.now() - published_date > self.max_age:
+                        continue
+
                 # Check if the article is already read
                 if not self.article_manager.is_read(title, content):
                     article_id = entry.get('id', entry.get('link', ''))
                     link = entry.get('link', '')
                     author = entry.get('author', 'Unknown')
-
-                    # Handle published date conversion using time.mktime
-                    published_date = None
-                    if entry.get('published_parsed'):
-                        published_date = datetime.fromtimestamp(
-                            time.mktime(entry.published_parsed)
-                        )
 
                     # Create the article object
                     article = Article(
