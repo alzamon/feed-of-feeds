@@ -18,7 +18,7 @@ class RegularFeed(BaseFeed):
     @property
     def feed_type(self) -> FeedType:
         return FeedType.REGULAR
-
+     
     def fetch(self) -> Optional[Article]:
         """Fetch the first unread article from the feed URL."""
         try:
@@ -38,6 +38,13 @@ class RegularFeed(BaseFeed):
                     published_date = datetime.fromtimestamp(
                         time.mktime(entry.published_parsed)
                     )
+                elif entry.get('updated_parsed'):
+                    published_date = datetime.fromtimestamp(
+                        time.mktime(entry.updated_parsed)
+                    )
+                else:
+                    # Debug log for missing both 'published_parsed' and 'updated_parsed'
+                    print(f"Debug: Missing 'published_parsed' and 'updated_parsed' in entry: {entry}")
                 
                 # Check if the article is too old
                 if self.max_age and published_date:

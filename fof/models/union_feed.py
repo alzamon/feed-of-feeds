@@ -34,6 +34,12 @@ class UnionFeed(BaseFeed):
         
         # Collect weights and feeds
         weights = [getattr(feed, 'weight', 1.0) for feed in self.feeds]
+        
+        # Log feeds with weight 0
+        for feed, weight in zip(self.feeds, weights):
+            if weight == 0:
+                logger.debug(f"Feed {feed.id} ignored because weight is 0.")
+        
         if all(weight == 0 for weight in weights):
             self.weight = 0  # Set weight to 0 if all subfeeds have weight 0
             return None

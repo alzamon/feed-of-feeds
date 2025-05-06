@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Pattern
 import re
-from datetime import timedelta
+from datetime import timedelta, datetime
 from .article import Article
 from .enums import FilterType
 from .base_feed import BaseFeed
