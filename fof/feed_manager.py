@@ -9,7 +9,7 @@ from .models.article import Article
 from .models.base_feed import BaseFeed
 from .models.union_feed import UnionFeed
 from .models.regular_feed import RegularFeed
-from .models.filter import FilterFeed, Filter
+from .models.filter_feed import FilterFeed, Filter
 from .models.enums import FeedType, FilterType
 from .error_logger import log_error_with_readkey  # Importing the utility function
 
