@@ -36,9 +36,16 @@ class Filter:
 @dataclass
 class FilterFeed(BaseFeed):
     """A feed that filters articles from another feed."""
-    source_feed: BaseFeed = field(default=None)
+    source_feed: BaseFeed
     filters: List[Filter] = field(default_factory=list)
     max_age: Optional[timedelta] = None  # Optional max age for filtering articles
+
+    def __init__(self, id: str, title: str, description: str, last_updated: datetime, weight: float, 
+                 source_feed: BaseFeed, filters: List[Filter] = None, max_age: Optional[timedelta] = None):
+        super().__init__(id, title, description, last_updated, weight)
+        self.source_feed = source_feed
+        self.filters = filters or []
+        self.max_age = max_age
 
     @property
     def feed_type(self) -> FeedType:

@@ -10,9 +10,9 @@ class BaseFeed(ABC):
     """Abstract base feed class for all feed types."""
     id: str
     title: str
-    description: Optional[str] = None
-    last_updated: Optional[datetime] = None
-    weight: float = 1.0
+    description: str
+    last_updated: datetime
+    weight: float
 
     @property
     @abstractmethod

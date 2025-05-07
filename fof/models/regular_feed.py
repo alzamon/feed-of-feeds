@@ -11,7 +11,7 @@ from .article_manager import ArticleManager
 @dataclass
 class RegularFeed(BaseFeed):
     """A standard feed that fetches articles from a URL."""
-    url: Optional[str] = None  # URL of the feed
+    url: str
     max_age: Optional[timedelta] = None  # Optional max age for filtering articles
     article_manager: ArticleManager = ArticleManager()
     
@@ -81,3 +81,9 @@ class RegularFeed(BaseFeed):
             print(f"Error fetching articles for feed {self.id}: {e}")
             self.weight = 0
             return None
+
+    def __init__(self, id: str, title: str, description: str, last_updated: datetime, weight: float, 
+                 url: str, max_age: Optional[timedelta] = None):
+        super().__init__(id, title, description, last_updated, weight)
+        self.url = url
+        self.max_age = max_age

@@ -3,7 +3,7 @@ import random
 import yaml
 import os
 from typing import Dict, Optional
-from datetime import timedelta
+from datetime import timedelta, datetime
 import logging
 from .models.article import Article
 from .models.base_feed import BaseFeed
@@ -65,12 +65,19 @@ class FeedManager:
         feed_type = FeedType(feed_config["type"])
         feed_max_age = timedelta(seconds=feed_config.get("max_age", parent_max_age.total_seconds()))
 
+        # Assign required properties
+        description = feed_config.get("description", "No description provided")
+        last_updated = datetime.now()
+        weight = feed_config.get("weight", 1.0)
+
         if feed_type == FeedType.REGULAR:
             return RegularFeed(
                 id=feed_config["id"],
                 url=feed_config["url"],
                 title=feed_config.get("title"),
-                weight=feed_config.get("weight", 1.0),
+                description=description,
+                last_updated=last_updated,
+                weight=weight,
                 max_age=feed_max_age  # Explicit max_age passed
             )
         elif feed_type == FeedType.UNION:
@@ -84,7 +91,9 @@ class FeedManager:
                 id=feed_config["id"],
                 feeds=member_feeds,
                 title=feed_config.get("title"),
-                weight=feed_config.get("weight", 1.0),
+                description=description,
+                last_updated=last_updated,
+                weight=weight,
                 max_age=feed_max_age  # Explicit max_age passed
             )
         elif feed_type == FeedType.FILTER:
@@ -101,7 +110,10 @@ class FeedManager:
             filter_feed = FilterFeed(
                 source_feed=source_feed,
                 id=feed_config["id"],
-                title=feed_config.get("title"),  # Pass title here
+                title=feed_config.get("title"),
+                description=description,
+                last_updated=last_updated,
+                weight=weight,
                 max_age=feed_max_age  # Explicit max_age passed
             )
             if "criteria" in feed_config:
@@ -145,4 +157,3 @@ class FeedManager:
 
         logger.info("All caught up")
         return None
-

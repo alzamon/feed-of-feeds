@@ -22,6 +22,12 @@ class UnionFeed(BaseFeed):
     def feed_type(self) -> FeedType:
         return FeedType.UNION
 
+    def __init__(self, id: str, title: str, description: str, last_updated: datetime, weight: float, 
+                 feeds: List[BaseFeed] = None, max_age: Optional[timedelta] = None):
+        super().__init__(id, title, description, last_updated, weight)
+        self.feeds = feeds or []
+        self.max_age = max_age
+
     def add_feed(self, feed: BaseFeed):
         """Add a feed to this union feed."""
         self.feeds.append(feed)
