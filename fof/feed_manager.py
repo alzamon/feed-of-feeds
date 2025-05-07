@@ -11,6 +11,7 @@ from .models.union_feed import UnionFeed
 from .models.regular_feed import RegularFeed
 from .models.filter import FilterFeed, Filter
 from .models.enums import FeedType, FilterType
+from .error_logger import log_error_with_readkey  # Importing the utility function
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class FeedManager:
                 root_max_age = timedelta(seconds=root_feed_config["max_age"])
                 self.root_feed = self._create_feed(root_feed_config, parent_max_age=root_max_age)
         except Exception as e:
-            logger.error(f"Failed to load config file at {self.config_path}: {e}")
+            log_error_with_readkey(f"Failed to load config file at {self.config_path}: {e}")
 
     def _create_feed(self, feed_config: Dict, parent_max_age: timedelta) -> BaseFeed:
         """Create a feed object from the configuration.
@@ -108,7 +109,7 @@ class FeedManager:
                     try:
                         filter_type = FilterType(criterion["filter_type"])
                     except ValueError as e:
-                        logger.error(f"Invalid filter type: {criterion['filter_type']}. Error: {e}")
+                        log_error_with_readkey(f"Invalid filter type: {criterion['filter_type']}. Error: {e}")
                         continue
 
                     filter_feed.add_filter(
@@ -140,7 +141,8 @@ class FeedManager:
                 else:
                     logger.warning("No matching article fetched from the root feed.")
             except Exception as e:
-                logger.error(f"Error while fetching from the root feed: {e}")
+                log_error_with_readkey(f"Error while fetching from the root feed: {e}")
 
         logger.info("All caught up")
         return None
+

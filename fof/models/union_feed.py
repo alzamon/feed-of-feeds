@@ -6,6 +6,7 @@ from datetime import timedelta, datetime
 from .base_feed import BaseFeed
 from .article import Article
 from .enums import FeedType
+from ..error_logger import log_error_with_readkey  # Importing the utility function
 
 # Configure the logger
 logging.basicConfig(level=logging.DEBUG)
@@ -64,5 +65,5 @@ class UnionFeed(BaseFeed):
                 logger.warning(f"No article fetched from selected feed: {selected_feed.id}")
             return article
         except Exception as e:
-            logger.error(f"Error fetching from feed {selected_feed.id}: {e}")
+            log_error_with_readkey(f"Error fetching from feed {selected_feed.id}: {e}")
             return None

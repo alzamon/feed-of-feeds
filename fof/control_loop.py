@@ -1,5 +1,7 @@
 import curses
 import os
+import textwrap
+
 
 class ControlLoop:
     """Manages display and keyboard interactions for navigating articles in a feed."""
@@ -14,11 +16,13 @@ class ControlLoop:
         self.feed_manager = feed_manager
         self.current_article = None
 
+
     def _display_article(self, stdscr):
-        """Display the current article on the screen."""
+        """Display the current article on the screen with word wrapping."""
         max_y, max_x = stdscr.getmaxyx()
         stdscr.clear()
         if self.current_article:
+            # Prepare the article details
             lines = [
                 f"Title: {self.current_article.title}",
                 f"Link: {self.current_article.link}",
@@ -28,13 +32,22 @@ class ControlLoop:
                 "Content Preview:",
                 "---------------",
             ]
+            
+            # Wrap the content preview to fit the terminal width
             preview = self.current_article.content[:200] + "..." if len(self.current_article.content) > 200 else self.current_article.content
-            lines.append(preview)
+            wrapped_preview = textwrap.wrap(preview, width=max_x)  # Wrap content preview
+            lines.extend(wrapped_preview)
 
-            # Add lines to the screen
-            for i, line in enumerate(lines):
-                if i < max_y - 3:  # Leave space for the prompt
-                    stdscr.addstr(i, 0, line[:max_x])  # Truncate to terminal width
+            # Add lines to the screen with wrapping
+            row = 0
+            for line in lines:
+                wrapped_lines = textwrap.wrap(line, width=max_x)  # Wrap each line
+                for wrapped_line in wrapped_lines:
+                    if row < max_y - 3:  # Leave space for the prompt
+                        stdscr.addstr(row, 0, wrapped_line)
+                        row += 1
+                    else:
+                        break  # Stop if there's no space left
         else:
             stdscr.addstr(0, 0, "No unread articles found!")
 
