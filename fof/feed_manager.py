@@ -12,6 +12,7 @@ from .models.regular_feed import RegularFeed
 from .models.filter_feed import FilterFeed, Filter
 from .models.enums import FeedType, FilterType
 from .error_logger import log_error_with_readkey  # Importing the utility function
+from .models.article_manager import ArticleManager  # Importing ArticleManager
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ class FeedManager:
             config_path (str): Path to the configuration file.
         """
         self.config_path = os.path.expanduser(config_path)
+        self.article_manager = ArticleManager()  # Initialize the ArticleManager
         self._load_config()
 
     def _load_config(self):
@@ -78,7 +80,8 @@ class FeedManager:
                 description=description,
                 last_updated=last_updated,
                 weight=weight,
-                max_age=feed_max_age  # Explicit max_age passed
+                max_age=feed_max_age,  # Explicit max_age passed
+                article_manager=self.article_manager  # Pass the ArticleManager instance
             )
         elif feed_type == FeedType.UNION:
             # Recursively create child feeds with inherited max_age

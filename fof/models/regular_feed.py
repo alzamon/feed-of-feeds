@@ -13,7 +13,7 @@ class RegularFeed(BaseFeed):
     """A standard feed that fetches articles from a URL."""
     url: str
     max_age: Optional[timedelta] = None  # Optional max age for filtering articles
-    article_manager: ArticleManager = ArticleManager()
+    article_manager: ArticleManager = None  # Removed initialization here
     
     @property
     def feed_type(self) -> FeedType:
@@ -83,7 +83,8 @@ class RegularFeed(BaseFeed):
             return None
 
     def __init__(self, id: str, title: str, description: str, last_updated: datetime, weight: float, 
-                 url: str, max_age: Optional[timedelta] = None):
+                 url: str, max_age: Optional[timedelta] = None, article_manager: ArticleManager = None):
         super().__init__(id, title, description, last_updated, weight)
         self.url = url
         self.max_age = max_age
+        self.article_manager = article_manager  # Pass ArticleManager from FeedManager
