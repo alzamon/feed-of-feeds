@@ -5,7 +5,7 @@ import sys
 from .feed_manager import FeedManager
 from .control_loop import ControlLoop
 
-DEFAULT_CONFIG_PATH = "~/.config/fof/config.yaml"
+DEFAULT_CONFIG_PATH = "~/.config/fof/"
 
 def main():
     """Main entry point for the application."""

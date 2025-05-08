@@ -19,24 +19,25 @@ logger = logging.getLogger(__name__)
 class FeedManager:
     """Main class for managing feeds and articles."""
 
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str = "~/.config/fof/"):
         """Initialize the FeedManager.
 
         Args:
-            config_path (str): Path to the configuration file.
+            config_path (str): Path to the configuration directory. Defaults to "~/.config/fof/".
         """
         self.config_path = os.path.expanduser(config_path)
-        self.article_manager = ArticleManager()  # Initialize the ArticleManager
+        self.article_manager = ArticleManager(db_path=self.config_path)  # Pass db_path to ArticleManager
         self._load_config()
 
     def _load_config(self):
         """Load the configuration file and initialize feeds."""
-        if not os.path.exists(self.config_path):
-            logger.warning(f"Config file not found at {self.config_path}. Using empty configuration.")
+        config_file_path = os.path.join(self.config_path, "config.yaml")
+        if not os.path.exists(config_file_path):
+            logger.warning(f"Config file not found at {config_file_path}. Using empty configuration.")
             return
 
         try:
-            with open(self.config_path, "r") as config_file:
+            with open(config_file_path, "r") as config_file:
                 config_data = yaml.safe_load(config_file)
 
                 # Initialize root feed (UnionFeed)
