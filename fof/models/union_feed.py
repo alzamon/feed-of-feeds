@@ -40,7 +40,7 @@ class UnionFeed(BaseFeed):
             return None
         
         # Collect weights and feeds
-        weights = [getattr(feed, 'weight', 1.0) for feed in self.feeds]
+        weights = [getattr(feed, 'weight', 10.0) for feed in self.feeds]
         
         # Log feeds with weight 0
         for feed, weight in zip(self.feeds, weights):
@@ -54,7 +54,7 @@ class UnionFeed(BaseFeed):
         selected_feed = choices(self.feeds, weights=weights, k=1)[0]
         
         # Log the selected feed
-        logger.debug(f"Selected feed: {selected_feed.id} with weight: {getattr(selected_feed, 'weight', 1.0)}")
+        logger.debug(f"Selected feed: {selected_feed.id} with weight: {getattr(selected_feed, 'weight', 10.0)}")
         
         # Fetch one article from the selected feed
         try:

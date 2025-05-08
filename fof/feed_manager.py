@@ -71,7 +71,7 @@ class FeedManager:
         # Assign required properties
         description = feed_config.get("description", "No description provided")
         last_updated = datetime.now()
-        weight = feed_config.get("weight", 1.0)
+        weight = feed_config.get("weight", 10.0)
 
         if feed_type == FeedType.REGULAR:
             return RegularFeed(
