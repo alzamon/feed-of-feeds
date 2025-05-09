@@ -119,7 +119,7 @@ class ControlLoop:
                 f"Published: {self.current_article.published_date or 'Unknown date'}",
                 "",
                 "Feed Path:",
-                " -> ".join(self.current_article.feed_path) if self.current_article.feed_path else "Unknown",
+                " -> ".join(self.current_article.feedpath) if self.current_article.feedpath else "Unknown",
                 "",
                 "Content Preview:",
                 "---------------",

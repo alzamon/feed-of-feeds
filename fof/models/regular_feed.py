@@ -66,7 +66,7 @@ class RegularFeed(BaseFeed):
                         author=author,
                         published_date=published_date,
                         feed_id=self.id,
-                        feed_path=self.feedpath,
+                        feedpath=self.feedpath,  # Updated name
                     )
 
                     # Mark the article as read
