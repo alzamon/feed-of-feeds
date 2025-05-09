@@ -12,5 +12,6 @@ class Article:
     author: Optional[str] = None
     published_date: Optional[datetime] = None
     feed_id: Optional[str] = None
+    feed_path: Optional[str] = None
     read: bool = False
     score: Optional[int] = None

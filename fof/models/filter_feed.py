@@ -41,8 +41,8 @@ class FilterFeed(BaseFeed):
     max_age: Optional[timedelta] = None  # Optional max age for filtering articles
 
     def __init__(self, id: str, title: str, description: str, last_updated: datetime, weight: float, 
-                 source_feed: BaseFeed, filters: List[Filter] = None, max_age: Optional[timedelta] = None):
-        super().__init__(id, title, description, last_updated, weight)
+                 source_feed: BaseFeed, filters: List[Filter] , max_age: Optional[timedelta], feedpath: List[str]):
+        super().__init__(id, title, description, last_updated, weight, feedpath)
         self.source_feed = source_feed
         self.filters = filters or []
         self.max_age = max_age

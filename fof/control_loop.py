@@ -106,6 +106,43 @@ class ControlLoop:
 
             stdscr.refresh()
 
+    def _display_article(self, stdscr):
+        """Display the current article on the screen with word wrapping."""
+        max_y, max_x = stdscr.getmaxyx()
+        stdscr.clear()
+        if self.current_article:
+            # Prepare the article details
+            lines = [
+                f"Title: {self.current_article.title}",
+                f"Link: {self.current_article.link}",
+                f"Author: {self.current_article.author or 'Unknown'}",
+                f"Published: {self.current_article.published_date or 'Unknown date'}",
+                "",
+                "Feed Path:",
+                " -> ".join(self.current_article.feed_path) if self.current_article.feed_path else "Unknown",
+                "",
+                "Content Preview:",
+                "---------------",
+            ]
+            
+            # Wrap the content preview to fit the terminal width
+            preview = self.current_article.content[:200] + "..." if len(self.current_article.content) > 200 else self.current_article.content
+            wrapped_preview = textwrap.wrap(preview, width=max_x)  # Wrap content preview
+            lines.extend(wrapped_preview)
+
+            # Add lines to the screen with wrapping
+            row = 0
+            for line in lines:
+                wrapped_lines = textwrap.wrap(line, width=max_x)  # Wrap each line
+                for wrapped_line in wrapped_lines:
+                    if row < max_y - 3:  # Leave space for the prompt
+                        stdscr.addstr(row, 0, wrapped_line)
+                        row += 1
+                    else:
+                        break  # Stop if there's no space left
+        else:
+            stdscr.addstr(0, 0, "No unread articles found!")
+
     def start(self):
         """Start the display and keyboard interaction interface."""
         curses.wrapper(self._handle_key_input)

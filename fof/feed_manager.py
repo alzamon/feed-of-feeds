@@ -2,7 +2,7 @@
 import random
 import yaml
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from datetime import timedelta, datetime
 import logging
 from .models.article import Article
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class FeedManager:
     """Main class for managing feeds and articles."""
 
-    def __init__(self, config_path: str = "~/.config/fof/"):
+    def __init__(self, config_path: str = "~/.config/fof"):
         """Initialize the FeedManager.
 
         Args:
@@ -51,16 +51,18 @@ class FeedManager:
                     raise ValueError("Root feed must have a max_age defined in the configuration.")
                 
                 root_max_age = timedelta(seconds=root_feed_config["max_age"])
-                self.root_feed = self._create_feed(root_feed_config, parent_max_age=root_max_age)
+                self.root_feed = self._create_feed(root_feed_config, parent_max_age=root_max_age, parent_feedpath=[])
         except Exception as e:
-            log_error_with_readkey(f"Failed to load config file at {self.config_path}: {e}")
+            log_error_with_readkey(f"Failed to load config file at {config_file_path}: {e}")
 
-    def _create_feed(self, feed_config: Dict, parent_max_age: timedelta) -> BaseFeed:
-        """Create a feed object from the configuration.
+    def _create_feed(self, feed_config: Dict, parent_max_age: timedelta, parent_feedpath: List[str]) -> BaseFeed:
+        """
+        Create a feed object from the configuration.
 
         Args:
             feed_config (Dict): Feed configuration dictionary.
             parent_max_age (timedelta): The max_age value inherited from the parent feed.
+            parent_feedpath (List[str]): The feedpath inherited from the parent feed.
 
         Returns:
             BaseFeed: The initialized feed object.
@@ -68,11 +70,12 @@ class FeedManager:
         feed_type = FeedType(feed_config["type"])
         feed_max_age = timedelta(seconds=feed_config.get("max_age", parent_max_age.total_seconds()))
 
-        # Assign required properties
+        feedpath = (parent_feedpath if parent_feedpath != ["root"] else []) + [feed_config["id"]]
         description = feed_config.get("description", "No description provided")
         last_updated = datetime.now()
         weight = feed_config.get("weight", 10.0)
 
+        # For regular feeds
         if feed_type == FeedType.REGULAR:
             return RegularFeed(
                 id=feed_config["id"],
@@ -81,13 +84,16 @@ class FeedManager:
                 description=description,
                 last_updated=last_updated,
                 weight=weight,
-                max_age=feed_max_age,  # Explicit max_age passed
-                article_manager=self.article_manager  # Pass the ArticleManager instance
+                max_age=feed_max_age,
+                article_manager=self.article_manager,
+                feedpath=feedpath  # Pass the feedpath
             )
+        # For union feeds
         elif feed_type == FeedType.UNION:
-            # Recursively create child feeds with inherited max_age
+            # Recursively create child feeds with inherited max_age and feedpath
             member_feeds = [
-                self._create_feed(member_feed, parent_max_age=feed_max_age) for member_feed in feed_config["feeds"]
+                self._create_feed(member_feed, parent_max_age=feed_max_age, parent_feedpath=feedpath)
+                for member_feed in feed_config["feeds"]
             ]
             member_feeds = [feed for feed in member_feeds if feed is not None]
 
@@ -98,12 +104,14 @@ class FeedManager:
                 description=description,
                 last_updated=last_updated,
                 weight=weight,
-                max_age=feed_max_age  # Explicit max_age passed
+                max_age=feed_max_age,
+                feedpath=feedpath  # Pass the feedpath
             )
+        # For filter feeds
         elif feed_type == FeedType.FILTER:
             # Create the source feed inline
             source_feed_config = feed_config["feed"]
-            source_feed = self._create_feed(source_feed_config, parent_max_age=feed_max_age)
+            source_feed = self._create_feed(source_feed_config, parent_max_age=feed_max_age, parent_feedpath=feedpath)
             if not source_feed:
                 logger.warning(
                     f"Failed to create source feed for filter feed: {feed_config['id']}"
@@ -118,7 +126,9 @@ class FeedManager:
                 description=description,
                 last_updated=last_updated,
                 weight=weight,
-                max_age=feed_max_age  # Explicit max_age passed
+                max_age=feed_max_age,
+                filters=[],
+                feedpath=feedpath  # Pass the feedpath
             )
             if "criteria" in feed_config:
                 for criterion in feed_config["criteria"]:

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 from .article import Article
 from .enums import FeedType
 
@@ -13,6 +13,7 @@ class BaseFeed(ABC):
     description: str
     last_updated: datetime
     weight: float
+    feedpath: List[str]  # Required parameter to track the path from the root feed to this feed
 
     @property
     @abstractmethod

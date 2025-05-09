@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timedelta
 import feedparser
 import time
@@ -12,8 +12,8 @@ from .article_manager import ArticleManager
 class RegularFeed(BaseFeed):
     """A standard feed that fetches articles from a URL."""
     url: str
-    max_age: Optional[timedelta] = None  # Optional max age for filtering articles
-    article_manager: ArticleManager = None  # Removed initialization here
+    max_age: Optional[timedelta]  # Optional max age for filtering articles
+    article_manager: ArticleManager # Removed initialization here
     
     @property
     def feed_type(self) -> FeedType:
@@ -65,7 +65,8 @@ class RegularFeed(BaseFeed):
                         link=link,
                         author=author,
                         published_date=published_date,
-                        feed_id=self.id
+                        feed_id=self.id,
+                        feed_path=self.feedpath,
                     )
 
                     # Mark the article as read
@@ -83,8 +84,8 @@ class RegularFeed(BaseFeed):
             return None
 
     def __init__(self, id: str, title: str, description: str, last_updated: datetime, weight: float, 
-                 url: str, max_age: Optional[timedelta] = None, article_manager: ArticleManager = None):
-        super().__init__(id, title, description, last_updated, weight)
+                 url: str, max_age: Optional[timedelta], article_manager: ArticleManager, feedpath: List[str]):
+        super().__init__(id, title, description, last_updated, weight, feedpath)
         self.url = url
         self.max_age = max_age
         self.article_manager = article_manager  # Pass ArticleManager from FeedManager

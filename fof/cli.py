@@ -14,7 +14,7 @@ def main():
     parser.add_argument(
         "--config", "-c", 
         default=DEFAULT_CONFIG_PATH,
-        help="Path to config file (default: ~/.config/fof/config.yaml)"
+        help="Path to config file (default: ~/.config/fof)"
     )
     
     args = parser.parse_args()
