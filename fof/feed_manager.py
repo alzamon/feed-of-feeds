@@ -1,6 +1,6 @@
 """Core FoF feed management functionality."""
 import random
-import yaml
+import json  # Replace yaml with json
 import os
 from typing import Dict, Optional, List
 from datetime import timedelta, datetime
@@ -31,14 +31,14 @@ class FeedManager:
 
     def _load_config(self):
         """Load the configuration file and initialize feeds."""
-        config_file_path = os.path.join(self.config_path, "config.yaml")
+        config_file_path = os.path.join(self.config_path, "config.json")  # Update file extension to .json
         if not os.path.exists(config_file_path):
             logger.warning(f"Config file not found at {config_file_path}. Using empty configuration.")
             return
 
         try:
             with open(config_file_path, "r") as config_file:
-                config_data = yaml.safe_load(config_file)
+                config_data = json.load(config_file)  # Use json.load instead of yaml.safe_load
 
                 # Initialize root feed (UnionFeed)
                 root_feed_config = {
