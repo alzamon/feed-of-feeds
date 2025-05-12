@@ -43,7 +43,7 @@ class FeedManager:
                 # Initialize root feed (UnionFeed)
                 root_feed_config = {
                     "id": "root",
-                    "type": "union",
+                    "feed_type": "union",
                     "feeds": config_data.get("feeds", []),
                     "max_age": config_data.get("max_age"),  # Root feed must have max_age set in config
                 }
@@ -67,7 +67,7 @@ class FeedManager:
         Returns:
             BaseFeed: The initialized feed object.
         """
-        feed_type = FeedType(feed_config["type"])
+        feed_type = FeedType(feed_config["feed_type"])
         feed_max_age = timedelta(seconds=feed_config.get("max_age", parent_max_age.total_seconds()))
 
         feedpath = (parent_feedpath if parent_feedpath != ["root"] else []) + [feed_config["id"]]
@@ -171,3 +171,104 @@ class FeedManager:
 
         logger.info("All caught up")
         return None
+
+    def update_weights(self, feedpath: List[str], increment: int):
+        """
+        Update the weights of feeds along the given feedpath.
+
+        Args:
+            feedpath (List[str]): The path of feeds in the tree (excluding the root).
+            increment (int): The value to increment or decrement the weight by.
+
+        Raises:
+            ValueError: If the feedpath is invalid or does not exist.
+        """
+        if not self.root_feed:
+            raise ValueError("Root feed is not initialized.")
+
+        current_feed = self.root_feed
+        logger.debug(f"Starting feed traversal. Root feed ID: {current_feed.id}")
+
+        for feed_id in feedpath:
+            logger.debug(f"Looking for feed ID '{feed_id}' in current feed '{current_feed.id}'")
+            
+            if isinstance(current_feed, UnionFeed):
+                sub_feed = next((feed for feed in current_feed.feeds if feed.id == feed_id), None)
+            elif isinstance(current_feed, FilterFeed):
+                sub_feed = current_feed.source_feed if current_feed.source_feed.id == feed_id else None
+            else:
+                sub_feed = None
+
+            if not sub_feed:
+                logger.error(f"Feed with ID '{feed_id}' not found in the feedpath at feed '{current_feed.id}'")
+                raise ValueError(f"Feed with ID '{feed_id}' not found in the feedpath.")
+            
+            current_feed = sub_feed
+            logger.debug(f"Moved to feed '{current_feed.id}'")
+
+        # Update the weight of the target feed
+        current_feed.weight += increment
+        logger.info(f"Updated weight of feed '{current_feed.id}' to {current_feed.weight}.")
+
+     
+    def save_config(self):
+        """
+        Save the current feed configuration to the configuration file.
+
+        Raises:
+            IOError: If unable to write to the configuration file.
+        """
+        if not self.root_feed:
+            raise ValueError("Root feed is not initialized.")
+        
+        config_file_path = os.path.join(self.config_path, "config.json")
+
+        # Serialize child feeds and other root-level properties
+        config_data = {
+            "feeds": [self._serialize_feed(sub_feed) for sub_feed in self.root_feed.feeds],
+            "max_age": int(self.root_feed.max_age.total_seconds()),  # Include max_age of the root feed
+        }
+
+        try:
+            with open(config_file_path, "w") as config_file:
+                json.dump(config_data, config_file, indent=4)
+            logger.info(f"Configuration saved to {config_file_path}.")
+        except IOError as e:
+            log_error_with_readkey(f"Failed to save configuration to {config_file_path}: {e}")
+            raise
+    
+    def _serialize_feed(self, feed: BaseFeed) -> Dict:
+        """
+        Recursively serialize a feed object into a dictionary.
+
+        Args:
+            feed (BaseFeed): The feed object to serialize.
+
+        Returns:
+            Dict: The serialized feed configuration.
+        """
+        feed_data = {
+            "id": feed.id,
+            "feed_type": feed.feed_type.value,  # Corrected from 'type' to 'feed_type'
+            "weight": feed.weight,
+            "max_age": int(feed.max_age.total_seconds()),
+            "description": feed.description,
+        }
+
+        if isinstance(feed, RegularFeed):
+            feed_data["url"] = feed.url
+            feed_data["title"] = feed.title
+        elif isinstance(feed, UnionFeed):
+            feed_data["feeds"] = [self._serialize_feed(sub_feed) for sub_feed in feed.feeds]
+        elif isinstance(feed, FilterFeed):
+            feed_data["feed"] = self._serialize_feed(feed.source_feed)
+            feed_data["criteria"] = [
+                {
+                    "filter_type": filter_obj.filter_type.value,
+                    "pattern": filter_obj.pattern,
+                    "is_inclusion": filter_obj.is_inclusion,
+                }
+                for filter_obj in feed.filters
+            ]
+
+        return feed_data

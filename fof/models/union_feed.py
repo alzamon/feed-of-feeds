@@ -24,7 +24,7 @@ class UnionFeed(BaseFeed):
 
     def __init__(self, id: str, title: str, description: str, last_updated: datetime, weight: float, 
                  feeds: List[BaseFeed], max_age: Optional[timedelta], feedpath: List[str]):
-        super().__init__(id, title, description, last_updated, weight, feedpath)
+        super().__init__(id, title, description, last_updated, weight, feedpath, fetch_failed=False)
         self.feeds = feeds
         self.max_age = max_age
 
@@ -36,19 +36,19 @@ class UnionFeed(BaseFeed):
         """Fetch one article from a randomly selected feed, based on weights."""
         if not self.feeds:
             logger.warning("No feeds available in this UnionFeed.")
-            self.weight = 0  # Set weight to 0 if no subfeeds are available
+            self.fetch_failed = True
             return None
         
         # Collect weights and feeds
-        weights = [getattr(feed, 'weight', 10.0) for feed in self.feeds]
+        weights = [feed.effective_weight() for feed in self.feeds]
         
         # Log feeds with weight 0
         for feed, weight in zip(self.feeds, weights):
             if weight == 0:
                 logger.debug(f"Feed {feed.id} ignored because weight is 0.")
         
-        if all(weight == 0 for weight in weights):
-            self.weight = 0  # Set weight to 0 if all subfeeds have weight 0
+        if sum(weights) <= 0:
+            self.fetch_failed = True
             return None
 
         selected_feed = choices(self.feeds, weights=weights, k=1)[0]

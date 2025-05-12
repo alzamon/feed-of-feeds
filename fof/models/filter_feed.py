@@ -42,7 +42,7 @@ class FilterFeed(BaseFeed):
 
     def __init__(self, id: str, title: str, description: str, last_updated: datetime, weight: float, 
                  source_feed: BaseFeed, filters: List[Filter] , max_age: Optional[timedelta], feedpath: List[str]):
-        super().__init__(id, title, description, last_updated, weight, feedpath)
+        super().__init__(id, title, description, last_updated, weight, feedpath, fetch_failed=False)
         self.source_feed = source_feed
         self.filters = filters or []
         self.max_age = max_age
@@ -57,14 +57,14 @@ class FilterFeed(BaseFeed):
 
     def fetch(self) -> Optional[Article]:
         """Fetch and filter a single article from source feed."""
-        if self.source_feed.weight == 0:
-            self.weight = 0  # Set weight to 0 if source feed has weight 0
+        if self.source_feed.effective_weight() == 0:
+            self.fetch_failed = True
             return None
 
         while True:
             article = self.source_feed.fetch()
             if not article:  # If no article is returned, stop fetching
-                self.weight = 0  # Set weight to 0 if source feed is empty
+                self.fetch_failed = True
                 return None
             
             # Check if the article is too old

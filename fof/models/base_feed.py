@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Optional, List
 from .article import Article
@@ -14,6 +14,7 @@ class BaseFeed(ABC):
     last_updated: datetime
     weight: float
     feedpath: List[str]  # Required parameter to track the path from the root feed to this feed
+    fetch_failed: bool
 
     @property
     @abstractmethod
@@ -33,3 +34,12 @@ class BaseFeed(ABC):
             Optional[Article]: The fetched article, or None if no suitable article is found.
         """
         pass
+
+    def effective_weight(self) -> float:
+        """
+        Calculate the effective weight of this feed.
+
+        Returns:
+            float: The effective weight of the feed.
+        """
+        return self.weight if not self.fetch_failed else 0.0    

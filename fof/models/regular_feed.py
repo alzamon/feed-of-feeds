@@ -25,7 +25,7 @@ class RegularFeed(BaseFeed):
             parsed = feedparser.parse(self.url)
             
             if not parsed.entries:
-                self.weight = 0  # Set weight to 0 if no articles are available
+                self.fetch_failed = True
                 return None
             
             for entry in parsed.entries:
@@ -74,18 +74,18 @@ class RegularFeed(BaseFeed):
 
                     return article
             
-            self.weight = 0  # Set weight to 0 if no unread articles are found
+            self.fetch_failed = True
             return None
         
         except Exception as e:
             # Log the error and set weight to 0
             print(f"Error fetching articles for feed {self.id}: {e}")
-            self.weight = 0
+            self.fetch_failed = True
             return None
 
     def __init__(self, id: str, title: str, description: str, last_updated: datetime, weight: float, 
                  url: str, max_age: Optional[timedelta], article_manager: ArticleManager, feedpath: List[str]):
-        super().__init__(id, title, description, last_updated, weight, feedpath)
+        super().__init__(id, title, description, last_updated, weight, feedpath, fetch_failed=False)
         self.url = url
         self.max_age = max_age
         self.article_manager = article_manager  # Pass ArticleManager from FeedManager
