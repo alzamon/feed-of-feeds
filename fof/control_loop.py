@@ -1,3 +1,4 @@
+import urllib.parse
 import curses
 import os
 import textwrap
@@ -86,7 +87,9 @@ class ControlLoop:
                 try:
                     if self.current_article and self.current_article.link:
                         stdscr.addstr(max_y - 2, 0, f"Opening URL: {self.current_article.link}...".ljust(max_x))
-                        os.system(f"xdg-open {self.current_article.link}")
+
+                        encoded_url = urllib.parse.quote(self.current_article.link, safe=":/")
+                        os.system(f"xdg-open {encoded_url}")
                         stdscr.addstr(max_y - 2, 0, "Opened link in browser.".ljust(max_x))
                     else:
                         stdscr.addstr(max_y - 2, 0, "No valid link to open.".ljust(max_x))

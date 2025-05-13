@@ -3,6 +3,7 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 import feedparser
 import time
+import requests
 from .base_feed import BaseFeed
 from .article import Article
 from .enums import FeedType
@@ -13,7 +14,7 @@ class RegularFeed(BaseFeed):
     """A standard feed that fetches articles from a URL."""
     url: str
     max_age: Optional[timedelta]  # Optional max age for filtering articles
-    article_manager: ArticleManager # Removed initialization here
+    article_manager: ArticleManager  # Removed initialization here
     
     @property
     def feed_type(self) -> FeedType:
@@ -22,7 +23,12 @@ class RegularFeed(BaseFeed):
     def fetch(self) -> Optional[Article]:
         """Fetch the first unread article from the feed URL."""
         try:
-            parsed = feedparser.parse(self.url)
+            # Fetch feed data with a timeout
+            response = requests.get(self.url, timeout=5)  # Set timeout to 5 seconds
+            response.raise_for_status()  # Raise an HTTPError if the HTTP request returned an unsuccessful status code
+
+            # Parse the feed
+            parsed = feedparser.parse(response.text)
             
             if not parsed.entries:
                 self.fetch_failed = True
@@ -42,10 +48,6 @@ class RegularFeed(BaseFeed):
                     published_date = datetime.fromtimestamp(
                         time.mktime(entry.updated_parsed)
                     )
-                else:
-                    # Debug log for missing both 'published_parsed' and 'updated_parsed'
-                    print(f"Debug: Missing 'published_parsed' and 'updated_parsed' in entry: {entry}")
-                
                 # Check if the article is too old
                 if self.max_age and published_date:
                     if datetime.now() - published_date > self.max_age:
@@ -77,8 +79,13 @@ class RegularFeed(BaseFeed):
             self.fetch_failed = True
             return None
         
+        except requests.exceptions.RequestException as e:
+            print(f"Request error for feed {self.id}: {e}")
+            self.fetch_failed = True
+            return None
+        
         except Exception as e:
-            # Log the error and set weight to 0
+            # Log the error and set fetch_failed to True
             print(f"Error fetching articles for feed {self.id}: {e}")
             self.fetch_failed = True
             return None
