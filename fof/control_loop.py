@@ -88,7 +88,8 @@ class ControlLoop:
                     if self.current_article and self.current_article.link:
                         stdscr.addstr(max_y - 2, 0, f"Opening URL: {self.current_article.link}...".ljust(max_x))
 
-                        encoded_url = urllib.parse.quote(self.current_article.link, safe=":/")
+
+                        encoded_url = urllib.parse.quote(self.current_article.link, safe=":/?")
                         os.system(f"xdg-open {encoded_url}")
                         stdscr.addstr(max_y - 2, 0, "Opened link in browser.".ljust(max_x))
                     else:
