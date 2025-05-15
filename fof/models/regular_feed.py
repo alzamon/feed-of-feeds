@@ -19,7 +19,7 @@ class RegularFeed(BaseFeed):
      
     def fetch(self) -> Optional[Article]:
         """Fetch the first unread article using the ArticleManager."""
-        article = self.article_manager.fetch_unread_article(
+        article = self.article_manager.fetch_article(
             url=self.url,
             max_age=self.max_age,
             feed_id=self.id,
