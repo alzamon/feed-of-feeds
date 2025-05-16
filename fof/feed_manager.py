@@ -1,18 +1,56 @@
 """Core FoF feed management functionality."""
 import random
-import json  # Replace yaml with json
+import json
 import os
 from typing import Dict, Optional, List
 from datetime import timedelta, datetime
 import logging
+
 from .models.article import Article
 from .models.base_feed import BaseFeed
 from .models.union_feed import UnionFeed
 from .models.regular_feed import RegularFeed
 from .models.filter_feed import FilterFeed, Filter
 from .models.enums import FeedType, FilterType
-from .error_logger import log_error_with_readkey  # Importing the utility function
-from .models.article_manager import ArticleManager  # Importing ArticleManager
+from .error_logger import log_error_with_readkey
+from .models.article_manager import ArticleManager
+
+# --- Time period helpers ---
+import re
+
+def parse_time_period(period_str: str) -> timedelta:
+    """
+    Parse a string like '7d', '12h', '30m', '10s' into a timedelta.
+    Supports days (d), hours (h), minutes (m), seconds (s).
+    """
+    if not isinstance(period_str, str):
+        raise ValueError("Time period must be a string")
+    pattern = r'^\s*(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?\s*$'
+    match = re.fullmatch(pattern, period_str.strip())
+    if not match:
+        raise ValueError(f"Invalid time period string: {period_str!r}")
+    days, hours, minutes, seconds = match.groups(default='0')
+    return timedelta(
+        days=int(days),
+        hours=int(hours),
+        minutes=int(minutes),
+        seconds=int(seconds),
+    )
+
+def timedelta_to_period_str(td: timedelta) -> str:
+    """
+    Serialize a timedelta to a compact period string like '7d12h30m10s'.
+    """
+    seconds = int(td.total_seconds())
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    result = ''
+    if days: result += f'{days}d'
+    if hours: result += f'{hours}h'
+    if minutes: result += f'{minutes}m'
+    if seconds or not result: result += f'{seconds}s'
+    return result
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +64,12 @@ class FeedManager:
             config_path (str): Path to the configuration directory. Defaults to "~/.config/fof/".
         """
         self.config_path = os.path.expanduser(config_path)
-        self.article_manager = ArticleManager(db_path=self.config_path)  # Pass db_path to ArticleManager
+        self.article_manager = ArticleManager(db_path=self.config_path)
         self._load_config()
 
     def _load_config(self):
         """Load the configuration file and initialize feeds."""
-        config_file_path = os.path.join(self.config_path, "config.json")  # Update file extension to .json
+        config_file_path = os.path.join(self.config_path, "config.json")
         if not os.path.exists(config_file_path):
             logger.warning(f"Config file not found at {config_file_path}. Using empty configuration.")
             self.root_feed = None
@@ -39,7 +77,7 @@ class FeedManager:
 
         try:
             with open(config_file_path, "r") as config_file:
-                config_data = json.load(config_file)  # Use json.load instead of yaml.safe_load
+                config_data = json.load(config_file)
 
                 # Now expect a single "defaultRootFeed" property for the root feed config
                 root_feed_config = config_data.get("defaultRootFeed")
@@ -50,7 +88,7 @@ class FeedManager:
                 if "max_age" not in root_feed_config:
                     raise ValueError("Root feed must have a max_age defined in the configuration under 'defaultRootFeed'.")
 
-                root_max_age = timedelta(seconds=root_feed_config["max_age"])
+                root_max_age = parse_time_period(root_feed_config["max_age"])
                 self.root_feed = self._create_feed(root_feed_config, parent_max_age=root_max_age, parent_feedpath=[])
         except Exception as e:
             log_error_with_readkey(f"Failed to load config file at {config_file_path}: {e}")
@@ -69,7 +107,8 @@ class FeedManager:
             BaseFeed: The initialized feed object.
         """
         feed_type = FeedType(feed_config["feed_type"])
-        feed_max_age = timedelta(seconds=feed_config.get("max_age", parent_max_age.total_seconds()))
+        # Parse max_age as period string (if present), else inherit from parent
+        feed_max_age = parse_time_period(feed_config["max_age"]) if "max_age" in feed_config else parent_max_age
 
         feedpath = (parent_feedpath if parent_feedpath != ["root"] else []) + [feed_config["id"]]
         description = feed_config.get("description", "No description provided")
@@ -87,7 +126,7 @@ class FeedManager:
                 weight=weight,
                 max_age=feed_max_age,
                 article_manager=self.article_manager,
-                feedpath=feedpath  # Pass the feedpath
+                feedpath=feedpath
             )
         # For union feeds
         elif feed_type == FeedType.UNION:
@@ -106,7 +145,7 @@ class FeedManager:
                 last_updated=last_updated,
                 weight=weight,
                 max_age=feed_max_age,
-                feedpath=feedpath  # Pass the feedpath
+                feedpath=feedpath
             )
         # For filter feeds
         elif feed_type == FeedType.FILTER:
@@ -129,7 +168,7 @@ class FeedManager:
                 weight=weight,
                 max_age=feed_max_age,
                 filters=[],
-                feedpath=feedpath  # Pass the feedpath
+                feedpath=feedpath
             )
             if "criteria" in feed_config:
                 for criterion in feed_config["criteria"]:
@@ -192,7 +231,7 @@ class FeedManager:
 
         for feed_id in feedpath:
             logger.debug(f"Looking for feed ID '{feed_id}' in current feed '{current_feed.id}'")
-            
+
             if isinstance(current_feed, UnionFeed):
                 sub_feed = next((feed for feed in current_feed.feeds if feed.id == feed_id), None)
             elif isinstance(current_feed, FilterFeed):
@@ -203,7 +242,7 @@ class FeedManager:
             if not sub_feed:
                 logger.error(f"Feed with ID '{feed_id}' not found in the feedpath at feed '{current_feed.id}'")
                 raise ValueError(f"Feed with ID '{feed_id}' not found in the feedpath.")
-            
+
             current_feed = sub_feed
             logger.debug(f"Moved to feed '{current_feed.id}'")
 
@@ -211,7 +250,6 @@ class FeedManager:
         current_feed.weight += increment
         logger.info(f"Updated weight of feed '{current_feed.id}' to {current_feed.weight}.")
 
-     
     def save_config(self):
         """
         Save the current feed configuration to the configuration file.
@@ -221,7 +259,7 @@ class FeedManager:
         """
         if not self.root_feed:
             raise ValueError("Root feed is not initialized.")
-        
+
         config_file_path = os.path.join(self.config_path, "config.json")
 
         # Serialize the root feed under the "defaultRootFeed" property
@@ -236,7 +274,7 @@ class FeedManager:
         except IOError as e:
             log_error_with_readkey(f"Failed to save configuration to {config_file_path}: {e}")
             raise
-    
+
     def _serialize_feed(self, feed: BaseFeed) -> Dict:
         """
         Recursively serialize a feed object into a dictionary.
@@ -249,9 +287,9 @@ class FeedManager:
         """
         feed_data = {
             "id": feed.id,
-            "feed_type": feed.feed_type.value,  # Corrected from 'type' to 'feed_type'
+            "feed_type": feed.feed_type.value,
             "weight": feed.weight,
-            "max_age": int(feed.max_age.total_seconds()),
+            "max_age": timedelta_to_period_str(feed.max_age),
             "description": feed.description,
         }
 
@@ -274,4 +312,3 @@ class FeedManager:
             feed_data["title"] = feed.title
 
         return feed_data
-
