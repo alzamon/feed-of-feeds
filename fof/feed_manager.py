@@ -180,7 +180,7 @@ class FeedManager:
 
     def update_weights(self, feedpath: List[str], increment: int):
         """
-        Update the weights of feeds along the given feedpath.
+        Update the weights of feeds along the given feedpath, except the root.
 
         Args:
             feedpath (List[str]): The path of feeds in the tree (excluding the root).
@@ -210,11 +210,9 @@ class FeedManager:
                 raise ValueError(f"Feed with ID '{feed_id}' not found in the feedpath.")
 
             current_feed = sub_feed
-            logger.debug(f"Moved to feed '{current_feed.id}'")
-
-        # Update the weight of the target feed
-        current_feed.weight += increment
-        logger.info(f"Updated weight of feed '{current_feed.id}' to {current_feed.weight}.")
+            # Update the weight of each feed in the path except root
+            current_feed.weight += increment
+            logger.info(f"Updated weight of feed '{current_feed.id}' to {current_feed.weight}.")
 
     def save_config(self):
         """
