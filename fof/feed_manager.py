@@ -34,26 +34,27 @@ class FeedManager:
         config_file_path = os.path.join(self.config_path, "config.json")  # Update file extension to .json
         if not os.path.exists(config_file_path):
             logger.warning(f"Config file not found at {config_file_path}. Using empty configuration.")
+            self.root_feed = None
             return
 
         try:
             with open(config_file_path, "r") as config_file:
                 config_data = json.load(config_file)  # Use json.load instead of yaml.safe_load
 
-                # Initialize root feed (UnionFeed)
-                root_feed_config = {
-                    "id": "root",
-                    "feed_type": "union",
-                    "feeds": config_data.get("feeds", []),
-                    "max_age": config_data.get("max_age"),  # Root feed must have max_age set in config
-                }
+                # Now expect a single "defaultRootFeed" property for the root feed config
+                root_feed_config = config_data.get("defaultRootFeed")
+                if not root_feed_config:
+                    raise ValueError("Configuration must include a 'defaultRootFeed' property.")
+
+                # "max_age" for the root feed must be set in the union feed config
                 if "max_age" not in root_feed_config:
-                    raise ValueError("Root feed must have a max_age defined in the configuration.")
-                
+                    raise ValueError("Root feed must have a max_age defined in the configuration under 'defaultRootFeed'.")
+
                 root_max_age = timedelta(seconds=root_feed_config["max_age"])
                 self.root_feed = self._create_feed(root_feed_config, parent_max_age=root_max_age, parent_feedpath=[])
         except Exception as e:
             log_error_with_readkey(f"Failed to load config file at {config_file_path}: {e}")
+            self.root_feed = None
 
     def _create_feed(self, feed_config: Dict, parent_max_age: timedelta, parent_feedpath: List[str]) -> BaseFeed:
         """
@@ -93,7 +94,7 @@ class FeedManager:
             # Recursively create child feeds with inherited max_age and feedpath
             member_feeds = [
                 self._create_feed(member_feed, parent_max_age=feed_max_age, parent_feedpath=feedpath)
-                for member_feed in feed_config["feeds"]
+                for member_feed in feed_config.get("feeds", [])
             ]
             member_feeds = [feed for feed in member_feeds if feed is not None]
 
@@ -223,10 +224,9 @@ class FeedManager:
         
         config_file_path = os.path.join(self.config_path, "config.json")
 
-        # Serialize child feeds and other root-level properties
+        # Serialize the root feed under the "defaultRootFeed" property
         config_data = {
-            "feeds": [self._serialize_feed(sub_feed) for sub_feed in self.root_feed.feeds],
-            "max_age": int(self.root_feed.max_age.total_seconds()),  # Include max_age of the root feed
+            "defaultRootFeed": self._serialize_feed(self.root_feed)
         }
 
         try:
@@ -260,6 +260,7 @@ class FeedManager:
             feed_data["title"] = feed.title
         elif isinstance(feed, UnionFeed):
             feed_data["feeds"] = [self._serialize_feed(sub_feed) for sub_feed in feed.feeds]
+            feed_data["title"] = feed.title
         elif isinstance(feed, FilterFeed):
             feed_data["feed"] = self._serialize_feed(feed.source_feed)
             feed_data["criteria"] = [
@@ -270,5 +271,7 @@ class FeedManager:
                 }
                 for filter_obj in feed.filters
             ]
+            feed_data["title"] = feed.title
 
         return feed_data
+
