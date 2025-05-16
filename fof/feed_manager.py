@@ -218,6 +218,8 @@ class FeedManager:
         """
         Save the current feed configuration to the configuration file.
 
+        Normalizes weights so every union feed's subfeeds sum to 100, and filter/regular feeds have weight 100.
+
         Raises:
             IOError: If unable to write to the configuration file.
         """
@@ -225,6 +227,9 @@ class FeedManager:
             raise ValueError("Root feed is not initialized.")
 
         config_file_path = os.path.join(self.config_path, "config.json")
+
+        # Normalize weights in-place before serialization
+        self._normalize_feed_weights(self.root_feed)
 
         # Serialize the root feed under the "defaultRootFeed" property
         config_data = {
@@ -238,6 +243,38 @@ class FeedManager:
         except IOError as e:
             log_error_with_readkey(f"Failed to save configuration to {config_file_path}: {e}")
             raise
+
+     
+     
+    def _normalize_feed_weights(self, feed: BaseFeed):
+        """
+        Only normalize:
+        - The direct subfeeds of each UnionFeed so their weights sum to 100 (preserving ratios).
+        - The source_feed of FilterFeed to 100.
+        Never change weights of any other feeds.
+        """
+        from .models.union_feed import UnionFeed
+        from .models.filter_feed import FilterFeed
+
+        if isinstance(feed, UnionFeed):
+            subfeeds = feed.feeds
+            total_weight = sum(f.weight for f in subfeeds)
+            if total_weight > 0:
+                for subfeed in subfeeds:
+                    subfeed.weight = 100.0 * (subfeed.weight / total_weight)
+            else:
+                n = len(subfeeds)
+                for subfeed in subfeeds:
+                    subfeed.weight = 100.0 / n if n > 0 else 0.0
+            # Recurse into each subfeed (do NOT normalize their weights, just apply normalization at their union/filter layer if any)
+            for subfeed in subfeeds:
+                self._normalize_feed_weights(subfeed)
+
+        elif isinstance(feed, FilterFeed):
+            # Only normalize the direct source_feed to weight 100
+            if hasattr(feed, "source_feed") and feed.source_feed is not None:
+                feed.source_feed.weight = 100.0
+                self._normalize_feed_weights(feed.source_feed)
 
     def _serialize_feed(self, feed: BaseFeed) -> Dict:
         """
