@@ -52,7 +52,7 @@ class ControlLoop:
                     else:
                         break  # Stop if there's no space left
         else:
-            stdscr.addstr(0, 0, "No unread articles found!")
+            stdscr.addstr(0, 0, "All caught up! No more articles to display.")
 
     def _display_prompt(self, stdscr):
         """Display the navigation prompt at the bottom of the screen."""
