@@ -34,14 +34,6 @@ def main():
     # Initialize feed manager
     feed_manager = FeedManager(args.config)
     
-    # Fetch and display the first article
-    article = feed_manager.next_article()
-    
-    # Ensure article is initialized
-    if not article:
-        print("No unread articles found! Exiting...")
-        sys.exit(0)
-
     # Initialize control loop to handle interactions
     ControlLoop(feed_manager).start()
 
