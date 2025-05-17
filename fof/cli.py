@@ -25,12 +25,32 @@ def main():
     
     args = parser.parse_args()
 
-    # Configure logging based on --verbose flag
+    # Prepare logging to a file in the config path (always), and console if verbose
+    config_path = os.path.expanduser(args.config)
+    log_file = os.path.join(config_path, "fof.log")
+    os.makedirs(config_path, exist_ok=True)
+
+    # Set up root logger
+    handlers = []
+    file_handler = logging.FileHandler(log_file, mode="a")
+    file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+    ))
+    handlers.append(file_handler)
+
+    if args.verbose:
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+        ))
+        handlers.append(console_handler)
+
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+        handlers=handlers
     )
-    
+    logging.info("Logging started.")
+
     # Initialize feed manager
     feed_manager = FeedManager(args.config)
     

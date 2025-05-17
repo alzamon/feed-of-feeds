@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass, field
 from typing import List, Optional, Pattern
 import re
@@ -6,6 +7,8 @@ from .article import Article
 from .enums import FilterType
 from .base_feed import BaseFeed
 from .enums import FeedType
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Filter:
@@ -71,6 +74,13 @@ class FilterFeed(BaseFeed):
             if self.max_age and article.published_date:
                 if datetime.now() - article.published_date > self.max_age:
                     continue
+            logger.debug(f"Filtering article: {article}")
+            for f in self.filters:
+                logger.debug(f"Applying filter: {f.pattern} (type: {f.filter_type})")
+                if f.matches(article):
+                    logger.debug(f"Article matched filter: {f.pattern}")
+                else:
+                    logger.debug(f"Article did not match filter: {f.pattern}")
 
             # Check if the article matches all filters
             should_include = all(
