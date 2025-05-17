@@ -164,7 +164,7 @@ class FeedManager:
             logger.warning("No root feed available to fetch articles.")
             return None
 
-        while self.root_feed.weight > 0:
+        while self.root_feed.effective_weight() > 0:
             try:
                 article = self.root_feed.fetch()
                 if article:
