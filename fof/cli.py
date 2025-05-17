@@ -2,6 +2,7 @@
 import argparse
 import os
 import sys
+import logging
 from .feed_manager import FeedManager
 from .control_loop import ControlLoop
 
@@ -16,8 +17,19 @@ def main():
         default=DEFAULT_CONFIG_PATH,
         help="Path to config file (default: ~/.config/fof)"
     )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable debug logging"
+    )
     
     args = parser.parse_args()
+
+    # Configure logging based on --verbose flag
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+    )
     
     # Initialize feed manager
     feed_manager = FeedManager(args.config)

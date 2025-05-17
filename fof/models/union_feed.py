@@ -9,7 +9,6 @@ from .enums import FeedType
 from ..error_logger import log_error_with_readkey  # Importing the utility function
 
 # Configure the logger
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -35,7 +34,7 @@ class UnionFeed(BaseFeed):
     def fetch(self) -> Optional[Article]:
         """Fetch one article from a randomly selected feed, based on weights."""
         if not self.feeds:
-            logger.warning("No feeds available in this UnionFeed.")
+            logger.debug("No feeds available in this UnionFeed.")
             self.fetch_failed = True
             return None
         
@@ -68,7 +67,7 @@ class UnionFeed(BaseFeed):
                 
                 logger.debug(f"Fetched article: {article.id} from feed {selected_feed.id}")
             else:
-                logger.warning(f"No article fetched from selected feed: {selected_feed.id}")
+                logger.debug(f"No article fetched from selected feed: {selected_feed.id}")
             return article
         except Exception as e:
             log_error_with_readkey(f"Error fetching from feed {selected_feed.id}: {e}")

@@ -168,10 +168,10 @@ class FeedManager:
             try:
                 article = self.root_feed.fetch()
                 if article:
-                    logger.info(f"Fetched article: {article.id} ({article.title})")
+                    logger.debug(f"Fetched article: {article.id} ({article.title})")
                     return article
                 else:
-                    logger.warning("No matching article fetched from the root feed.")
+                    logger.debug("No matching article fetched from the root feed.")
             except Exception as e:
                 log_error_with_readkey(f"Error while fetching from the root feed: {e}")
 
