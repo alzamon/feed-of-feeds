@@ -22,14 +22,18 @@ logger = logging.getLogger(__name__)
 class FeedManager:
     """Main class for managing feeds and articles."""
 
-    def __init__(self, config_path: str = "~/.config/fof"):
+    def __init__(self, config_path: str = "~/.config/fof", article_manager: ArticleManager = None):
         """Initialize the FeedManager.
 
         Args:
             config_path (str): Path to the configuration directory. Defaults to "~/.config/fof/".
+            article_manager (ArticleManager): The article manager instance to use.
         """
         self.config_path = os.path.expanduser(config_path)
-        self.article_manager = ArticleManager(db_path=self.config_path)
+        if article_manager is None:
+            self.article_manager = ArticleManager(db_path=self.config_path)
+        else:
+            self.article_manager = article_manager
         self._load_config()
 
     def _load_config(self):
@@ -235,3 +239,4 @@ class FeedManager:
             feed_data["title"] = feed.title
 
         return feed_data
+

@@ -47,7 +47,7 @@ class FilterFeed(BaseFeed):
     max_age: Optional[timedelta] = None  # Optional max age for filtering articles
 
     def __init__(self, id: str, title: str, description: str, last_updated: datetime, weight: float, 
-                 source_feed: BaseFeed, filters: List[Filter] , max_age: Optional[timedelta], feedpath: List[str]):
+                 source_feed: BaseFeed, filters: List[Filter], max_age: Optional[timedelta], feedpath: List[str]):
         super().__init__(id, title, description, last_updated, weight, feedpath, fetch_failed=False)
         self.source_feed = source_feed
         self.filters = filters or []
@@ -61,6 +61,11 @@ class FilterFeed(BaseFeed):
         self.filters.append(Filter(filter_type, pattern, is_inclusion))
 
     def fetch(self) -> Optional[Article]:
+        """
+        Fetches the next unfetched, unread article from the source feed that passes all filters.
+        The fetched article is marked as fetched by the underlying RegularFeed/ArticleManager.
+        Only articles not yet fetched (and not read) are considered.
+        """
         if self.source_feed.effective_weight() == 0:
             self.fetch_failed = True
             return None
@@ -73,17 +78,12 @@ class FilterFeed(BaseFeed):
                 if datetime.now() - article.published_date > self.max_age:
                     continue
             logger.debug(f"Filtering article: {article}")
-            for f in self.filters:
-                logger.debug(f"Applying filter: {f.pattern} (type: {f.filter_type})")
-                if f.matches(article):
-                    logger.debug(f"Article matched filter: {f.pattern}")
-                else:
-                    logger.debug(f"Article did not match filter: {f.pattern}")
             should_include = all(
                 f.is_inclusion == f.matches(article) for f in self.filters
             )
             if should_include:
                 return article
+            # If article does not pass, continue to fetch the next unfetched article
 
     @classmethod
     def from_config_dict(cls, config: Dict, article_manager: "ArticleManager", parent_max_age: timedelta, parent_feedpath: List[str]) -> "FilterFeed":
@@ -125,4 +125,3 @@ class FilterFeed(BaseFeed):
             max_age=feed_max_age,
             feedpath=feedpath
         )
-

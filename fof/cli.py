@@ -3,6 +3,7 @@ import argparse
 import os
 import sys
 import logging
+from .models.article_manager import ArticleManager
 from .feed_manager import FeedManager
 from .control_loop import ControlLoop
 
@@ -51,11 +52,12 @@ def main():
     )
     logging.info("Logging started.")
 
-    # Initialize feed manager
-    feed_manager = FeedManager(args.config)
+    # Initialize article manager and feed manager
+    article_manager = ArticleManager(db_path=config_path)
+    feed_manager = FeedManager(args.config, article_manager=article_manager)
     
     # Initialize control loop to handle interactions
-    ControlLoop(feed_manager).start()
+    ControlLoop(feed_manager, article_manager).start()
 
 if __name__ == "__main__":
     main()
