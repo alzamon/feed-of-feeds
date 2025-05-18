@@ -17,7 +17,6 @@ from .models.article_manager import ArticleManager
 
 from .time_period import parse_time_period, timedelta_to_period_str
 
-
 logger = logging.getLogger(__name__)
 
 class FeedManager:
@@ -45,114 +44,42 @@ class FeedManager:
             with open(config_file_path, "r") as config_file:
                 config_data = json.load(config_file)
 
-                # Now expect a single "defaultRootFeed" property for the root feed config
                 root_feed_config = config_data.get("defaultRootFeed")
                 if not root_feed_config:
                     raise ValueError("Configuration must include a 'defaultRootFeed' property.")
 
-                # "max_age" for the root feed must be set in the union feed config
                 if "max_age" not in root_feed_config:
                     raise ValueError("Root feed must have a max_age defined in the configuration under 'defaultRootFeed'.")
 
                 root_max_age = parse_time_period(root_feed_config["max_age"])
-                self.root_feed = self._create_feed(root_feed_config, parent_max_age=root_max_age, parent_feedpath=[])
+                # Use the from_config_dict classmethod for full recursive construction
+                feed_type = FeedType(root_feed_config["feed_type"])
+                if feed_type == FeedType.REGULAR:
+                    self.root_feed = RegularFeed.from_config_dict(
+                        root_feed_config,
+                        self.article_manager,
+                        parent_max_age=root_max_age,
+                        parent_feedpath=[]
+                    )
+                elif feed_type == FeedType.UNION:
+                    self.root_feed = UnionFeed.from_config_dict(
+                        root_feed_config,
+                        self.article_manager,
+                        parent_max_age=root_max_age,
+                        parent_feedpath=[]
+                    )
+                elif feed_type == FeedType.FILTER:
+                    self.root_feed = FilterFeed.from_config_dict(
+                        root_feed_config,
+                        self.article_manager,
+                        parent_max_age=root_max_age,
+                        parent_feedpath=[]
+                    )
+                else:
+                    raise ValueError(f"Unknown feed_type in root config: {feed_type}")
         except Exception as e:
             log_error_with_readkey(f"Failed to load config file at {config_file_path}: {e}")
             self.root_feed = None
-
-    def _create_feed(self, feed_config: Dict, parent_max_age: timedelta, parent_feedpath: List[str]) -> BaseFeed:
-        """
-        Create a feed object from the configuration.
-
-        Args:
-            feed_config (Dict): Feed configuration dictionary.
-            parent_max_age (timedelta): The max_age value inherited from the parent feed.
-            parent_feedpath (List[str]): The feedpath inherited from the parent feed.
-
-        Returns:
-            BaseFeed: The initialized feed object.
-        """
-        feed_type = FeedType(feed_config["feed_type"])
-        # Parse max_age as period string (if present), else inherit from parent
-        feed_max_age = parse_time_period(feed_config["max_age"]) if "max_age" in feed_config else parent_max_age
-
-        feedpath = (parent_feedpath if parent_feedpath != ["root"] else []) + [feed_config["id"]]
-        description = feed_config.get("description", "No description provided")
-        last_updated = datetime.now()
-        weight = feed_config.get("weight", 10.0)
-
-        # For regular feeds
-        if feed_type == FeedType.REGULAR:
-            return RegularFeed(
-                id=feed_config["id"],
-                url=feed_config["url"],
-                title=feed_config.get("title"),
-                description=description,
-                last_updated=last_updated,
-                weight=weight,
-                max_age=feed_max_age,
-                article_manager=self.article_manager,
-                feedpath=feedpath
-            )
-        # For union feeds
-        elif feed_type == FeedType.UNION:
-            # Recursively create child feeds with inherited max_age and feedpath
-            member_feeds = [
-                self._create_feed(member_feed, parent_max_age=feed_max_age, parent_feedpath=feedpath)
-                for member_feed in feed_config.get("feeds", [])
-            ]
-            member_feeds = [feed for feed in member_feeds if feed is not None]
-
-            return UnionFeed(
-                id=feed_config["id"],
-                feeds=member_feeds,
-                title=feed_config.get("title"),
-                description=description,
-                last_updated=last_updated,
-                weight=weight,
-                max_age=feed_max_age,
-                feedpath=feedpath
-            )
-        # For filter feeds
-        elif feed_type == FeedType.FILTER:
-            # Create the source feed inline
-            source_feed_config = feed_config["feed"]
-            source_feed = self._create_feed(source_feed_config, parent_max_age=feed_max_age, parent_feedpath=feedpath)
-            if not source_feed:
-                logger.warning(
-                    f"Failed to create source feed for filter feed: {feed_config['id']}"
-                )
-                return None
-
-            # Create FilterFeed and add filters
-            filter_feed = FilterFeed(
-                source_feed=source_feed,
-                id=feed_config["id"],
-                title=feed_config.get("title"),
-                description=description,
-                last_updated=last_updated,
-                weight=weight,
-                max_age=feed_max_age,
-                filters=[],
-                feedpath=feedpath
-            )
-            if "criteria" in feed_config:
-                for criterion in feed_config["criteria"]:
-                    try:
-                        filter_type = FilterType(criterion["filter_type"])
-                    except ValueError as e:
-                        log_error_with_readkey(f"Invalid filter type: {criterion['filter_type']}. Error: {e}")
-                        continue
-
-                    filter_feed.add_filter(
-                        filter_type=filter_type,
-                        pattern=criterion["pattern"],
-                        is_inclusion=criterion.get("is_inclusion", True),
-                    )
-            return filter_feed
-        else:
-            logger.warning(f"Unknown feed type: {feed_type}")
-            return None
 
     def next_article(self) -> Optional[Article]:
         """Fetch the next article by sampling feeds until an article is retrieved or root feed weight is 0.
@@ -244,8 +171,6 @@ class FeedManager:
             log_error_with_readkey(f"Failed to save configuration to {config_file_path}: {e}")
             raise
 
-     
-     
     def _normalize_feed_weights(self, feed: BaseFeed):
         """
         Only normalize:
@@ -266,12 +191,9 @@ class FeedManager:
                 n = len(subfeeds)
                 for subfeed in subfeeds:
                     subfeed.weight = 100.0 / n if n > 0 else 0.0
-            # Recurse into each subfeed (do NOT normalize their weights, just apply normalization at their union/filter layer if any)
             for subfeed in subfeeds:
                 self._normalize_feed_weights(subfeed)
-
         elif isinstance(feed, FilterFeed):
-            # Only normalize the direct source_feed to weight 100
             if hasattr(feed, "source_feed") and feed.source_feed is not None:
                 feed.source_feed.weight = 100.0
                 self._normalize_feed_weights(feed.source_feed)
