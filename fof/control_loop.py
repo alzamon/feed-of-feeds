@@ -7,24 +7,15 @@ class ControlLoop:
     """Manages display and keyboard interactions for navigating articles in a feed."""
 
     def __init__(self, feed_manager, article_manager):
-        """
-        Initialize the ControlLoop.
-
-        Args:
-            feed_manager (FeedManager): The feed manager responsible for fetching articles.
-            article_manager (ArticleManager): The article manager for accessing read history.
-        """
         self.feed_manager = feed_manager
         self.article_manager = article_manager
         self.current_article = None
-        self.browsing_read_history = False  # Track if browsing read history
+        self.browsing_read_history = False
 
     def _display_article(self, stdscr):
-        """Display the current article on the screen with word wrapping."""
         max_y, max_x = stdscr.getmaxyx()
         stdscr.clear()
         if self.current_article:
-            # Prepare the article details
             lines = [
                 f"Title: {self.current_article.title}",
                 f"Link: {self.current_article.link}",
@@ -37,27 +28,22 @@ class ControlLoop:
                 "Content Preview:",
                 "---------------",
             ]
-
-            # Wrap the content preview to fit the terminal width
             preview = self.current_article.content[:200] + "..." if len(self.current_article.content) > 200 else self.current_article.content
-            wrapped_preview = textwrap.wrap(preview, width=max_x)  # Wrap content preview
+            wrapped_preview = textwrap.wrap(preview, width=max_x)
             lines.extend(wrapped_preview)
-
-            # Add lines to the screen with wrapping
             row = 0
             for line in lines:
-                wrapped_lines = textwrap.wrap(line, width=max_x)  # Wrap each line
+                wrapped_lines = textwrap.wrap(line, width=max_x)
                 for wrapped_line in wrapped_lines:
-                    if row < max_y - 3:  # Leave space for the prompt
+                    if row < max_y - 3:
                         stdscr.addstr(row, 0, wrapped_line)
                         row += 1
                     else:
-                        break  # Stop if there's no space left
+                        break
         else:
             stdscr.addstr(0, 0, "All caught up! No more articles to display.")
 
     def _display_prompt(self, stdscr):
-        """Display the navigation prompt at the bottom of the screen."""
         max_y, max_x = stdscr.getmaxyx()
         prompt = "\n[n] Next | [h] Previous (read) | [o] Open | [+] Increase Weight | [-] Reduce Weight | [q] Quit"
         prompt_lines = prompt.split("\n")
@@ -65,22 +51,16 @@ class ControlLoop:
             stdscr.addstr(max_y - len(prompt_lines) + i - 1, 0, line[:max_x])
 
     def _handle_key_input(self, stdscr):
-        """Main curses loop to handle user key inputs."""
-        # Hide the cursor
         curses.curs_set(0)
-        stdscr.nodelay(True)  # Make getch() non-blocking
-        stdscr.timeout(100)  # Timeout for getch()
+        stdscr.nodelay(True)
+        stdscr.timeout(100)
 
         max_y, max_x = stdscr.getmaxyx()
 
-        # Display the first unread article
         self.current_article = self.feed_manager.next_article()
-        self.browsing_read_history = False  # Start in unread mode
-
-        # Mark as read if we have an article (in unread mode)
+        self.browsing_read_history = False
         if self.current_article and not self.browsing_read_history:
             self.article_manager.mark_as_read(self.current_article.id)
-
         self._display_article(stdscr)
         self._display_prompt(stdscr)
 
@@ -88,7 +68,6 @@ class ControlLoop:
             key = stdscr.getch()
             if key == ord("n"):
                 if self.browsing_read_history:
-                    # Move forward in read history if possible
                     if self.current_article and getattr(self.current_article, "read", None):
                         next_article = self.article_manager.get_next_read_article(
                             self.current_article.read.isoformat()
@@ -96,41 +75,50 @@ class ControlLoop:
                         if next_article:
                             self.current_article = next_article
                             stdscr.addstr(max_y - 2, 0, "Moved to newer read article.".ljust(max_x))
+                            self._display_article(stdscr)
+                            self._display_prompt(stdscr)
                         else:
-                            stdscr.addstr(max_y - 2, 0, "No newer read articles.".ljust(max_x))
+                            # At most recent read article. Switch to unread mode.
+                            self.browsing_read_history = False
+                            self.current_article = self.feed_manager.next_article()
+                            if self.current_article:
+                                self.article_manager.mark_as_read(self.current_article.id)
+                                stdscr.addstr(max_y - 2, 0, "Switched to unread. Showing next unread article.".ljust(max_x))
+                            else:
+                                stdscr.addstr(0, 0, "All caught up! No more articles to display.")
+                            self._display_article(stdscr)
+                            self._display_prompt(stdscr)
                     else:
                         stdscr.addstr(max_y - 2, 0, "Not in read history.".ljust(max_x))
+                        self._display_prompt(stdscr)
                 else:
                     # Get next unread article
                     self.current_article = self.feed_manager.next_article()
-                    # Mark as read immediately when displaying in unread mode
                     if self.current_article:
                         self.article_manager.mark_as_read(self.current_article.id)
-                    if self.current_article is None:
+                    else:
                         stdscr.addstr(0, 0, "All caught up! No more articles to display.")
-                self._display_article(stdscr)
-                self._display_prompt(stdscr)
+                    self._display_article(stdscr)
+                    self._display_prompt(stdscr)
 
             elif key == ord("h"):
-                # Switch to read history mode and move backward in read history
-                self.browsing_read_history = True
+                prev_article = None
                 if self.current_article and getattr(self.current_article, "read", None):
                     prev_article = self.article_manager.get_previous_read_article(
                         self.current_article.read.isoformat()
                     )
-                    if prev_article:
-                        self.current_article = prev_article
-                        stdscr.addstr(max_y - 2, 0, "Moved back to previous read article.".ljust(max_x))
-                    else:
-                        stdscr.addstr(max_y - 2, 0, "No older read articles.".ljust(max_x))
                 else:
-                    # Start with the most recent read article if not in history yet
-                    prev_article = self.article_manager.get_previous_read_article()
-                    if prev_article:
-                        self.current_article = prev_article
-                        stdscr.addstr(max_y - 2, 0, "Moved to most recently read article.".ljust(max_x))
+                    most_recent = self.article_manager.get_previous_read_article()
+                    if most_recent and self.current_article and most_recent.id == self.current_article.id:
+                        prev_article = self.article_manager.get_previous_read_article(most_recent.read.isoformat())
                     else:
-                        stdscr.addstr(max_y - 2, 0, "No read articles yet.".ljust(max_x))
+                        prev_article = most_recent
+                if prev_article:
+                    self.current_article = prev_article
+                    stdscr.addstr(max_y - 2, 0, "Moved to previous read article.".ljust(max_x))
+                else:
+                    stdscr.addstr(max_y - 2, 0, "No read articles yet.".ljust(max_x))
+                self.browsing_read_history = True
                 self._display_article(stdscr)
                 self._display_prompt(stdscr)
 
@@ -180,5 +168,4 @@ class ControlLoop:
             stdscr.refresh()
 
     def start(self):
-        """Start the display and keyboard interaction interface."""
         curses.wrapper(self._handle_key_input)
