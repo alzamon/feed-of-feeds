@@ -45,7 +45,7 @@ class ControlLoop:
 
     def _display_prompt(self, stdscr):
         max_y, max_x = stdscr.getmaxyx()
-        prompt = "\n[n] Next | [h] Previous (read) | [o] Open | [+] Increase Weight | [-] Reduce Weight | [q] Quit"
+        prompt = "\n[n] Next | [p] Previous | [o] Open | [+] Increase Weight | [-] Reduce Weight | [q] Quit"
         prompt_lines = prompt.split("\n")
         for i, line in enumerate(prompt_lines):
             stdscr.addstr(max_y - len(prompt_lines) + i - 1, 0, line[:max_x])
@@ -101,7 +101,7 @@ class ControlLoop:
                     self._display_article(stdscr)
                     self._display_prompt(stdscr)
 
-            elif key == ord("h"):
+            elif key == ord("p"):
                 prev_article = None
                 if self.current_article and getattr(self.current_article, "read", None):
                     prev_article = self.article_manager.get_previous_read_article(
