@@ -12,7 +12,6 @@ class BaseFeed(ABC):
     title: str
     description: str
     last_updated: datetime
-    weight: float
     feedpath: List[str]  # Required parameter to track the path from the root feed to this feed
     fetch_failed: bool
 
@@ -34,12 +33,3 @@ class BaseFeed(ABC):
             Optional[Article]: The fetched article, or None if no suitable article is found.
         """
         pass
-
-    def effective_weight(self) -> float:
-        """
-        Calculate the effective weight of this feed.
-
-        Returns:
-            float: The effective weight of the feed.
-        """
-        return self.weight if not self.fetch_failed else 0.0    

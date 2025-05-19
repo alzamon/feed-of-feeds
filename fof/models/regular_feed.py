@@ -43,7 +43,6 @@ class RegularFeed(BaseFeed):
         title: str,
         description: str,
         last_updated: datetime,
-        weight: float,
         url: str,
         max_age: Optional[timedelta],
         article_manager: ArticleManager,
@@ -54,7 +53,6 @@ class RegularFeed(BaseFeed):
             title,
             description,
             last_updated,
-            weight,
             feedpath,
             fetch_failed=False,
         )
@@ -70,16 +68,15 @@ class RegularFeed(BaseFeed):
         parent_max_age: timedelta,
         parent_feedpath: List[str],
     ) -> "RegularFeed":
-        feed_max_age = parse_time_period(config["max_age"]) if "max_age" in config else parent_max_age
+        max_age = parse_time_period(config["max_age"]) if "max_age" in config else parent_max_age
         feedpath = (parent_feedpath if parent_feedpath != ["root"] else []) + [config["id"]]
         return cls(
             id=config["id"],
             title=config.get("title"),
             description=config.get("description", "No description provided"),
             last_updated=datetime.now(),
-            weight=config.get("weight", 10.0),
             url=config["url"],
-            max_age=feed_max_age,
+            max_age=max_age,
             article_manager=article_manager,
             feedpath=feedpath,
         )
