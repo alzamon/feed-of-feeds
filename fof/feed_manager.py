@@ -8,7 +8,7 @@ import logging
 
 from .models.article import Article
 from .models.base_feed import BaseFeed
-from .models.union_feed import UnionFeed
+from .models.union_feed import UnionFeed, WeightedFeed
 from .models.regular_feed import RegularFeed
 from .models.filter_feed import FilterFeed, Filter
 from .models.enums import FeedType, FilterType
@@ -85,8 +85,64 @@ class FeedManager:
             log_error_with_readkey(f"Failed to load config file at {config_file_path}: {e}")
             self.root_feed = None
 
+    def serialize_feed(self, feed: BaseFeed) -> dict:
+        """Recursively serialize a feed to a dict suitable for saving as JSON config."""
+        if feed.feed_type == FeedType.REGULAR:
+            return {
+                "id": feed.id,
+                "title": feed.title,
+                "description": feed.description,
+                "feed_type": "regular",
+                "last_updated": feed.last_updated.isoformat(),
+                "url": feed.url,
+                "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
+            }
+        elif feed.feed_type == FeedType.FILTER:
+            return {
+                "id": feed.id,
+                "title": feed.title,
+                "description": feed.description,
+                "feed_type": "filter",
+                "last_updated": feed.last_updated.isoformat(),
+                "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
+                "criteria": [
+                    {
+                        "filter_type": f.filter_type.value,
+                        "pattern": f.pattern,
+                        "is_inclusion": f.is_inclusion
+                    } for f in feed.filters
+                ],
+                "feed": self.serialize_feed(feed.source_feed)
+            }
+        elif feed.feed_type == FeedType.UNION:
+            return {
+                "id": feed.id,
+                "title": feed.title,
+                "description": feed.description,
+                "feed_type": "union",
+                "last_updated": feed.last_updated.isoformat(),
+                "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
+                "feeds": [
+                    {
+                        "weight": wf.weight,
+                        "feed": self.serialize_feed(wf.feed)
+                    } for wf in feed.feeds
+                ]
+            }
+        else:
+            raise ValueError(f"Unknown feed type: {feed.feed_type}")
+
+    def save_config(self):
+        """Serialize the root_feed and save to the config file."""
+        config_file_path = os.path.join(self.config_path, "config.json")
+        config_data = {
+            "defaultRootFeed": self.serialize_feed(self.root_feed)
+        }
+        with open(config_file_path, "w") as config_file:
+            json.dump(config_data, config_file, indent=2)
+
     def next_article(self) -> Optional[Article]:
-        """Fetch the next article by sampling feeds until an article is retrieved or root feed weight is 0.
+        """Fetch the next article by sampling feeds until an article is retrieved or root feed fails.
 
         Returns:
             The fetched article, or None if no matching articles are available.
@@ -95,19 +151,8 @@ class FeedManager:
             logger.warning("No root feed available to fetch articles.")
             return None
 
-        while self.root_feed.effective_weight() > 0:
-            try:
-                article = self.root_feed.fetch()
-                if article:
-                    logger.debug(f"Fetched article: {article.id} ({article.title})")
-                    return article
-                else:
-                    logger.debug("No matching article fetched from the root feed.")
-            except Exception as e:
-                log_error_with_readkey(f"Error while fetching from the root feed: {e}")
-
-        logger.info("All caught up")
-        return None
+        # This could have more logic for sampling/selection
+        return self.root_feed.fetch()
 
     def update_weights(self, feedpath: List[str], increment: int):
         """
@@ -126,11 +171,16 @@ class FeedManager:
         current_feed = self.root_feed
         logger.debug(f"Starting feed traversal. Root feed ID: {current_feed.id}")
 
+        # The parent WeightedFeed object for the current feed if traversing a union
+        parent_weighted_feed = None
+
         for feed_id in feedpath:
             logger.debug(f"Looking for feed ID '{feed_id}' in current feed '{current_feed.id}'")
 
+            wf = None  # WeightedFeed containing the subfeed, if traversing a union
             if isinstance(current_feed, UnionFeed):
-                sub_feed = next((feed for feed in current_feed.feeds if feed.id == feed_id), None)
+                wf = next((wf for wf in current_feed.feeds if wf.feed.id == feed_id), None)
+                sub_feed = wf.feed if wf else None
             elif isinstance(current_feed, FilterFeed):
                 sub_feed = current_feed.source_feed if current_feed.source_feed.id == feed_id else None
             else:
@@ -140,103 +190,10 @@ class FeedManager:
                 logger.error(f"Feed with ID '{feed_id}' not found in the feedpath at feed '{current_feed.id}'")
                 raise ValueError(f"Feed with ID '{feed_id}' not found in the feedpath.")
 
+            # Update the weight on the WeightedFeed if we are traversing through a union
+            if wf is not None:
+                wf.weight += increment
+                logger.info(f"Updated weight of feed '{sub_feed.id}' to {wf.weight}.")
+
             current_feed = sub_feed
-            # Update the weight of each feed in the path except root
-            current_feed.weight += increment
-            logger.info(f"Updated weight of feed '{current_feed.id}' to {current_feed.weight}.")
-
-    def save_config(self):
-        """
-        Save the current feed configuration to the configuration file.
-
-        Normalizes weights so every union feed's subfeeds sum to 100, and filter/regular feeds have weight 100.
-
-        Raises:
-            IOError: If unable to write to the configuration file.
-        """
-        if not self.root_feed:
-            raise ValueError("Root feed is not initialized.")
-
-        config_file_path = os.path.join(self.config_path, "config.json")
-
-        # Normalize weights in-place before serialization
-        self._normalize_feed_weights(self.root_feed)
-
-        # Serialize the root feed under the "defaultRootFeed" property
-        config_data = {
-            "defaultRootFeed": self._serialize_feed(self.root_feed)
-        }
-
-        try:
-            with open(config_file_path, "w") as config_file:
-                json.dump(config_data, config_file, indent=4)
-            logger.info(f"Configuration saved to {config_file_path}.")
-        except IOError as e:
-            log_error_with_readkey(f"Failed to save configuration to {config_file_path}: {e}")
-            raise
-
-    def _normalize_feed_weights(self, feed: BaseFeed):
-        """
-        Only normalize:
-        - The direct subfeeds of each UnionFeed so their weights sum to 100 (preserving ratios).
-        - The source_feed of FilterFeed to 100.
-        Never change weights of any other feeds.
-        """
-        from .models.union_feed import UnionFeed
-        from .models.filter_feed import FilterFeed
-
-        if isinstance(feed, UnionFeed):
-            subfeeds = feed.feeds
-            total_weight = sum(f.weight for f in subfeeds)
-            if total_weight > 0:
-                for subfeed in subfeeds:
-                    subfeed.weight = 100.0 * (subfeed.weight / total_weight)
-            else:
-                n = len(subfeeds)
-                for subfeed in subfeeds:
-                    subfeed.weight = 100.0 / n if n > 0 else 0.0
-            for subfeed in subfeeds:
-                self._normalize_feed_weights(subfeed)
-        elif isinstance(feed, FilterFeed):
-            if hasattr(feed, "source_feed") and feed.source_feed is not None:
-                feed.source_feed.weight = 100.0
-                self._normalize_feed_weights(feed.source_feed)
-
-    def _serialize_feed(self, feed: BaseFeed) -> Dict:
-        """
-        Recursively serialize a feed object into a dictionary.
-
-        Args:
-            feed (BaseFeed): The feed object to serialize.
-
-        Returns:
-            Dict: The serialized feed configuration.
-        """
-        feed_data = {
-            "id": feed.id,
-            "feed_type": feed.feed_type.value,
-            "weight": feed.weight,
-            "max_age": timedelta_to_period_str(feed.max_age),
-            "description": feed.description,
-        }
-
-        if isinstance(feed, RegularFeed):
-            feed_data["url"] = feed.url
-            feed_data["title"] = feed.title
-        elif isinstance(feed, UnionFeed):
-            feed_data["feeds"] = [self._serialize_feed(sub_feed) for sub_feed in feed.feeds]
-            feed_data["title"] = feed.title
-        elif isinstance(feed, FilterFeed):
-            feed_data["feed"] = self._serialize_feed(feed.source_feed)
-            feed_data["criteria"] = [
-                {
-                    "filter_type": filter_obj.filter_type.value,
-                    "pattern": filter_obj.pattern,
-                    "is_inclusion": filter_obj.is_inclusion,
-                }
-                for filter_obj in feed.filters
-            ]
-            feed_data["title"] = feed.title
-
-        return feed_data
 
