@@ -112,8 +112,6 @@ def test_normalize_weights_large_numbers():
     assert abs(sum(weights) - 100.0) < 1e-6
     assert [round(wf.weight, 1) for wf in uf.feeds] == [20.0, 80.0]
 
-# --------------------------- New tests below ---------------------------
-
 def test_fetch_returns_none_and_sets_fetch_failed_when_no_feeds():
     uf = UnionFeed(
         id="test",
