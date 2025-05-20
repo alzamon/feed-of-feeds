@@ -46,32 +46,44 @@ class UnionFeed(BaseFeed):
         super().__init__(id, title, description, last_updated, feedpath, fetch_failed=False)
         self.feeds = feeds
         self.max_age = max_age
+        self.normalize_weights()
 
     def add_feed(self, feed: BaseFeed, weight: float):
         self.feeds.append(WeightedFeed(feed, weight))
+        self.normalize_weights()
+
+    def normalize_weights(self):
+        """
+        Normalize the persisted weights of subfeeds so that their sum is 100.
+        This does NOT consider effective_weight (which is session-only).
+        """
+        total = sum(wf.weight for wf in self.feeds)
+        if total == 0:
+            if self.feeds:
+                for wf in self.feeds:
+                    wf.weight = 100.0 / len(self.feeds)
+        else:
+            for wf in self.feeds:
+                wf.weight = (wf.weight / total) * 100.0
 
     def fetch(self) -> Optional[Article]:
-        """Fetch one article from a randomly selected feed, using effective_weight to avoid failing feeds."""
+        """
+        Fetch one article from a randomly selected feed, using effective_weight to avoid failing feeds.
+        """
         if not self.feeds:
             logger.debug("No feeds available in this UnionFeed.")
             self.fetch_failed = True
             return None
 
-        # Calculate effective weights
         effective_weights = [wf.effective_weight for wf in self.feeds]
         if sum(effective_weights) <= 0:
             logger.debug("All subfeeds failed or have zero weight.")
             self.fetch_failed = True
             return None
 
-        # Sample using effective weights, then try others in that order
         sampled_indices = list(range(len(self.feeds)))
-        if sum(effective_weights) > 0:
-            # Weighted pick for first, then try the rest (in any order)
-            first_idx = choices(sampled_indices, weights=effective_weights, k=1)[0]
-            try_indices = [first_idx] + [i for i in sampled_indices if i != first_idx]
-        else:
-            try_indices = sampled_indices
+        first_idx = choices(sampled_indices, weights=effective_weights, k=1)[0]
+        try_indices = [first_idx] + [i for i in sampled_indices if i != first_idx]
 
         for i in try_indices:
             wf = self.feeds[i]
