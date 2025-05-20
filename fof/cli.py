@@ -58,6 +58,7 @@ def main():
     
     # Initialize control loop to handle interactions
     ControlLoop(feed_manager, article_manager).start()
+    feed_manager.save_config()
 
 if __name__ == "__main__":
     main()
