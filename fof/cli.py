@@ -12,7 +12,18 @@ DEFAULT_CONFIG_PATH = "~/.config/fof/"
 def main():
     """Main entry point for the application."""
     parser = argparse.ArgumentParser(description="FoF - Feed of Feeds")
-    
+
+    subparsers = parser.add_subparsers(dest="command")
+
+    # Logs subcommand
+    logs_parser = subparsers.add_parser("logs", help="Print the log file and exit")
+    logs_parser.add_argument(
+        "--config", "-c", 
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to config file (default: ~/.config/fof)"
+    )
+
+    # Global arguments for default mode (control loop)
     parser.add_argument(
         "--config", "-c", 
         default=DEFAULT_CONFIG_PATH,
@@ -23,13 +34,20 @@ def main():
         action="store_true",
         help="Enable debug logging"
     )
-    
+
     args = parser.parse_args()
 
-    # Prepare logging to a file in the config path (always), and console if verbose
     config_path = os.path.expanduser(args.config)
     log_file = os.path.join(config_path, "fof.log")
     os.makedirs(config_path, exist_ok=True)
+
+    if args.command == "logs":
+        if os.path.exists(log_file):
+            with open(log_file, "r") as f:
+                print(f.read())
+        else:
+            print(f"Log file does not exist at {log_file}")
+        sys.exit(0)
 
     # Set up root logger
     handlers = []
@@ -39,7 +57,7 @@ def main():
     ))
     handlers.append(file_handler)
 
-    if args.verbose:
+    if getattr(args, "verbose", False):
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setFormatter(logging.Formatter(
             "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -47,7 +65,7 @@ def main():
         handlers.append(console_handler)
 
     logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
+        level=logging.DEBUG if getattr(args, "verbose", False) else logging.INFO,
         handlers=handlers
     )
     logging.info("Logging started.")
