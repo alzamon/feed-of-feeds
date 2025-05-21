@@ -6,7 +6,6 @@ from datetime import timedelta, datetime
 from .base_feed import BaseFeed
 from .article import Article
 from .enums import FeedType
-from ..error_logger import log_error_with_readkey
 from ..time_period import parse_time_period
 
 if TYPE_CHECKING:
@@ -105,7 +104,7 @@ class UnionFeed(BaseFeed):
                 else:
                     logger.debug(f"No article fetched from feed: {selected_feed.id}")
             except Exception as e:
-                log_error_with_readkey(f"Error fetching from feed {selected_feed.id}: {e}")
+                logger.error(f"Error fetching from feed {selected_feed.id}: {e}")
                 continue
         self.fetch_failed = True
         return None

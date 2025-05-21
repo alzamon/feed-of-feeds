@@ -12,7 +12,6 @@ from .models.union_feed import UnionFeed, WeightedFeed
 from .models.regular_feed import RegularFeed
 from .models.filter_feed import FilterFeed, Filter
 from .models.enums import FeedType, FilterType
-from .error_logger import log_error_with_readkey
 from .models.article_manager import ArticleManager
 
 from .time_period import parse_time_period, timedelta_to_period_str
@@ -82,7 +81,7 @@ class FeedManager:
                 else:
                     raise ValueError(f"Unknown feed_type in root config: {feed_type}")
         except Exception as e:
-            log_error_with_readkey(f"Failed to load config file at {config_file_path}: {e}")
+            logger.error(f"Failed to load config file at {config_file_path}: {e}")
             self.root_feed = None
 
     def serialize_feed(self, feed: BaseFeed) -> dict:

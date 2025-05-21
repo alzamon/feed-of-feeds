@@ -8,7 +8,10 @@ import feedparser
 import time
 import json
 from .article import Article
-from ..error_logger import log_error_with_readkey
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ArticleManager:
     """Manages the state of articles with persistence using SQLite and fetching logic."""
@@ -39,7 +42,7 @@ class ArticleManager:
                     cursor.execute("ALTER TABLE cache ADD COLUMN fetched TIMESTAMP DEFAULT NULL")
                 self._create_cache_table(cursor)
         except sqlite3.Error as e:
-            log_error_with_readkey(f"Error initializing database: {e}")
+            logger.error(f"Error initializing database: {e}")
 
     def _create_cache_table(self, cursor):
         """Create the cache table if it does not exist."""
@@ -71,7 +74,7 @@ class ArticleManager:
                 )
                 conn.commit()
         except sqlite3.Error as e:
-            log_error_with_readkey(f"Error marking article as read: {e}")
+            logger.error(f"Error marking article as read: {e}")
 
     def mark_as_fetched(self, article_id: str):
         """Mark an article as fetched by updating the 'fetched' column with the current timestamp."""
@@ -84,7 +87,7 @@ class ArticleManager:
                 )
                 conn.commit()
         except sqlite3.Error as e:
-            log_error_with_readkey(f"Error marking article as fetched: {e}")
+            logger.error(f"Error marking article as fetched: {e}")
 
     def cache_articles(self, articles: List[Article]):
         """Store a list of articles in the cache, avoiding duplicates."""
@@ -95,7 +98,7 @@ class ArticleManager:
                     self._insert_or_replace_article(cursor, article)
                 conn.commit()
         except sqlite3.Error as e:
-            log_error_with_readkey(f"Error storing articles in cache: {e}")
+            logger.error(f"Error storing articles in cache: {e}")
 
     def _insert_or_replace_article(self, cursor, article: Article):
         """Insert or replace a single article into the cache, preserving the 'read' and 'fetched' status if it exists."""
