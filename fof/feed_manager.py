@@ -102,7 +102,19 @@ class FeedManager:
 
             meta_path = os.path.join(path, ".fofmeta.json")
             with open(meta_path, "w") as f:
-                json.dump({"weights": weights}, f, indent=2)
+                json.dump({"weights": weights}, f, indent=2, ensure_ascii=False)
+
+            # Optionally, save union feed meta (id, title, etc.)
+            union_meta = {
+                "id": getattr(feed, "id", None),
+                "title": getattr(feed, "title", None),
+                "description": getattr(feed, "description", ""),
+                "last_updated": feed.last_updated.isoformat() if getattr(feed, "last_updated", None) else None,
+                "max_age": timedelta_to_period_str(feed.max_age) if getattr(feed, "max_age", None) else None,
+            }
+            union_meta_path = os.path.join(path, "union.json")
+            with open(union_meta_path, "w") as f:
+                json.dump(union_meta, f, indent=2, ensure_ascii=False)
 
             # Each subfeed as folder/file
             for wf in feed.feeds:
@@ -114,7 +126,7 @@ class FeedManager:
             # Save as a JSON file
             feed_path = os.path.join(path, "feed.json")
             with open(feed_path, "w") as f:
-                json.dump(self.serialize_feed(feed), f, indent=2)
+                json.dump(self.serialize_feed(feed), f, indent=2, ensure_ascii=False)
 
         elif feed.feed_type == FeedType.FILTER:
             # Save filter info, and recurse into source_feed
@@ -137,7 +149,7 @@ class FeedManager:
                 ]
             }
             with open(filter_config_path, "w") as f:
-                json.dump(config, f, indent=2)
+                json.dump(config, f, indent=2, ensure_ascii=False)
             # subfeed is always "source"
             self.serialize_to_directory(feed.source_feed, os.path.join(filter_dir, "source"))
         else:
@@ -276,4 +288,3 @@ class FeedManager:
                 logger.info(f"Updated weight of feed '{sub_feed.id}' to {wf.weight}.")
 
             current_feed = sub_feed
-
