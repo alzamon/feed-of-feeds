@@ -36,53 +36,203 @@ class FeedManager:
         self._load_config()
 
     def _load_config(self):
-        """Load the configuration file and initialize feeds."""
-        config_file_path = os.path.join(self.config_path, "config.json")
-        if not os.path.exists(config_file_path):
-            logger.warning(f"Config file not found at {config_file_path}. Using empty configuration.")
+        """Load the configuration from the 'tree' directory and initialize feeds."""
+        config_dir = os.path.join(self.config_path, "tree")
+        if not os.path.exists(config_dir) or not os.path.isdir(config_dir):
+            logger.warning(f"Config directory not found at {config_dir}. Using empty configuration.")
             self.root_feed = None
             return
-
         try:
-            with open(config_file_path, "r") as config_file:
-                config_data = json.load(config_file)
-
-                root_feed_config = config_data.get("defaultRootFeed")
-                if not root_feed_config:
-                    raise ValueError("Configuration must include a 'defaultRootFeed' property.")
-
-                if "max_age" not in root_feed_config:
-                    raise ValueError("Root feed must have a max_age defined in the configuration under 'defaultRootFeed'.")
-
-                root_max_age = parse_time_period(root_feed_config["max_age"])
-                # Use the from_config_dict classmethod for full recursive construction
-                feed_type = FeedType(root_feed_config["feed_type"])
-                if feed_type == FeedType.REGULAR:
-                    self.root_feed = RegularFeed.from_config_dict(
-                        root_feed_config,
-                        self.article_manager,
-                        parent_max_age=root_max_age,
-                        parent_feedpath=[]
-                    )
-                elif feed_type == FeedType.UNION:
-                    self.root_feed = UnionFeed.from_config_dict(
-                        root_feed_config,
-                        self.article_manager,
-                        parent_max_age=root_max_age,
-                        parent_feedpath=[]
-                    )
-                elif feed_type == FeedType.FILTER:
-                    self.root_feed = FilterFeed.from_config_dict(
-                        root_feed_config,
-                        self.article_manager,
-                        parent_max_age=root_max_age,
-                        parent_feedpath=[]
-                    )
-                else:
-                    raise ValueError(f"Unknown feed_type in root config: {feed_type}")
+            feed = self._load_feed_from_directory(config_dir, feedpath=[], parent_max_age=None)
+            if feed is None:
+                logger.error(f"No valid feed found in config directory {config_dir}. Skipping load.")
+                self.root_feed = None
+            else:
+                self.root_feed = feed
         except Exception as e:
-            logger.error(f"Failed to load config file at {config_file_path}: {e}")
+            logger.error(f"Failed to load config from directory at {config_dir}: {e}")
             self.root_feed = None
+
+    def _load_feed_from_directory(self, path: str, feedpath: list, parent_max_age=None) -> Optional[BaseFeed]:
+        """
+        Recursively load a feed from a directory structure.
+        - UnionFeed: directory contains .fofmeta.json and subdirs.
+        - RegularFeed: directory contains feed.json.
+        - FilterFeed: directory contains filter.json and 'source' subdir.
+        feedpath is a list of IDs from the root to this feed (not including this one yet).
+        parent_max_age is the inherited max_age from the parent feed.
+        """
+        meta_path = os.path.join(path, ".fofmeta.json")
+        filter_path = os.path.join(path, "filter.json")
+        feed_path = os.path.join(path, "feed.json")
+        if os.path.isfile(meta_path):
+            # It's a union feed
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+            weights = meta.get("weights", {})
+            subfeeds = []
+            # Try to find a union descriptor (optional)
+            union_info = self._try_load_union_info(path)
+            union_id = union_info.get("id") if union_info and "id" in union_info else os.path.basename(path)
+            union_feedpath = feedpath + [union_id]
+            # Inherit max_age if not explicitly set
+            max_age_str = union_info.get("max_age") if union_info and "max_age" in union_info else None
+            my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age
+            for sub_name, weight in weights.items():
+                sub_path = os.path.join(path, sub_name)
+                sub_feed = self._load_feed_from_directory(sub_path, feedpath=union_feedpath, parent_max_age=my_max_age)
+                if sub_feed is not None:
+                    subfeeds.append(WeightedFeed(feed=sub_feed, weight=weight))
+                else:
+                    logger.warning(f"Failed to load subfeed {sub_name} in {path}")
+            return UnionFeed(
+                id=union_id,
+                title=union_info.get("title") if union_info and "title" in union_info else os.path.basename(path),
+                description=union_info.get("description") if union_info and "description" in union_info else "",
+                feeds=subfeeds,
+                last_updated=datetime.fromisoformat(union_info["last_updated"]) if union_info and "last_updated" in union_info else datetime.now(),
+                max_age=my_max_age,
+                feedpath=feedpath
+            )
+        elif os.path.isfile(feed_path):
+            # It's a regular feed
+            with open(feed_path, "r", encoding="utf-8") as f:
+                feed_data = json.load(f)
+            feed_id = feed_data.get("id")
+            max_age_str = feed_data.get("max_age")
+            my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age
+            # Root must have max_age!
+            if not my_max_age:
+                raise ValueError("Root feed must have a max_age defined")
+            return RegularFeed.from_config_dict(
+                feed_data,
+                self.article_manager,
+                parent_max_age=my_max_age,
+                parent_feedpath=feedpath + ([feed_id] if feed_id else [])
+            )
+        elif os.path.isfile(filter_path):
+            # It's a filter feed
+            with open(filter_path, "r", encoding="utf-8") as f:
+                filter_data = json.load(f)
+            filter_id = filter_data["id"]
+            max_age_str = filter_data.get("max_age")
+            my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age
+            if not my_max_age:
+                raise ValueError("Root feed must have a max_age defined (inherited)")
+            filter_feedpath = feedpath + [filter_id]
+            source_path = os.path.join(path, "source")
+            source_feed = self._load_feed_from_directory(source_path, feedpath=filter_feedpath, parent_max_age=my_max_age)
+            filters = [
+                Filter(
+                    filter_type=FilterType(c["filter_type"]),
+                    pattern=c["pattern"],
+                    is_inclusion=c["is_inclusion"]
+                ) for c in filter_data["criteria"]
+            ]
+            return FilterFeed(
+                id=filter_id,
+                title=filter_data.get("title"),
+                description=filter_data.get("description"),
+                filters=filters,
+                source_feed=source_feed,
+                last_updated=datetime.fromisoformat(filter_data["last_updated"]) if "last_updated" in filter_data else datetime.now(),
+                max_age=my_max_age,
+                feedpath=filter_feedpath
+            )
+        else:
+            logger.error(f"Unknown feed directory structure at {path}")
+            return None
+
+    def _try_load_union_info(self, path: str):
+        """
+        Try to load union feed metadata (optional).
+        Looks for 'union.json' or similar for union meta, e.g. id, title, description.
+        """
+        union_path = os.path.join(path, "union.json")
+        if os.path.isfile(union_path):
+            with open(union_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return None
+
+    def serialize_to_directory(self, feed: BaseFeed, path: str):
+        """
+        Recursively serialize a feed tree to a directory structure inside `path`.
+        - Each UnionFeed becomes a folder with .fofmeta.json for weights.
+        - Each RegularFeed becomes a .json file with its configuration.
+        - Each FilterFeed becomes a folder with filter config and a subfeed.
+        """
+        os.makedirs(path, exist_ok=True)
+        if feed.feed_type == FeedType.UNION:
+            weights = {}
+            for wf in feed.feeds:
+                subfeed_name = self.get_feed_folder_or_filename(wf.feed)
+                weights[subfeed_name] = wf.weight
+            meta_path = os.path.join(path, ".fofmeta.json")
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump({"weights": weights}, f, indent=2, ensure_ascii=False)
+            # Optionally, save union feed meta (id, title, etc.)
+            union_meta = {
+                "id": getattr(feed, "id", None),
+                "title": getattr(feed, "title", None),
+                "description": getattr(feed, "description", ""),
+                "last_updated": feed.last_updated.isoformat() if getattr(feed, "last_updated", None) else None,
+                "max_age": timedelta_to_period_str(feed.max_age) if getattr(feed, "max_age", None) else None,
+            }
+            union_meta_path = os.path.join(path, "union.json")
+            with open(union_meta_path, "w", encoding="utf-8") as f:
+                json.dump(union_meta, f, indent=2, ensure_ascii=False)
+            for wf in feed.feeds:
+                subfeed_name = self.get_feed_folder_or_filename(wf.feed)
+                child_path = os.path.join(path, subfeed_name)
+                self.serialize_to_directory(wf.feed, child_path)
+
+        elif feed.feed_type == FeedType.REGULAR:
+            feed_path = os.path.join(path, "feed.json")
+            with open(feed_path, "w", encoding="utf-8") as f:
+                json.dump(self.serialize_feed(feed), f, indent=2, ensure_ascii=False)
+
+        elif feed.feed_type == FeedType.FILTER:
+            filter_dir = path
+            os.makedirs(filter_dir, exist_ok=True)
+            filter_config_path = os.path.join(filter_dir, "filter.json")
+            config = {
+                "id": feed.id,
+                "title": feed.title,
+                "description": feed.description,
+                "feed_type": "filter",
+                "last_updated": feed.last_updated.isoformat(),
+                "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
+                "criteria": [
+                    {
+                        "filter_type": f.filter_type.value,
+                        "pattern": f.pattern,
+                        "is_inclusion": f.is_inclusion
+                    } for f in feed.filters
+                ]
+            }
+            with open(filter_config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+            self.serialize_to_directory(feed.source_feed, os.path.join(filter_dir, "source"))
+        else:
+            raise ValueError(f"Unknown feed type: {feed.feed_type}")
+
+    def get_feed_folder_or_filename(self, feed: BaseFeed) -> str:
+        """
+        Helper to get a folder or filename for a feed based on its type.
+        """
+        if feed.feed_type == FeedType.UNION or feed.feed_type == FeedType.FILTER:
+            name = feed.title or feed.id or "union"
+            return self.sanitize_filename(name)
+        elif feed.feed_type == FeedType.REGULAR:
+            return self.sanitize_filename(feed.title or feed.id or "feed")
+        else:
+            return self.sanitize_filename(feed.title or feed.id or "feed")
+
+    def sanitize_filename(self, name: str) -> str:
+        """
+        Remove or replace characters not suitable for filenames.
+        """
+        return "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).rstrip()
 
     def serialize_feed(self, feed: BaseFeed) -> dict:
         """Recursively serialize a feed to a dict suitable for saving as JSON config."""
@@ -132,51 +282,30 @@ class FeedManager:
             raise ValueError(f"Unknown feed type: {feed.feed_type}")
 
     def save_config(self):
-        """Serialize the root_feed and save to the config file."""
-        config_file_path = os.path.join(self.config_path, "config.json")
-        config_data = {
-            "defaultRootFeed": self.serialize_feed(self.root_feed)
-        }
-        with open(config_file_path, "w") as config_file:
-            json.dump(config_data, config_file, indent=2)
+        """
+        Save the current root_feed to the new directory-based format.
+        """
+        config_dir = os.path.join(self.config_path, "tree")
+        if os.path.exists(config_dir):
+            import shutil
+            shutil.rmtree(config_dir)
+        self.serialize_to_directory(self.root_feed, config_dir)
 
     def next_article(self) -> Optional[Article]:
-        """Fetch the next article by sampling feeds until an article is retrieved or root feed fails.
-
-        Returns:
-            The fetched article, or None if no matching articles are available.
-        """
         if not self.root_feed:
             logger.warning("No root feed available to fetch articles.")
             return None
-
-        # This could have more logic for sampling/selection
         return self.root_feed.fetch()
 
     def update_weights(self, feedpath: List[str], increment: int):
-        """
-        Update the weights of feeds along the given feedpath, except the root.
-
-        Args:
-            feedpath (List[str]): The path of feeds in the tree (excluding the root).
-            increment (int): The value to increment or decrement the weight by.
-
-        Raises:
-            ValueError: If the feedpath is invalid or does not exist.
-        """
         if not self.root_feed:
             raise ValueError("Root feed is not initialized.")
-
         current_feed = self.root_feed
         logger.debug(f"Starting feed traversal. Root feed ID: {current_feed.id}")
-
-        # The parent WeightedFeed object for the current feed if traversing a union
         parent_weighted_feed = None
-
         for feed_id in feedpath:
             logger.debug(f"Looking for feed ID '{feed_id}' in current feed '{current_feed.id}'")
-
-            wf = None  # WeightedFeed containing the subfeed, if traversing a union
+            wf = None
             if isinstance(current_feed, UnionFeed):
                 wf = next((wf for wf in current_feed.feeds if wf.feed.id == feed_id), None)
                 sub_feed = wf.feed if wf else None
@@ -184,15 +313,10 @@ class FeedManager:
                 sub_feed = current_feed.source_feed if current_feed.source_feed.id == feed_id else None
             else:
                 sub_feed = None
-
             if not sub_feed:
                 logger.error(f"Feed with ID '{feed_id}' not found in the feedpath at feed '{current_feed.id}'")
                 raise ValueError(f"Feed with ID '{feed_id}' not found in the feedpath.")
-
-            # Update the weight on the WeightedFeed if we are traversing through a union
             if wf is not None:
                 wf.weight += increment
                 logger.info(f"Updated weight of feed '{sub_feed.id}' to {wf.weight}.")
-
             current_feed = sub_feed
-
