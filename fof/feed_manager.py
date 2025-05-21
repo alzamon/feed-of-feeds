@@ -44,7 +44,7 @@ class FeedManager:
             return
 
         try:
-            with open(config_file_path, "r") as config_file:
+            with open(config_file_path, "r", encoding="utf-8") as config_file:
                 config_data = json.load(config_file)
 
                 root_feed_config = config_data.get("defaultRootFeed")
@@ -101,7 +101,7 @@ class FeedManager:
                 weights[subfeed_name] = wf.weight
 
             meta_path = os.path.join(path, ".fofmeta.json")
-            with open(meta_path, "w") as f:
+            with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump({"weights": weights}, f, indent=2, ensure_ascii=False)
 
             # Optionally, save union feed meta (id, title, etc.)
@@ -113,23 +113,20 @@ class FeedManager:
                 "max_age": timedelta_to_period_str(feed.max_age) if getattr(feed, "max_age", None) else None,
             }
             union_meta_path = os.path.join(path, "union.json")
-            with open(union_meta_path, "w") as f:
+            with open(union_meta_path, "w", encoding="utf-8") as f:
                 json.dump(union_meta, f, indent=2, ensure_ascii=False)
 
-            # Each subfeed as folder/file
             for wf in feed.feeds:
                 subfeed_name = self.get_feed_folder_or_filename(wf.feed)
                 child_path = os.path.join(path, subfeed_name)
                 self.serialize_to_directory(wf.feed, child_path)
 
         elif feed.feed_type == FeedType.REGULAR:
-            # Save as a JSON file
             feed_path = os.path.join(path, "feed.json")
-            with open(feed_path, "w") as f:
+            with open(feed_path, "w", encoding="utf-8") as f:
                 json.dump(self.serialize_feed(feed), f, indent=2, ensure_ascii=False)
 
         elif feed.feed_type == FeedType.FILTER:
-            # Save filter info, and recurse into source_feed
             filter_dir = path
             os.makedirs(filter_dir, exist_ok=True)
             filter_config_path = os.path.join(filter_dir, "filter.json")
@@ -148,9 +145,8 @@ class FeedManager:
                     } for f in feed.filters
                 ]
             }
-            with open(filter_config_path, "w") as f:
+            with open(filter_config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
-            # subfeed is always "source"
             self.serialize_to_directory(feed.source_feed, os.path.join(filter_dir, "source"))
         else:
             raise ValueError(f"Unknown feed type: {feed.feed_type}")
