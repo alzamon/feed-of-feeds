@@ -84,6 +84,85 @@ class FeedManager:
             logger.error(f"Failed to load config file at {config_file_path}: {e}")
             self.root_feed = None
 
+    def serialize_to_directory(self, feed: BaseFeed, path: str):
+        """
+        Recursively serialize a feed tree to a directory structure inside `path`.
+        - Each UnionFeed becomes a folder with .fofmeta.json for weights.
+        - Each RegularFeed becomes a .json file with its configuration.
+        - Each FilterFeed becomes a folder with filter config and a subfeed.
+        """
+        os.makedirs(path, exist_ok=True)
+        if feed.feed_type == FeedType.UNION:
+            # Save union metadata (weights) in .fofmeta.json
+            weights = {}
+            for wf in feed.feeds:
+                # Folder or file name for subfeed
+                subfeed_name = self.get_feed_folder_or_filename(wf.feed)
+                weights[subfeed_name] = wf.weight
+
+            meta_path = os.path.join(path, ".fofmeta.json")
+            with open(meta_path, "w") as f:
+                json.dump({"weights": weights}, f, indent=2)
+
+            # Each subfeed as folder/file
+            for wf in feed.feeds:
+                subfeed_name = self.get_feed_folder_or_filename(wf.feed)
+                child_path = os.path.join(path, subfeed_name)
+                self.serialize_to_directory(wf.feed, child_path)
+
+        elif feed.feed_type == FeedType.REGULAR:
+            # Save as a JSON file
+            feed_path = os.path.join(path, "feed.json")
+            with open(feed_path, "w") as f:
+                json.dump(self.serialize_feed(feed), f, indent=2)
+
+        elif feed.feed_type == FeedType.FILTER:
+            # Save filter info, and recurse into source_feed
+            filter_dir = path
+            os.makedirs(filter_dir, exist_ok=True)
+            filter_config_path = os.path.join(filter_dir, "filter.json")
+            config = {
+                "id": feed.id,
+                "title": feed.title,
+                "description": feed.description,
+                "feed_type": "filter",
+                "last_updated": feed.last_updated.isoformat(),
+                "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
+                "criteria": [
+                    {
+                        "filter_type": f.filter_type.value,
+                        "pattern": f.pattern,
+                        "is_inclusion": f.is_inclusion
+                    } for f in feed.filters
+                ]
+            }
+            with open(filter_config_path, "w") as f:
+                json.dump(config, f, indent=2)
+            # subfeed is always "source"
+            self.serialize_to_directory(feed.source_feed, os.path.join(filter_dir, "source"))
+        else:
+            raise ValueError(f"Unknown feed type: {feed.feed_type}")
+
+    def get_feed_folder_or_filename(self, feed: BaseFeed) -> str:
+        """
+        Helper to get a folder or filename for a feed based on its type.
+        """
+        if feed.feed_type == FeedType.UNION or feed.feed_type == FeedType.FILTER:
+            # Use feed title or id as folder name
+            name = feed.title or feed.id or "union"
+            return self.sanitize_filename(name)
+        elif feed.feed_type == FeedType.REGULAR:
+            # Use feed title or id as folder name
+            return self.sanitize_filename(feed.title or feed.id or "feed")
+        else:
+            return self.sanitize_filename(feed.title or feed.id or "feed")
+
+    def sanitize_filename(self, name: str) -> str:
+        """
+        Remove or replace characters not suitable for filenames.
+        """
+        return "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).rstrip()
+
     def serialize_feed(self, feed: BaseFeed) -> dict:
         """Recursively serialize a feed to a dict suitable for saving as JSON config."""
         if feed.feed_type == FeedType.REGULAR:
@@ -132,13 +211,15 @@ class FeedManager:
             raise ValueError(f"Unknown feed type: {feed.feed_type}")
 
     def save_config(self):
-        """Serialize the root_feed and save to the config file."""
-        config_file_path = os.path.join(self.config_path, "config.json")
-        config_data = {
-            "defaultRootFeed": self.serialize_feed(self.root_feed)
-        }
-        with open(config_file_path, "w") as config_file:
-            json.dump(config_data, config_file, indent=2)
+        """
+        Save the current root_feed to the new directory-based format.
+        """
+        config_dir = os.path.join(self.config_path, "tree")
+        # Remove old directory tree if present
+        if os.path.exists(config_dir):
+            import shutil
+            shutil.rmtree(config_dir)
+        self.serialize_to_directory(self.root_feed, config_dir)
 
     def next_article(self) -> Optional[Article]:
         """Fetch the next article by sampling feeds until an article is retrieved or root feed fails.
