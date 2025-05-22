@@ -108,8 +108,7 @@ class FeedManager:
                 feed_data,
                 self.article_manager,
                 parent_max_age=my_max_age,
-                parent_feedpath=feedpath + ([feed_id] if feed_id else [])
-            )
+                parent_feedpath=feedpath)
         elif os.path.isfile(filter_path):
             # It's a filter feed
             with open(filter_path, "r", encoding="utf-8") as f:

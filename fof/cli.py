@@ -11,20 +11,19 @@ DEFAULT_CONFIG_PATH = "~/.config/fof/"
 
 def print_feed_paths(feed_manager):
     """Recursively print all feed paths from the root."""
-    def walk(feed, feedpath):
+    def walk(feed):
         # Print current feedpath
-        current_path = feedpath + [feed.id] if getattr(feed, "id", None) else feedpath
-        print(" -> ".join(current_path))
+        print(" -> ".join(feed.feedpath))
         # Recurse for subfeeds
         if hasattr(feed, "feeds"):  # UnionFeed (list of WeightedFeed)
             for wf in getattr(feed, "feeds", []):
-                walk(wf.feed, current_path)
+                walk(wf.feed)
         elif hasattr(feed, "source_feed"):  # FilterFeed
-            walk(feed.source_feed, current_path)
+            walk(feed.source_feed)
         # RegularFeed: no further children
 
     if getattr(feed_manager, "root_feed", None):
-        walk(feed_manager.root_feed, [])
+        walk(feed_manager.root_feed)
     else:
         print("No root feed loaded.")
 
