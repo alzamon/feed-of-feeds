@@ -19,7 +19,7 @@ from .time_period import parse_time_period, timedelta_to_period_str
 logger = logging.getLogger(__name__)
 
 class FeedManager:
-    """Main class for managing feeds and articles."""
+    """Main class for managing feeds """
 
     def __init__(self, config_path: str = "~/.config/fof", article_manager: ArticleManager = None):
         """Initialize the FeedManager.
@@ -43,7 +43,7 @@ class FeedManager:
             self.root_feed = None
             return
         try:
-            feed = self._load_feed_from_directory(config_dir, feedpath=[], parent_max_age=None)
+            feed = self._load_feed_from_directory(config_dir, feedpath=[], parent_max_age=None, is_root=True)
             if feed is None:
                 logger.error(f"No valid feed found in config directory {config_dir}. Skipping load.")
                 self.root_feed = None
@@ -53,13 +53,13 @@ class FeedManager:
             logger.error(f"Failed to load config from directory at {config_dir}: {e}")
             self.root_feed = None
 
-    def _load_feed_from_directory(self, path: str, feedpath: list, parent_max_age=None) -> Optional[BaseFeed]:
+    def _load_feed_from_directory(self, path: str, feedpath: list, parent_max_age=None, is_root=False) -> Optional[BaseFeed]:
         """
         Recursively load a feed from a directory structure.
         - UnionFeed: directory contains .fofmeta.json and subdirs.
         - RegularFeed: directory contains feed.json.
         - FilterFeed: directory contains filter.json and 'source' subdir.
-        feedpath is a list of IDs from the root to this feed (not including this one yet).
+        feedpath is a list of IDs from the root to this feed (not including the root).
         parent_max_age is the inherited max_age from the parent feed.
         """
         meta_path = os.path.join(path, ".fofmeta.json")
@@ -74,7 +74,7 @@ class FeedManager:
             # Try to find a union descriptor (optional)
             union_info = self._try_load_union_info(path)
             union_id = union_info.get("id") if union_info and "id" in union_info else os.path.basename(path)
-            union_feedpath = feedpath + [union_id]
+            union_feedpath = feedpath + [union_id] if not is_root else []
             # Inherit max_age if not explicitly set
             max_age_str = union_info.get("max_age") if union_info and "max_age" in union_info else None
             my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age

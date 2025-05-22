@@ -9,6 +9,25 @@ from .control_loop import ControlLoop
 
 DEFAULT_CONFIG_PATH = "~/.config/fof/"
 
+def print_feed_paths(feed_manager):
+    """Recursively print all feed paths from the root."""
+    def walk(feed, feedpath):
+        # Print current feedpath
+        current_path = feedpath + [feed.id] if getattr(feed, "id", None) else feedpath
+        print(" -> ".join(current_path))
+        # Recurse for subfeeds
+        if hasattr(feed, "feeds"):  # UnionFeed (list of WeightedFeed)
+            for wf in getattr(feed, "feeds", []):
+                walk(wf.feed, current_path)
+        elif hasattr(feed, "source_feed"):  # FilterFeed
+            walk(feed.source_feed, current_path)
+        # RegularFeed: no further children
+
+    if getattr(feed_manager, "root_feed", None):
+        walk(feed_manager.root_feed, [])
+    else:
+        print("No root feed loaded.")
+
 def main():
     """Main entry point for the application."""
     parser = argparse.ArgumentParser(description="FoF - Feed of Feeds")
@@ -18,6 +37,17 @@ def main():
     # Logs subcommand
     logs_parser = subparsers.add_parser("logs", help="Print the log file and exit")
     logs_parser.add_argument(
+        "--config", "-c", 
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to config file (default: ~/.config/fof)"
+    )
+
+    # Feeds subcommand
+    feeds_parser = subparsers.add_parser("feeds", help="Feed tree utilities")
+    feeds_subparsers = feeds_parser.add_subparsers(dest="feeds_command")
+
+    feeds_list_parser = feeds_subparsers.add_parser("list", help="List all feed paths")
+    feeds_list_parser.add_argument(
         "--config", "-c", 
         default=DEFAULT_CONFIG_PATH,
         help="Path to config file (default: ~/.config/fof)"
@@ -37,7 +67,7 @@ def main():
 
     args = parser.parse_args()
 
-    config_path = os.path.expanduser(args.config)
+    config_path = os.path.expanduser(getattr(args, "config", DEFAULT_CONFIG_PATH))
     log_file = os.path.join(config_path, "fof.log")
     os.makedirs(config_path, exist_ok=True)
 
@@ -72,7 +102,12 @@ def main():
 
     # Initialize article manager and feed manager
     article_manager = ArticleManager(db_path=config_path)
-    feed_manager = FeedManager(args.config, article_manager=article_manager)
+    feed_manager = FeedManager(config_path, article_manager=article_manager)
+
+    # Handle subcommands
+    if args.command == "feeds" and getattr(args, "feeds_command", None) == "list":
+        print_feed_paths(feed_manager)
+        sys.exit(0)
     
     # Initialize control loop to handle interactions
     ControlLoop(feed_manager, article_manager).start()
