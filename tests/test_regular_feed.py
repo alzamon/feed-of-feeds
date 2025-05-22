@@ -78,37 +78,3 @@ def test_regular_feed_feed_type_property():
     )
     assert rf.feed_type == FeedType.REGULAR
 
-def test_regular_feed_from_config_dict_uses_defaults(monkeypatch):
-    class DummyManager(DummyArticleManager): pass
-    config = {
-        "id": "feed4",
-        "url": "http://example.com/feed4"
-    }
-    # Patch parse_time_period to return a known value if needed
-    monkeypatch.setattr("fof.models.regular_feed.parse_time_period", lambda x: timedelta(days=3))
-    rf = RegularFeed.from_config_dict(
-        config=config,
-        article_manager=DummyManager(),
-        parent_max_age=timedelta(days=3),
-        parent_feedpath=["root"]
-    )
-    assert isinstance(rf, RegularFeed)
-    assert rf.id == "feed4"
-    assert rf.url == "http://example.com/feed4"
-    assert rf.max_age == timedelta(days=3)
-    assert rf.feedpath == ["feed4"]  # parent_feedpath was ["root"], so ["feed4"]
-
-def test_regular_feed_from_config_dict_merges_feedpath(monkeypatch):
-    class DummyManager(DummyArticleManager): pass
-    config = {
-        "id": "feed5",
-        "url": "http://example.com/feed5"
-    }
-    monkeypatch.setattr("fof.models.regular_feed.parse_time_period", lambda x: timedelta(days=7))
-    rf = RegularFeed.from_config_dict(
-        config=config,
-        article_manager=DummyManager(),
-        parent_max_age=timedelta(days=7),
-        parent_feedpath=["root", "section"],
-    )
-    assert rf.feedpath == ["root", "section", "feed5"]

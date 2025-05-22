@@ -60,23 +60,3 @@ class RegularFeed(BaseFeed):
         self.max_age = max_age
         self.article_manager = article_manager
 
-    @classmethod
-    def from_config_dict(
-        cls,
-        config: Dict,
-        article_manager: ArticleManager,
-        parent_max_age: timedelta,
-        parent_feedpath: List[str],
-    ) -> "RegularFeed":
-        max_age = parse_time_period(config["max_age"]) if "max_age" in config else parent_max_age
-        feedpath = (parent_feedpath if parent_feedpath != ["root"] else []) + [config["id"]]
-        return cls(
-            id=config["id"],
-            title=config.get("title"),
-            description=config.get("description", "No description provided"),
-            last_updated=datetime.now(),
-            url=config["url"],
-            max_age=max_age,
-            article_manager=article_manager,
-            feedpath=feedpath,
-        )

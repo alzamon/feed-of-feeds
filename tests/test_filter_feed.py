@@ -165,36 +165,3 @@ def test_filterfeed_add_filter_method():
     result = ff.fetch()
     assert result is art
 
-
-def test_filterfeed_from_config_dict(monkeypatch):
-    dummy_manager = object()
-    class DummyFeed(BaseFeed):
-        def __init__(self):
-            super().__init__("dummy", None, "", datetime.now(), [], fetch_failed=False)
-        @property
-        def feed_type(self):
-            return FeedType.REGULAR
-        def fetch(self): return DummyArticle("foo","bar","baz")
-    # Patch using the string path to the *actual module where RegularFeed lives*.
-    monkeypatch.setattr(
-        "fof.models.regular_feed.RegularFeed",
-        type("RegularFeed", (), {
-            "from_config_dict": staticmethod(lambda cfg, am, ma, fp: DummyFeed())
-        }),
-    )
-    config = {
-        "id": "filter1",
-        "title": "Filter Feed",
-        "description": "desc",
-        "feed": {"id": "dummy", "feed_type": "regular"},
-        "criteria": [
-            {"filter_type": "title_regex", "pattern": "foo"},
-            {"filter_type": "content_regex", "pattern": "bar"},
-        ],
-    }
-    ff = FilterFeed.from_config_dict(config, dummy_manager, timedelta(days=10), ["root"])
-    assert isinstance(ff, FilterFeed)
-    assert len(ff.filters) == 2
-    article = ff.fetch()
-    assert article is not None
-    assert article.title == "foo"

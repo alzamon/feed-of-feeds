@@ -193,39 +193,3 @@ def test_add_feed_with_zero_weight_and_normalization():
     # Proportions: 50, 50, 0 -> normalized to 50, 50, 0
     assert [round(w, 1) for w in weights] == [50.0, 50.0, 0.0]
 
-
-def test_from_config_dict_nested_union_and_filter(monkeypatch):
-    dummy_manager = object()
-    monkeypatch.setattr(
-        "fof.models.regular_feed.RegularFeed",
-        type("RegularFeed", (), {
-            "from_config_dict": staticmethod(lambda cfg, am, ma, fp: DummyFeed(cfg["id"] + "-regular"))
-        }),
-    )
-    monkeypatch.setattr(
-        "fof.models.filter_feed.FilterFeed",
-        type("FilterFeed", (), {
-            "from_config_dict": staticmethod(lambda cfg, am, ma, fp: DummyFeed(cfg["id"] + "-filter"))
-        }),
-    )
-    config = {
-        "id": "union1",
-        "description": "desc",
-        "feeds": [
-            {"weight": 70, "feed": {"id": "r1", "feed_type": "regular"}},
-            {"weight": 30, "feed": {
-                "id": "subunion",
-                "feed_type": "union",
-                "feeds": [
-                    {"weight": 100, "feed": {"id": "f1", "feed_type": "filter"}}
-                ]
-            }},
-        ],
-    }
-    uf = UnionFeed.from_config_dict(config, dummy_manager, timedelta(days=10), ["root"])
-    assert isinstance(uf, UnionFeed)
-    assert len(uf.feeds) == 2
-    assert any(isinstance(wf.feed, DummyFeed) and wf.feed.id == "r1-regular" for wf in uf.feeds)
-    subunion = [wf.feed for wf in uf.feeds if isinstance(wf.feed, UnionFeed)]
-    assert subunion and isinstance(subunion[0], UnionFeed)
-    assert any(isinstance(wf.feed, DummyFeed) and wf.feed.id == "f1-filter" for wf in subunion[0].feeds)
