@@ -104,11 +104,18 @@ class FeedManager:
             # Root must have max_age!
             if not my_max_age:
                 raise ValueError("Root feed must have a max_age defined")
-            return RegularFeed.from_config_dict(
-                feed_data,
-                self.article_manager,
-                parent_max_age=my_max_age,
-                parent_feedpath=feedpath)
+            
+            regular_feedpath =  feedpath + [feed_id] if not is_root else []
+            return RegularFeed(
+                id=feed_data["id"],
+                title=feed_data.get("title"),
+                description=feed_data.get("description", "No description provided"),
+                last_updated=datetime.now(),
+                url=feed_data["url"],
+                max_age=my_max_age,
+                article_manager=self.article_manager,
+                feedpath=regular_feedpath,
+            )
         elif os.path.isfile(filter_path):
             # It's a filter feed
             with open(filter_path, "r", encoding="utf-8") as f:
