@@ -9,18 +9,33 @@ from .control_loop import ControlLoop
 
 DEFAULT_CONFIG_PATH = "~/.config/fof/"
 
+
+
 def print_feed_paths(feed_manager):
-    """Recursively print all feed paths from the root."""
-    def walk(feed):
-        # Print current feedpath
-        print(" -> ".join(feed.feedpath))
-        # Recurse for subfeeds
-        if hasattr(feed, "feeds"):  # UnionFeed (list of WeightedFeed)
+    """
+    Recursively print all feed paths from the root, and the product of likelihoods for WeightedFeeds along each path.
+    Weights are interpreted as percentages and converted to fractions.
+    """
+    def walk(feed, likelihood=1.0):
+        # If this feed is wrapped in a WeightedFeed, multiply the cumulative likelihood
+        if hasattr(feed, "weight") and hasattr(feed, "feed"):
+            # Convert percent to fraction
+            likelihood *= (feed.weight / 100.0)
+            feed = feed.feed
+
+        # Recurse for subfeeds (UnionFeed: .feeds is a list of WeightedFeed)
+        if hasattr(feed, "feeds"):
             for wf in getattr(feed, "feeds", []):
-                walk(wf.feed)
-        elif hasattr(feed, "source_feed"):  # FilterFeed
-            walk(feed.source_feed)
+                walk(wf, likelihood)
+        # FilterFeed: single child
+        elif hasattr(feed, "source_feed"):
+            walk(feed.source_feed, likelihood)
         # RegularFeed: no further children
+        else:
+            # Print current feedpath, URL, and product of weights as likelihood
+            print(" -> ".join(feed.feedpath))
+            print("  " + feed.url)
+            print("  Cumulative likelihood: {:.2f}".format(likelihood*100.0))
 
     if getattr(feed_manager, "root_feed", None):
         walk(feed_manager.root_feed)
