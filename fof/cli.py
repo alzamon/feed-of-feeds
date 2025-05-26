@@ -6,6 +6,7 @@ import logging
 from .models.article_manager import ArticleManager
 from .feed_manager import FeedManager
 from .control_loop import ControlLoop
+from .config_manager import ConfigManager
 
 DEFAULT_CONFIG_PATH = "~/.config/fof/"
 
@@ -115,8 +116,9 @@ def main():
     logging.info("Logging started.")
 
     # Initialize article manager and feed manager
-    article_manager = ArticleManager(db_path=config_path)
-    feed_manager = FeedManager(config_path, article_manager=article_manager)
+    config_manager = ConfigManager(config_path=config_path)
+    article_manager = ArticleManager(config_manager=config_manager)
+    feed_manager = FeedManager(article_manager=article_manager, config_manager=config_manager)
 
     # Handle subcommands
     if args.command == "feeds" and getattr(args, "feeds_command", None) == "list":

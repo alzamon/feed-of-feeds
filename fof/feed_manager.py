@@ -13,6 +13,7 @@ from .models.regular_feed import RegularFeed
 from .models.filter_feed import FilterFeed, Filter
 from .models.enums import FeedType, FilterType
 from .models.article_manager import ArticleManager
+from .config_manager import ConfigManager
 
 from .time_period import parse_time_period, timedelta_to_period_str
 
@@ -21,18 +22,16 @@ logger = logging.getLogger(__name__)
 class FeedManager:
     """Main class for managing feeds """
 
-    def __init__(self, config_path: str = "~/.config/fof", article_manager: ArticleManager = None):
+    def __init__(self, article_manager: ArticleManager, config_manager: ConfigManager):
         """Initialize the FeedManager.
 
         Args:
-            config_path (str): Path to the configuration directory. Defaults to "~/.config/fof/".
             article_manager (ArticleManager): The article manager instance to use.
+            config_manager: The configuration manager instance to use.
         """
-        self.config_path = os.path.expanduser(config_path)
-        if article_manager is None:
-            self.article_manager = ArticleManager(db_path=self.config_path)
-        else:
-            self.article_manager = article_manager
+        self.config_manager = config_manager
+        self.config_path = self.config_manager.config_path
+        self.article_manager = article_manager
         self._load_config()
 
     def _load_config(self):
@@ -326,3 +325,4 @@ class FeedManager:
                 wf.weight += increment
                 logger.info(f"Updated weight of feed '{sub_feed.id}' to {wf.weight}.")
             current_feed = sub_feed
+

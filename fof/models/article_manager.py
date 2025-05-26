@@ -16,14 +16,15 @@ logger = logging.getLogger(__name__)
 class ArticleManager:
     """Manages the state of articles with persistence using SQLite and fetching logic."""
 
-    def __init__(self, db_path: str = "~/.config/fof", db_filename: str = "articles.db"):
+    def __init__(self, config_manager, db_filename: str = "articles.db"):
         """Initialize the ArticleManager.
 
         Args:
-            db_path (str): Path to the database directory. Defaults to "~/.config/fof".
+            config_manager: The configuration manager instance (must have config_path).
             db_filename (str): Name of the database file. Defaults to "articles.db".
         """
-        self.db_path = Path(db_path).expanduser()
+        self.config_manager = config_manager
+        self.db_path = Path(self.config_manager.config_path).expanduser()
         self.db_path.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
         self.db_file = self.db_path / db_filename
 
@@ -286,3 +287,4 @@ class ArticleManager:
             if row:
                 return self._row_to_article(row)
         return None
+
