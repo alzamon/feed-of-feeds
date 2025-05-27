@@ -36,11 +36,7 @@ class FeedManager:
 
     def _load_config(self):
         """Load the configuration from the 'tree' directory and initialize feeds."""
-        config_dir = os.path.join(self.config_path, "tree")
-        if not os.path.exists(config_dir) or not os.path.isdir(config_dir):
-            logger.warning(f"Config directory not found at {config_dir}. Using empty configuration.")
-            self.root_feed = None
-            return
+        config_dir = self.config_manager.get_tree_dir
         try:
             feed = self._load_feed_from_directory(config_dir, feedpath=[], parent_max_age=None, is_root=True)
             if feed is None:
@@ -290,10 +286,9 @@ class FeedManager:
         """
         Save the current root_feed to the new directory-based format.
         """
-        config_dir = os.path.join(self.config_path, "tree")
-        if os.path.exists(config_dir):
-            import shutil
-            shutil.rmtree(config_dir)
+        config_dir = self.config_manager.get_tree_dir
+        import shutil
+        shutil.rmtree(config_dir)
         self.serialize_to_directory(self.root_feed, config_dir)
 
     def next_article(self) -> Optional[Article]:
