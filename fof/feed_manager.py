@@ -51,27 +51,25 @@ class FeedManager:
     def _load_feed_from_directory(self, path: str, feedpath: list, parent_max_age=None, is_root=False) -> Optional[BaseFeed]:
         """
         Recursively load a feed from a directory structure.
-        - UnionFeed: directory contains .fofmeta.json and subdirs.
+        - UnionFeed: directory contains union.json and subdirs.
         - RegularFeed: directory contains feed.json.
         - FilterFeed: directory contains filter.json and 'source' subdir.
         feedpath is a list of IDs from the root to this feed (not including the root).
         parent_max_age is the inherited max_age from the parent feed.
         """
-        meta_path = os.path.join(path, ".fofmeta.json")
+        union_path = os.path.join(path, "union.json")
         filter_path = os.path.join(path, "filter.json")
         feed_path = os.path.join(path, "feed.json")
-        if os.path.isfile(meta_path):
+        if os.path.isfile(union_path):
             # It's a union feed
-            with open(meta_path, "r", encoding="utf-8") as f:
-                meta = json.load(f)
-            weights = meta.get("weights", {})
+            with open(union_path, "r", encoding="utf-8") as f:
+                union_info = json.load(f)
+            weights = union_info.get("weights", {})
             subfeeds = []
-            # Try to find a union descriptor (optional)
-            union_info = self._try_load_union_info(path)
-            union_id = union_info.get("id") if union_info and "id" in union_info else os.path.basename(path)
+            union_id = union_info.get("id") if "id" in union_info else os.path.basename(path)
             union_feedpath = feedpath + [union_id] if not is_root else []
             # Inherit max_age if not explicitly set
-            max_age_str = union_info.get("max_age") if union_info and "max_age" in union_info else None
+            max_age_str = union_info.get("max_age") if "max_age" in union_info else None
             my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age
             for sub_name, weight in weights.items():
                 sub_path = os.path.join(path, sub_name)
@@ -82,10 +80,10 @@ class FeedManager:
                     logger.warning(f"Failed to load subfeed {sub_name} in {path}")
             return UnionFeed(
                 id=union_id,
-                title=union_info.get("title") if union_info and "title" in union_info else os.path.basename(path),
-                description=union_info.get("description") if union_info and "description" in union_info else "",
+                title=union_info.get("title") if "title" in union_info else os.path.basename(path),
+                description=union_info.get("description") if "description" in union_info else "",
                 feeds=subfeeds,
-                last_updated=datetime.fromisoformat(union_info["last_updated"]) if union_info and "last_updated" in union_info else datetime.now(),
+                last_updated=datetime.fromisoformat(union_info["last_updated"]) if "last_updated" in union_info else datetime.now(),
                 max_age=my_max_age,
                 feedpath=feedpath
             )
@@ -158,7 +156,7 @@ class FeedManager:
     def serialize_to_directory(self, feed: BaseFeed, path: str):
         """
         Recursively serialize a feed tree to a directory structure inside `path`.
-        - Each UnionFeed becomes a folder with .fofmeta.json for weights.
+        - Each UnionFeed becomes a folder with union.json for weights and meta.
         - Each RegularFeed becomes a .json file with its configuration.
         - Each FilterFeed becomes a folder with filter config and a subfeed.
         """
@@ -168,16 +166,15 @@ class FeedManager:
             for wf in feed.feeds:
                 subfeed_name = self.get_feed_folder_or_filename(wf.feed)
                 weights[subfeed_name] = wf.weight
-            meta_path = os.path.join(path, ".fofmeta.json")
-            with open(meta_path, "w", encoding="utf-8") as f:
-                json.dump({"weights": weights}, f, indent=2, ensure_ascii=False)
-            # Optionally, save union feed meta (id, title, etc.)
+
+            # Save union feed meta (id, title, etc.) and weights into union.json
             union_meta = {
                 "id": getattr(feed, "id", None),
                 "title": getattr(feed, "title", None),
                 "description": getattr(feed, "description", ""),
                 "last_updated": feed.last_updated.isoformat() if getattr(feed, "last_updated", None) else None,
                 "max_age": timedelta_to_period_str(feed.max_age) if getattr(feed, "max_age", None) else None,
+                "weights": weights,
             }
             union_meta_path = os.path.join(path, "union.json")
             with open(union_meta_path, "w", encoding="utf-8") as f:
@@ -320,4 +317,3 @@ class FeedManager:
                 wf.weight += increment
                 logger.info(f"Updated weight of feed '{sub_feed.id}' to {wf.weight}.")
             current_feed = sub_feed
-
