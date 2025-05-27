@@ -197,7 +197,6 @@ class FeedManager:
                 "id": feed.id,
                 "title": feed.title,
                 "description": feed.description,
-                "feed_type": "filter",
                 "last_updated": feed.last_updated.isoformat(),
                 "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
                 "criteria": [
@@ -239,7 +238,6 @@ class FeedManager:
                 "id": feed.id,
                 "title": feed.title,
                 "description": feed.description,
-                "feed_type": "regular",
                 "last_updated": feed.last_updated.isoformat(),
                 "url": feed.url,
                 "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
@@ -249,7 +247,6 @@ class FeedManager:
                 "id": feed.id,
                 "title": feed.title,
                 "description": feed.description,
-                "feed_type": "filter",
                 "last_updated": feed.last_updated.isoformat(),
                 "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
                 "criteria": [
@@ -266,7 +263,6 @@ class FeedManager:
                 "id": feed.id,
                 "title": feed.title,
                 "description": feed.description,
-                "feed_type": "union",
                 "last_updated": feed.last_updated.isoformat(),
                 "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
                 "feeds": [
@@ -276,7 +272,6 @@ class FeedManager:
                     } for wf in feed.feeds
                 ]
             }
-        else:
             raise ValueError(f"Unknown feed type: {feed.feed_type}")
 
     def save_config(self):
