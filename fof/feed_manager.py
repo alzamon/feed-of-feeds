@@ -217,19 +217,14 @@ class FeedManager:
         """
         Helper to get a folder or filename for a feed based on its type.
         """
+        # Use the sanitize_filename method from ConfigManager
         if feed.feed_type == FeedType.UNION or feed.feed_type == FeedType.FILTER:
             name = feed.title or feed.id or "union"
-            return self.sanitize_filename(name)
+            return self.config_manager.sanitize_filename(name)
         elif feed.feed_type == FeedType.REGULAR:
-            return self.sanitize_filename(feed.title or feed.id or "feed")
+            return self.config_manager.sanitize_filename(feed.title or feed.id or "feed")
         else:
-            return self.sanitize_filename(feed.title or feed.id or "feed")
-
-    def sanitize_filename(self, name: str) -> str:
-        """
-        Remove or replace characters not suitable for filenames.
-        """
-        return "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).rstrip()
+            return self.config_manager.sanitize_filename(feed.title or feed.id or "feed")
 
     def serialize_feed(self, feed: BaseFeed) -> dict:
         """Recursively serialize a feed to a dict suitable for saving as JSON config."""
@@ -312,3 +307,4 @@ class FeedManager:
                 wf.weight += increment
                 logger.info(f"Updated weight of feed '{sub_feed.id}' to {wf.weight}.")
             current_feed = sub_feed
+

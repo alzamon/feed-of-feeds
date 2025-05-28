@@ -21,3 +21,11 @@ class ConfigManager:
             logger.error(f"'tree' directory not found at {tree_dir}.")
             raise FileNotFoundError(f"'tree' directory not found at {tree_dir}.")
         return tree_dir
+
+    @staticmethod
+    def sanitize_filename(name: str) -> str:
+        """
+        Remove or replace characters not suitable for filenames.
+        """
+        return "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).rstrip()
+
