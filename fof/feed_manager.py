@@ -238,21 +238,29 @@ class FeedManager:
         """
         Atomically save the current root_feed to the new directory-based format.
         Write to an 'update' directory first, then move to 'tree' on success.
+        Ensures process is not inside the config_dir when deleting to avoid getcwd() errors.
         """
         config_dir = self.config_manager.get_tree_dir
         update_dir = self.config_manager.get_update_dir if hasattr(self.config_manager, "get_update_dir") else os.path.join(os.path.dirname(config_dir), "update")
         import shutil
 
-        # Remove stale 'update' dir if exists
-        if os.path.exists(update_dir):
-            shutil.rmtree(update_dir)
-        # Write new config to 'update'
-        self.serialize_to_directory(self.root_feed, update_dir)
-        # Remove old 'tree'
-        if os.path.exists(config_dir):
-            shutil.rmtree(config_dir)
-        # Atomically move 'update' to 'tree'
-        os.rename(update_dir, config_dir)
+        curdir = os.getcwd()
+        try:
+            # If current working directory is inside config_dir, move out before deleting config_dir
+            if os.path.commonpath([curdir, config_dir]) == config_dir:
+                os.chdir(os.path.dirname(config_dir))
+            if os.path.exists(update_dir):
+                shutil.rmtree(update_dir)
+            self.serialize_to_directory(self.root_feed, update_dir)
+            if os.path.exists(config_dir):
+                shutil.rmtree(config_dir)
+            os.rename(update_dir, config_dir)
+        finally:
+            # Try to return to original directory if it still exists
+            try:
+                os.chdir(curdir)
+            except FileNotFoundError:
+                pass
 
     def next_article(self) -> Optional[Article]:
         if not self.root_feed:
