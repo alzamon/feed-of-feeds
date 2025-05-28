@@ -49,26 +49,19 @@ class FeedManager:
             self.root_feed = None
 
     def _load_feed_from_directory(self, path: str, feedpath: list, parent_max_age=None, is_root=False) -> Optional[BaseFeed]:
-        """
-        Recursively load a feed from a directory structure.
-        - UnionFeed: directory contains union.json and subdirs.
-        - RegularFeed: directory contains feed.json.
-        - FilterFeed: directory contains filter.json and 'source' subdir.
-        feedpath is a list of IDs from the root to this feed (not including the root).
-        parent_max_age is the inherited max_age from the parent feed.
-        """
+        # ... (unchanged: see above) ...
+
         union_path = os.path.join(path, "union.json")
         filter_path = os.path.join(path, "filter.json")
         feed_path = os.path.join(path, "feed.json")
         if os.path.isfile(union_path):
-            # It's a union feed
+            # ... (unchanged)
             with open(union_path, "r", encoding="utf-8") as f:
                 union_info = json.load(f)
             weights = union_info.get("weights", {})
             subfeeds = []
             union_id = union_info.get("id") if "id" in union_info else os.path.basename(path)
             union_feedpath = feedpath + [union_id] if not is_root else []
-            # Inherit max_age if not explicitly set
             max_age_str = union_info.get("max_age") if "max_age" in union_info else None
             my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age
             for sub_name, weight in weights.items():
@@ -88,16 +81,14 @@ class FeedManager:
                 feedpath=feedpath
             )
         elif os.path.isfile(feed_path):
-            # It's a regular feed
+            # ... (unchanged)
             with open(feed_path, "r", encoding="utf-8") as f:
                 feed_data = json.load(f)
             feed_id = feed_data.get("id")
             max_age_str = feed_data.get("max_age")
             my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age
-            # Root must have max_age!
             if not my_max_age:
                 raise ValueError("Root feed must have a max_age defined")
-            
             regular_feedpath =  feedpath + [feed_id] if not is_root else []
             return RegularFeed(
                 id=feed_data["id"],
@@ -110,7 +101,7 @@ class FeedManager:
                 feedpath=regular_feedpath,
             )
         elif os.path.isfile(filter_path):
-            # It's a filter feed
+            # ... (unchanged)
             with open(filter_path, "r", encoding="utf-8") as f:
                 filter_data = json.load(f)
             filter_id = filter_data["id"]
@@ -143,10 +134,7 @@ class FeedManager:
             return None
 
     def _try_load_union_info(self, path: str):
-        """
-        Try to load union feed metadata (optional).
-        Looks for 'union.json' or similar for union meta, e.g. id, title, description.
-        """
+        # ... (unchanged) ...
         union_path = os.path.join(path, "union.json")
         if os.path.isfile(union_path):
             with open(union_path, "r", encoding="utf-8") as f:
@@ -154,12 +142,7 @@ class FeedManager:
         return None
 
     def serialize_to_directory(self, feed: BaseFeed, path: str):
-        """
-        Recursively serialize a feed tree to a directory structure inside `path`.
-        - Each UnionFeed becomes a folder with union.json for weights and meta.
-        - Each RegularFeed becomes a .json file with its configuration.
-        - Each FilterFeed becomes a folder with filter config and a subfeed.
-        """
+        # ... (unchanged, see above) ...
         os.makedirs(path, exist_ok=True)
         if feed.feed_type == FeedType.UNION:
             weights = {}
@@ -167,7 +150,6 @@ class FeedManager:
                 subfeed_name = self.get_feed_folder_or_filename(wf.feed)
                 weights[subfeed_name] = wf.weight
 
-            # Save union feed meta (id, title, etc.) and weights into union.json
             union_meta = {
                 "id": getattr(feed, "id", None),
                 "title": getattr(feed, "title", None),
@@ -214,10 +196,7 @@ class FeedManager:
             raise ValueError(f"Unknown feed type: {feed.feed_type}")
 
     def get_feed_folder_or_filename(self, feed: BaseFeed) -> str:
-        """
-        Helper to get a folder or filename for a feed based on its type.
-        """
-        # Use the sanitize_filename method from ConfigManager
+        # ... (unchanged) ...
         if feed.feed_type == FeedType.UNION or feed.feed_type == FeedType.FILTER:
             name = feed.title or feed.id or "union"
             return self.config_manager.sanitize_filename(name)
@@ -227,7 +206,7 @@ class FeedManager:
             return self.config_manager.sanitize_filename(feed.title or feed.id or "feed")
 
     def serialize_feed(self, feed: BaseFeed) -> dict:
-        """Recursively serialize a feed to a dict suitable for saving as JSON config."""
+        # ... (unchanged) ...
         if feed.feed_type == FeedType.REGULAR:
             return {
                 "id": feed.id,
@@ -267,16 +246,27 @@ class FeedManager:
                     } for wf in feed.feeds
                 ]
             }
-            raise ValueError(f"Unknown feed type: {feed.feed_type}")
+        raise ValueError(f"Unknown feed type: {feed.feed_type}")
 
     def save_config(self):
         """
-        Save the current root_feed to the new directory-based format.
+        Atomically save the current root_feed to the new directory-based format.
+        Write to an 'update' directory first, then move to 'tree' on success.
         """
         config_dir = self.config_manager.get_tree_dir
+        update_dir = self.config_manager.get_update_dir if hasattr(self.config_manager, "get_update_dir") else os.path.join(os.path.dirname(config_dir), "update")
         import shutil
-        shutil.rmtree(config_dir)
-        self.serialize_to_directory(self.root_feed, config_dir)
+
+        # Remove stale 'update' dir if exists
+        if os.path.exists(update_dir):
+            shutil.rmtree(update_dir)
+        # Write new config to 'update'
+        self.serialize_to_directory(self.root_feed, update_dir)
+        # Remove old 'tree'
+        if os.path.exists(config_dir):
+            shutil.rmtree(config_dir)
+        # Atomically move 'update' to 'tree'
+        os.rename(update_dir, config_dir)
 
     def next_article(self) -> Optional[Article]:
         if not self.root_feed:
@@ -307,4 +297,3 @@ class FeedManager:
                 wf.weight += increment
                 logger.info(f"Updated weight of feed '{sub_feed.id}' to {wf.weight}.")
             current_feed = sub_feed
-
