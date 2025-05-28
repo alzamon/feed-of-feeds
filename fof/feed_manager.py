@@ -49,13 +49,10 @@ class FeedManager:
             self.root_feed = None
 
     def _load_feed_from_directory(self, path: str, feedpath: list, parent_max_age=None, is_root=False) -> Optional[BaseFeed]:
-        # ... (unchanged: see above) ...
-
         union_path = os.path.join(path, "union.json")
         filter_path = os.path.join(path, "filter.json")
         feed_path = os.path.join(path, "feed.json")
         if os.path.isfile(union_path):
-            # ... (unchanged)
             with open(union_path, "r", encoding="utf-8") as f:
                 union_info = json.load(f)
             weights = union_info.get("weights", {})
@@ -81,7 +78,6 @@ class FeedManager:
                 feedpath=feedpath
             )
         elif os.path.isfile(feed_path):
-            # ... (unchanged)
             with open(feed_path, "r", encoding="utf-8") as f:
                 feed_data = json.load(f)
             feed_id = feed_data.get("id")
@@ -101,7 +97,6 @@ class FeedManager:
                 feedpath=regular_feedpath,
             )
         elif os.path.isfile(filter_path):
-            # ... (unchanged)
             with open(filter_path, "r", encoding="utf-8") as f:
                 filter_data = json.load(f)
             filter_id = filter_data["id"]
@@ -134,7 +129,6 @@ class FeedManager:
             return None
 
     def _try_load_union_info(self, path: str):
-        # ... (unchanged) ...
         union_path = os.path.join(path, "union.json")
         if os.path.isfile(union_path):
             with open(union_path, "r", encoding="utf-8") as f:
@@ -142,7 +136,6 @@ class FeedManager:
         return None
 
     def serialize_to_directory(self, feed: BaseFeed, path: str):
-        # ... (unchanged, see above) ...
         os.makedirs(path, exist_ok=True)
         if feed.feed_type == FeedType.UNION:
             weights = {}
@@ -196,7 +189,6 @@ class FeedManager:
             raise ValueError(f"Unknown feed type: {feed.feed_type}")
 
     def get_feed_folder_or_filename(self, feed: BaseFeed) -> str:
-        # ... (unchanged) ...
         if feed.feed_type == FeedType.UNION or feed.feed_type == FeedType.FILTER:
             name = feed.title or feed.id or "union"
             return self.config_manager.sanitize_filename(name)
@@ -206,7 +198,6 @@ class FeedManager:
             return self.config_manager.sanitize_filename(feed.title or feed.id or "feed")
 
     def serialize_feed(self, feed: BaseFeed) -> dict:
-        # ... (unchanged) ...
         if feed.feed_type == FeedType.REGULAR:
             return {
                 "id": feed.id,
