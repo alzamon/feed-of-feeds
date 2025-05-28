@@ -140,10 +140,8 @@ class FeedManager:
         if feed.feed_type == FeedType.UNION:
             weights = {}
             for wf in feed.feeds:
-                subfeed_name = self.config_manager.sanitize_filename(wf.feed.id)
-                if not subfeed_name:
-                    raise ValueError(f"Feed ID {wf.feed.id} cannot be used as a folder name")
-            weights[subfeed_name] = wf.weight
+                subfeed_name = self.get_feed_folder_or_filename(wf.feed)
+                weights[subfeed_name] = wf.weight
 
             union_meta = {
                 "id": getattr(feed, "id", None),
@@ -157,9 +155,7 @@ class FeedManager:
             with open(union_meta_path, "w", encoding="utf-8") as f:
                 json.dump(union_meta, f, indent=2, ensure_ascii=False)
             for wf in feed.feeds:
-                subfeed_name = self.config_manager.sanitize_filename(wf.feed.id)
-                if not subfeed_name:
-                    raise ValueError(f"Feed ID {wf.feed.id} cannot be used as a folder name")
+                subfeed_name = self.get_feed_folder_or_filename(wf.feed)
                 child_path = os.path.join(path, subfeed_name)
                 self.serialize_to_directory(wf.feed, child_path)
 
@@ -191,6 +187,15 @@ class FeedManager:
             self.serialize_to_directory(feed.source_feed, os.path.join(filter_dir, "source"))
         else:
             raise ValueError(f"Unknown feed type: {feed.feed_type}")
+
+    def get_feed_folder_or_filename(self, feed: BaseFeed) -> str:
+        if feed.feed_type == FeedType.UNION or feed.feed_type == FeedType.FILTER:
+            name = feed.title or feed.id or "union"
+            return self.config_manager.sanitize_filename(name)
+        elif feed.feed_type == FeedType.REGULAR:
+            return self.config_manager.sanitize_filename(feed.title or feed.id or "feed")
+        else:
+            return self.config_manager.sanitize_filename(feed.title or feed.id or "feed")
 
     def serialize_feed(self, feed: BaseFeed) -> dict:
         if feed.feed_type == FeedType.REGULAR:
