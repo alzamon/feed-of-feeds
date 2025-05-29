@@ -36,7 +36,7 @@ def print_feed_paths(feed_manager):
             # Print current feedpath, URL, and product of weights as likelihood
             print(" -> ".join(feed.feedpath))
             print("  " + feed.url)
-            print("  Cumulative likelihood: {:.2f}".format(likelihood*100.0))
+            print("  Cumulative likelihood: {:.2f}%".format(likelihood*100.0))
 
     if getattr(feed_manager, "root_feed", None):
         walk(feed_manager.root_feed)
