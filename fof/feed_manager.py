@@ -242,30 +242,13 @@ class FeedManager:
     def save_config(self):
         """
         Atomically save the current root_feed to the new directory-based format.
-        Write to an 'update' directory first, then move to 'tree' on success.
-        Ensures process is not inside the config_dir when deleting to avoid getcwd() errors.
+        Write to an 'update' directory first, then move to 'tree' on success via config_manager.
+        All chdir and delete logic is handled by config_manager.persist_update.
+        Assumes update dir does not exist before serialization.
         """
-        config_dir = self.config_manager.get_tree_dir
-        update_dir = self.config_manager.get_update_dir if hasattr(self.config_manager, "get_update_dir") else os.path.join(os.path.dirname(config_dir), "update")
-        import shutil
-
-        curdir = os.getcwd()
-        try:
-            # If current working directory is inside config_dir, move out before deleting config_dir
-            if os.path.commonpath([curdir, config_dir]) == config_dir:
-                os.chdir(os.path.dirname(config_dir))
-            if os.path.exists(update_dir):
-                shutil.rmtree(update_dir)
-            self.serialize_to_directory(self.root_feed, update_dir)
-            if os.path.exists(config_dir):
-                shutil.rmtree(config_dir)
-            os.rename(update_dir, config_dir)
-        finally:
-            # Try to return to original directory if it still exists
-            try:
-                os.chdir(curdir)
-            except FileNotFoundError:
-                pass
+        update_dir = self.config_manager.get_update_dir
+        self.serialize_to_directory(self.root_feed, update_dir)
+        self.config_manager.persist_update(update_dir)
 
     def next_article(self) -> Optional[Article]:
         if not self.root_feed:
@@ -296,3 +279,4 @@ class FeedManager:
                 wf.weight += increment
                 logger.info(f"Updated weight of feed '{sub_feed.id}' to {wf.weight}.")
             current_feed = sub_feed
+
