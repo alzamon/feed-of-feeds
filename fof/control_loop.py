@@ -21,13 +21,21 @@ class ControlLoop:
                 f"Link: {self.current_article.link}",
                 f"Author: {self.current_article.author or 'Unknown'}",
                 f"Published: {self.current_article.published_date or 'Unknown date'}",
+            ]
+            # Print tags if present
+            if hasattr(self.current_article, "tags") and self.current_article.tags:
+                tag_str = ", ".join(self.current_article.tags)
+                lines.append(f"Tags: {tag_str}")
+            else:
+                lines.append("Tags: None")
+            lines.extend([
                 "",
                 "Feed Path:",
                 " -> ".join(self.current_article.feedpath) if self.current_article.feedpath else "Unknown",
                 "",
                 "Content Preview:",
                 "---------------",
-            ]
+            ])
             preview = self.current_article.content[:200] + "..." if len(self.current_article.content) > 200 else self.current_article.content
             wrapped_preview = textwrap.wrap(preview, width=max_x)
             lines.extend(wrapped_preview)

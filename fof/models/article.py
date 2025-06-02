@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, List
 
@@ -15,3 +15,4 @@ class Article:
     feedpath: List[str] = None  # Changed from Optional[str] to List[str]
     read: bool = False
     score: Optional[int] = None
+    tags: List[str] = field(default_factory=list)  # NEW: Add tags support

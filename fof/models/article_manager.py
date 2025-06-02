@@ -17,22 +17,14 @@ class ArticleManager:
     """Manages the state of articles with persistence using SQLite and fetching logic."""
 
     def __init__(self, config_manager, db_filename: str = "articles.db"):
-        """Initialize the ArticleManager.
-
-        Args:
-            config_manager: The configuration manager instance (must have config_path).
-            db_filename (str): Name of the database file. Defaults to "articles.db".
-        """
         self.config_manager = config_manager
         self.db_path = Path(self.config_manager.config_path).expanduser()
-        self.db_path.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
+        self.db_path.mkdir(parents=True, exist_ok=True)
         self.db_file = self.db_path / db_filename
 
-        # Initialize the database
         self._initialize_database()
 
     def _initialize_database(self):
-        """Create the cache table if it doesn't already exist and migrate if necessary."""
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
@@ -41,12 +33,13 @@ class ArticleManager:
                 columns = [row[1] for row in cursor.fetchall()]
                 if "fetched" not in columns:
                     cursor.execute("ALTER TABLE cache ADD COLUMN fetched TIMESTAMP DEFAULT NULL")
+                if "tags" not in columns:
+                    cursor.execute("ALTER TABLE cache ADD COLUMN tags TEXT DEFAULT NULL")
                 self._create_cache_table(cursor)
         except sqlite3.Error as e:
             logger.error(f"Error initializing database: {e}")
 
     def _create_cache_table(self, cursor):
-        """Create the cache table if it does not exist."""
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS cache (
                 id TEXT PRIMARY KEY,
@@ -60,12 +53,12 @@ class ArticleManager:
                 read TIMESTAMP DEFAULT NULL,
                 fetched TIMESTAMP DEFAULT NULL,
                 score INTEGER,
-                cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                tags TEXT DEFAULT NULL
             )
         """)
 
     def mark_as_read(self, article_id: str):
-        """Mark an article as read by updating the 'read' column with the current timestamp."""
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
@@ -78,7 +71,6 @@ class ArticleManager:
             logger.error(f"Error marking article as read: {e}")
 
     def mark_as_fetched(self, article_id: str):
-        """Mark an article as fetched by updating the 'fetched' column with the current timestamp."""
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
@@ -91,7 +83,6 @@ class ArticleManager:
             logger.error(f"Error marking article as fetched: {e}")
 
     def cache_articles(self, articles: List[Article]):
-        """Store a list of articles in the cache, avoiding duplicates."""
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
@@ -102,15 +93,14 @@ class ArticleManager:
             logger.error(f"Error storing articles in cache: {e}")
 
     def _insert_or_replace_article(self, cursor, article: Article):
-        """Insert or replace a single article into the cache, preserving the 'read' and 'fetched' status if it exists."""
         cursor.execute("""
             INSERT INTO cache (
                 id, title, content, link, author, published_date, 
-                feed_id, feedpath, read, fetched, score, cached_at
+                feed_id, feedpath, read, fetched, score, cached_at, tags
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 
                       (SELECT read FROM cache WHERE id = ?), 
                       (SELECT fetched FROM cache WHERE id = ?), 
-                      ?, CURRENT_TIMESTAMP)
+                      ?, CURRENT_TIMESTAMP, ?)
             ON CONFLICT(id) DO UPDATE SET
                 title=excluded.title,
                 content=excluded.content,
@@ -120,7 +110,8 @@ class ArticleManager:
                 feed_id=excluded.feed_id,
                 feedpath=excluded.feedpath,
                 score=excluded.score,
-                cached_at=excluded.cached_at
+                cached_at=excluded.cached_at,
+                tags=excluded.tags
         """, (
             article.id,
             article.title,
@@ -132,45 +123,23 @@ class ArticleManager:
             json.dumps(article.feedpath) if article.feedpath else None,
             article.id,  # Used to fetch existing 'read' value
             article.id,  # Used to fetch existing 'fetched' value
-            article.score
+            article.score,
+            json.dumps(article.tags) if article.tags else None
         ))
 
     def fetch_article(self, feedpath: List[str], url: str, feed_id: str, max_age: Optional[timedelta]) -> Optional[Article]:
-        """
-        Fetch the newest unfetched article by feedpath. If none exist in the cache, fetch from the source,
-        cache the articles, and then retrieve the newest unfetched article.
-        When an article is retrieved, it is marked as fetched.
-        Later, when displayed, mark_as_read should be called.
-
-        Args:
-            feedpath (List[str]): The feed's hierarchical path.
-            url (str): The RSS feed URL.
-            feed_id (str): The ID of the feed.
-            max_age (Optional[timedelta]): The maximum age of articles to consider.
-
-        Returns:
-            Optional[Article]: The newest unfetched article, or None if none are found.
-        """
-        # Fetch the newest unfetched article from the cache
         article = self._fetch_unfetched_article_from_cache(feedpath, max_age)
-        
-        # If an article is found in the cache, mark it as fetched
         if article:
             self.mark_as_fetched(article.id)
             return article
-
-        # If no unfetched articles in the cache, fetch from the source
         articles = self._fetch_articles_from_web(url, feed_id, feedpath, max_age)
         self.cache_articles(articles)
-
-        # Retrieve the newest unfetched article from the cache
         article = self._fetch_unfetched_article_from_cache(feedpath, max_age)
         if article:
             self.mark_as_fetched(article.id)
         return article
 
     def _fetch_unfetched_article_from_cache(self, feedpath: List[str], max_age: Optional[timedelta]) -> Optional[Article]:
-        """Fetch the newest unfetched and unread article from the cache by feedpath."""
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             now = datetime.now().isoformat()
@@ -191,7 +160,6 @@ class ArticleManager:
         return None
 
     def _row_to_article(self, row) -> Article:
-        """Convert a database row to an Article object."""
         return Article(
             id=row[0],
             title=row[1],
@@ -202,11 +170,11 @@ class ArticleManager:
             feed_id=row[6],
             feedpath=json.loads(row[7]) if row[7] else None,
             read=datetime.fromisoformat(row[8]) if row[8] else None,
-            score=row[10],  # row[9] is fetched
+            score=row[10],
+            tags=json.loads(row[12]) if row[12] else []
         )
 
     def _fetch_articles_from_web(self, url: str, feed_id: str, feedpath: List[str], max_age: Optional[timedelta]) -> List[Article]:
-        """Fetch articles from the web and return them as a list."""
         response = requests.get(url, timeout=5)
         response.raise_for_status()
         parsed = feedparser.parse(response.text)
@@ -220,7 +188,6 @@ class ArticleManager:
         return articles
 
     def _create_article_from_entry(self, entry, feed_id: str, feedpath: List[str], max_age: Optional[timedelta]) -> Optional[Article]:
-        """Convert an RSS feed entry into an Article object."""
         title = entry.get('title', 'No Title')
         content = entry.get('summary', '')
         published_date = None
@@ -237,6 +204,11 @@ class ArticleManager:
         link = entry.get('link', '')
         author = entry.get('author', 'Unknown')
 
+        # Extract tags from entry if available (RSS feeds may provide tags/categories)
+        tags = []
+        if 'tags' in entry:
+            tags = [tag['term'] for tag in entry['tags'] if 'term' in tag]
+
         return Article(
             id=article_id,
             title=title,
@@ -246,12 +218,10 @@ class ArticleManager:
             published_date=published_date,
             feed_id=feed_id,
             feedpath=feedpath,
+            tags=tags
         )
 
     def get_previous_read_article(self, current_read_timestamp: Optional[str] = None) -> Optional[Article]:
-        """Fetch the article read immediately before the current_read_timestamp.
-        If current_read_timestamp is None, get the most recent read article.
-        """
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             if current_read_timestamp:
@@ -274,7 +244,6 @@ class ArticleManager:
         return None
 
     def get_next_read_article(self, current_read_timestamp: str) -> Optional[Article]:
-        """Fetch the article read immediately after the current_read_timestamp."""
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -287,4 +256,3 @@ class ArticleManager:
             if row:
                 return self._row_to_article(row)
         return None
-
