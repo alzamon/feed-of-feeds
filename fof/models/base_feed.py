@@ -13,7 +13,7 @@ class BaseFeed(ABC):
     description: str
     last_updated: datetime
     feedpath: List[str]  # Required parameter to track the path from the root feed to this feed
-    fetch_failed: bool
+    disabled_in_session: bool
 
     @property
     @abstractmethod

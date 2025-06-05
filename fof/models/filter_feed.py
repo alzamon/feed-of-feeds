@@ -44,7 +44,7 @@ class FilterFeed(BaseFeed):
         max_age: Optional[timedelta],
         feedpath: List[str],
     ):
-        super().__init__(id, title, description, last_updated, feedpath, fetch_failed=False)
+        super().__init__(id, title, description, last_updated, feedpath, disabled_in_session=False)
         self.source_feed = source_feed
         self.filters = filters or []
         self.max_age = max_age
@@ -60,7 +60,7 @@ class FilterFeed(BaseFeed):
         # Fetch an article from the source feed and filter it according to the filters.
         article = self.source_feed.fetch()
         if not article:
-            self.fetch_failed = True
+            self.disabled_in_session = True
             return None
 
         for f in self.filters:

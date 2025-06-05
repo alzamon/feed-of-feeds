@@ -34,7 +34,7 @@ class RegularFeed(BaseFeed):
             feed_id=self.id,
             max_age=self.max_age,
         )
-        self.fetch_failed = article is None
+        self.disabled_in_session = article is None
         return article
 
     def __init__(
@@ -54,7 +54,7 @@ class RegularFeed(BaseFeed):
             description,
             last_updated,
             feedpath,
-            fetch_failed=False,
+            disabled_in_session=False,
         )
         self.url = url
         self.max_age = max_age
