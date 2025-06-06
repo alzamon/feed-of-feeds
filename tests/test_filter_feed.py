@@ -14,15 +14,15 @@ class DummyArticle:
         self.id = "dummy"
 
 class DummyFeed(BaseFeed):
-    def __init__(self, article=None, fetch_failed=False):
-        super().__init__("dummy", title=None, description="", last_updated=datetime.now(), feedpath=[], fetch_failed=fetch_failed)
+    def __init__(self, article=None, disabled_in_session=False):
+        super().__init__("dummy", title=None, description="", last_updated=datetime.now(), feedpath=[], disabled_in_session=disabled_in_session)
         self._article = article
-        self._fetch_failed = fetch_failed
+        self._disabled_in_session = disabled_in_session
     @property
     def feed_type(self):
         return FeedType.REGULAR
     def fetch(self):
-        if self._fetch_failed:
+        if self._disabled_in_session:
             return None
         return self._article
 
@@ -131,8 +131,8 @@ def test_filterfeed_multiple_filters_all_must_pass():
     result = ff.fetch()
     assert result is art
 
-def test_filterfeed_fetch_failed_propagation():
-    dummy_feed = DummyFeed(article=None, fetch_failed=True)
+def test_filterfeed_disabled_in_session_propagation():
+    dummy_feed = DummyFeed(article=None, disabled_in_session=True)
     ff = FilterFeed(
         id="f",
         title="t",
@@ -145,7 +145,7 @@ def test_filterfeed_fetch_failed_propagation():
     )
     result = ff.fetch()
     assert result is None
-    assert ff.fetch_failed
+    assert ff.disabled_in_session
 
 def test_filterfeed_add_filter_method():
     art = DummyArticle(title="xyzz", content="abcd", link="test")

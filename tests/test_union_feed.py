@@ -5,8 +5,8 @@ from fof.models.union_feed import UnionFeed, WeightedFeed
 from fof.models.base_feed import BaseFeed
 
 class DummyFeed(BaseFeed):
-    def __init__(self, id, fetch_failed=False, article=None, raise_on_fetch=False):
-        super().__init__(id, title=None, description="", last_updated=datetime.now(), feedpath=[], fetch_failed=fetch_failed)
+    def __init__(self, id, disabled_in_session=False, article=None, raise_on_fetch=False):
+        super().__init__(id, title=None, description="", last_updated=datetime.now(), feedpath=[], disabled_in_session=disabled_in_session)
         self.id = id
         self._article = article
         self._raise_on_fetch = raise_on_fetch
@@ -112,7 +112,7 @@ def test_normalize_weights_large_numbers():
     assert abs(sum(weights) - 100.0) < 1e-6
     assert [round(wf.weight, 1) for wf in uf.feeds] == [20.0, 80.0]
 
-def test_fetch_returns_none_and_sets_fetch_failed_when_no_feeds():
+def test_fetch_returns_none_and_sets_disabled_in_session_when_no_feeds():
     uf = UnionFeed(
         id="test",
         title=None,
@@ -124,7 +124,7 @@ def test_fetch_returns_none_and_sets_fetch_failed_when_no_feeds():
     )
     result = uf.fetch()
     assert result is None
-    assert uf.fetch_failed
+    assert uf.disabled_in_session
 
 def test_fetch_skips_failed_feeds_and_picks_working():
     # One feed always fails, one feed returns article
@@ -133,8 +133,8 @@ def test_fetch_skips_failed_feeds_and_picks_working():
     article.published_date = datetime.now()
     article.id = "ok-article"
     feeds = [
-        WeightedFeed(DummyFeed("fail", fetch_failed=True), 50),
-        WeightedFeed(DummyFeed("ok", fetch_failed=False, article=article), 50),
+        WeightedFeed(DummyFeed("fail", disabled_in_session=True), 50),
+        WeightedFeed(DummyFeed("ok", disabled_in_session=False, article=article), 50),
     ]
     uf = UnionFeed(
         id="union",
@@ -147,7 +147,7 @@ def test_fetch_skips_failed_feeds_and_picks_working():
     )
     result = uf.fetch()
     assert result is article
-    assert not uf.fetch_failed
+    assert not uf.disabled_in_session
 
 def test_fetch_respects_max_age_and_skips_old_articles():
     class Article: pass
@@ -155,7 +155,7 @@ def test_fetch_respects_max_age_and_skips_old_articles():
     old_article.published_date = datetime.now() - timedelta(days=100)
     old_article.id = "old"
     feeds = [
-        WeightedFeed(DummyFeed("oldfeed", fetch_failed=False, article=old_article), 100)
+        WeightedFeed(DummyFeed("oldfeed", disabled_in_session=False, article=old_article), 100)
     ]
     uf = UnionFeed(
         id="test",
@@ -168,7 +168,7 @@ def test_fetch_respects_max_age_and_skips_old_articles():
     )
     result = uf.fetch()
     assert result is None
-    assert uf.fetch_failed
+    assert uf.disabled_in_session
 
 def test_add_feed_with_zero_weight_and_normalization():
     feeds = [

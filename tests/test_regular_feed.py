@@ -41,14 +41,14 @@ def test_regular_feed_fetch_returns_article():
     )
     result = rf.fetch()
     assert result is article
-    assert not rf.fetch_failed
+    assert not rf.disabled_in_session
     # Check that the ArticleManager was called with correct arguments
     assert manager.called_with["url"] == "http://example.com/feed"
     assert manager.called_with["feed_id"] == "feed1"
     assert manager.called_with["feedpath"] == ["root", "feed1"]
     assert manager.called_with["max_age"] == timedelta(days=2)
 
-def test_regular_feed_fetch_returns_none_and_sets_fetch_failed():
+def test_regular_feed_fetch_returns_none_and_sets_disabled_in_session():
     manager = DummyArticleManager(article=None)
     rf = RegularFeed(
         id="feed2",
@@ -62,7 +62,7 @@ def test_regular_feed_fetch_returns_none_and_sets_fetch_failed():
     )
     result = rf.fetch()
     assert result is None
-    assert rf.fetch_failed
+    assert rf.disabled_in_session
 
 def test_regular_feed_feed_type_property():
     manager = DummyArticleManager()
