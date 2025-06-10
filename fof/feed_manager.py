@@ -22,17 +22,21 @@ logger = logging.getLogger(__name__)
 class FeedManager:
     """Main class for managing feeds """
 
-    def __init__(self, article_manager: ArticleManager, config_manager: ConfigManager):
+    def __init__(self, article_manager: ArticleManager, config_manager: ConfigManager, feed_id: Optional[str] = None):
         """Initialize the FeedManager.
 
         Args:
             article_manager (ArticleManager): The article manager instance to use.
             config_manager: The configuration manager instance to use.
+            feed_id (Optional[str]): If set, disables all feeds except the specified feed and its descendants after loading.
         """
         self.config_manager = config_manager
         self.config_path = self.config_manager.config_path
         self.article_manager = article_manager
+        self.feed_id = feed_id
         self._load_config()
+        if self.feed_id:
+            self._set_disabled_in_session_for_feeds(self.feed_id)
 
     def _load_config(self):
         """Load the configuration from the 'tree' directory and initialize feeds."""
@@ -104,7 +108,7 @@ class FeedManager:
             my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age
             if not my_max_age:
                 raise ValueError("Root feed must have a max_age defined (inherited)")
-            filter_feedpath = feedpath + [filter_id]
+            filter_feedpath = feedpath + [filter_id] if not is_root else []
             source_path = os.path.join(path, "source")
             source_feed = self._load_feed_from_directory(source_path, feedpath=filter_feedpath, parent_max_age=my_max_age)
             filters = [
@@ -322,3 +326,50 @@ class FeedManager:
             self.perform_on_feeds(base_feed.source_feed, performer, context.copy())
         # RegularFeed: no children, done
 
+    def _set_disabled_in_session_for_feeds(self, active_feed_id: str):
+        """
+        Disables all feeds except:
+          * feeds in the selected feed's feedpath (ancestors and itself), and
+          * the selected feed and all its descendants.
+        """
+        if not self.root_feed:
+            return
+
+        # Find the selected feed object by id
+        selected_feed = None
+        def find_feed(feed: BaseFeed, ctx: dict):
+            nonlocal selected_feed
+            if getattr(feed, 'id', None) == active_feed_id:
+                selected_feed = feed
+        self.perform_on_feeds(self.root_feed, find_feed)
+        if not selected_feed:
+            logger.warning(f"Feed with id '{active_feed_id}' not found for disabling in session.")
+            return
+
+        # Ancestors: all ids in the feedpath of the selected feed
+        allowed_ids = set(getattr(selected_feed, 'feedpath', []))
+        # Include the selected feed itself
+        allowed_ids.add(getattr(selected_feed, 'id', None))
+
+        # Descendants: recursively collect all feed ids under the selected feed (including itself)
+        def collect_descendants(feed: BaseFeed):
+            feed_id = getattr(feed, 'id', None)
+            if feed_id is not None:
+                allowed_ids.add(feed_id)
+            # UnionFeed: has .feeds (list of WeightedFeed)
+            if hasattr(feed, "feeds"):
+                for wf in getattr(feed, "feeds", []):
+                    collect_descendants(wf.feed)
+            # FilterFeed: has .source_feed
+            elif hasattr(feed, "source_feed"):
+                collect_descendants(feed.source_feed)
+            # RegularFeed: just itself
+
+        collect_descendants(selected_feed)
+
+        # Now disable all feeds not in allowed_ids
+        def disable_unless_allowed(feed: BaseFeed, ctx: dict):
+            feed_id = getattr(feed, 'id', None)
+            feed.disabled_in_session = (feed_id not in allowed_ids)
+
+        self.perform_on_feeds(self.root_feed, disable_unless_allowed)

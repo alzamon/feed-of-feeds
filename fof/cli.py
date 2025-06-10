@@ -75,6 +75,11 @@ def main():
         action="store_true",
         help="Enable debug logging"
     )
+    parser.add_argument(
+        "--feed",
+        default=None,
+        help="If set, only enable the specified feed and its descendants in this session"
+    )
 
     args = parser.parse_args()
 
@@ -114,7 +119,11 @@ def main():
     # Initialize article manager and feed manager
     config_manager = ConfigManager(config_path=config_path)
     article_manager = ArticleManager(config_manager=config_manager)
-    feed_manager = FeedManager(article_manager=article_manager, config_manager=config_manager)
+    feed_manager = FeedManager(
+        article_manager=article_manager,
+        config_manager=config_manager,
+        feed_id=getattr(args, "feed", None)
+    )
 
     # Handle subcommands
     if args.command == "feeds" and getattr(args, "feeds_command", None) == "list":
