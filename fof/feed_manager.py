@@ -2,7 +2,7 @@
 import random
 import json
 import os
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Callable, Any
 from datetime import timedelta, datetime
 import logging
 
@@ -279,4 +279,46 @@ class FeedManager:
                 wf.weight += increment
                 logger.info(f"Updated weight of feed '{sub_feed.id}' to {wf.weight}.")
             current_feed = sub_feed
+
+    def perform_on_feeds(
+        self,
+        base_feed: BaseFeed,
+        performer: Callable[[BaseFeed, dict], None],
+        context: Optional[dict] = None
+    ):
+        """
+        Recursively apply the performer to the base_feed and all its descendants,
+        passing a user-supplied context dict which can be used for state accumulation (e.g., likelihood).
+
+        The performer is a callable with signature (feed, context).
+        If you need to update the context for a descendant (e.g., multiply likelihood for WeightedFeed),
+        copy the context first.
+
+        Example:
+            def print_feed(feed, ctx):
+                ...
+
+            fm.perform_on_feeds(fm.root_feed, print_feed, {"likelihood": 1.0})
+        """
+        if context is None:
+            context = {}
+
+        performer(base_feed, context)
+
+        # WeightedFeed: has .feed (compose likelihood if present)
+        if hasattr(base_feed, "weight") and hasattr(base_feed, "feed"):
+            new_context = context.copy()
+            if "likelihood" in new_context:
+                new_context["likelihood"] *= (base_feed.weight / 100.0)
+            else:
+                new_context["likelihood"] = (base_feed.weight / 100.0)
+            self.perform_on_feeds(base_feed.feed, performer, new_context)
+        # UnionFeed: has .feeds (list of WeightedFeed)
+        elif hasattr(base_feed, "feeds"):
+            for subfeed in getattr(base_feed, "feeds", []):
+                self.perform_on_feeds(subfeed, performer, context.copy())
+        # FilterFeed: has .source_feed
+        elif hasattr(base_feed, "source_feed"):
+            self.perform_on_feeds(base_feed.source_feed, performer, context.copy())
+        # RegularFeed: no children, done
 

@@ -10,36 +10,32 @@ from .config_manager import ConfigManager
 
 DEFAULT_CONFIG_PATH = "~/.config/fof/"
 
-
-
 def print_feed_paths(feed_manager):
     """
     Recursively print all feed paths from the root, and the product of likelihoods for WeightedFeeds along each path.
     Weights are interpreted as percentages and converted to fractions.
+    Uses FeedManager.perform_on_feeds with context for accumulation.
     """
-    def walk(feed, likelihood=1.0):
-        # If this feed is wrapped in a WeightedFeed, multiply the cumulative likelihood
-        if hasattr(feed, "weight") and hasattr(feed, "feed"):
-            # Convert percent to fraction
-            likelihood *= (feed.weight / 100.0)
-            feed = feed.feed
-
-        # Recurse for subfeeds (UnionFeed: .feeds is a list of WeightedFeed)
-        if hasattr(feed, "feeds"):
-            for wf in getattr(feed, "feeds", []):
-                walk(wf, likelihood)
-        # FilterFeed: single child
-        elif hasattr(feed, "source_feed"):
-            walk(feed.source_feed, likelihood)
-        # RegularFeed: no further children
-        else:
-            # Print current feedpath, URL, and product of weights as likelihood
-            print(" -> ".join(feed.feedpath))
-            print("  " + feed.url)
-            print("  Cumulative likelihood: {:.2f}%".format(likelihood*100.0))
+    def print_feed(feed, ctx):
+        # Only print at leaf feeds (no children)
+        is_leaf = not (
+            hasattr(feed, "feeds") or
+            (hasattr(feed, "source_feed") and feed.source_feed is not None) or
+            (hasattr(feed, "feed") and feed.feed is not None)
+        )
+        feedpath = getattr(feed, "feedpath", [])
+        url = getattr(feed, "url", None)
+        if is_leaf:
+            print(" -> ".join(feedpath))
+            print("  " + (url if url else "(no url)"))
+            print("  Cumulative likelihood: {:.2f}%".format(ctx.get("likelihood", 1.0) * 100.0))
 
     if getattr(feed_manager, "root_feed", None):
-        walk(feed_manager.root_feed)
+        feed_manager.perform_on_feeds(
+            feed_manager.root_feed,
+            print_feed,
+            context={"likelihood": 1.0}
+        )
     else:
         print("No root feed loaded.")
 
