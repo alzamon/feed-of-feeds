@@ -57,31 +57,35 @@ class FilterFeed(BaseFeed):
         self.filters.append(Filter(filter_type, pattern, is_inclusion))
 
     def fetch(self) -> Optional[Article]:
-        # Fetch an article from the source feed and filter it according to the filters.
-        article = self.source_feed.fetch()
-        if not article:
-            self.disabled_in_session = True
-            return None
-
-        for f in self.filters:
-            match = False
-            if f.filter_type == FilterType.TITLE_REGEX:
-                if f.compiled_pattern and article.title is not None:
-                    match = f.compiled_pattern.search(article.title) is not None
-            elif f.filter_type == FilterType.CONTENT_REGEX:
-                if f.compiled_pattern and article.content is not None:
-                    match = f.compiled_pattern.search(article.content) is not None
-            elif f.filter_type == FilterType.LINK_REGEX:
-                if f.compiled_pattern and article.link is not None:
-                    match = f.compiled_pattern.search(article.link) is not None
-
-            # Inclusion filter: skip if not matched
-            if f.is_inclusion and not match:
-                return None
-            # Exclusion filter: skip if matched
-            if not f.is_inclusion and match:
+        # Keep fetching until we get an article that passes all filters, or source is exhausted
+        while True:
+            article = self.source_feed.fetch()
+            if not article:
+                self.disabled_in_session = True
                 return None
 
-        # If we pass all filters, return the article
-        return article
+            passed = True
+            for f in self.filters:
+                match = False
+                if f.filter_type == FilterType.TITLE_REGEX:
+                    if f.compiled_pattern and article.title is not None:
+                        match = f.compiled_pattern.search(article.title) is not None
+                elif f.filter_type == FilterType.CONTENT_REGEX:
+                    if f.compiled_pattern and article.content is not None:
+                        match = f.compiled_pattern.search(article.content) is not None
+                elif f.filter_type == FilterType.LINK_REGEX:
+                    if f.compiled_pattern and article.link is not None:
+                        match = f.compiled_pattern.search(article.link) is not None
 
+                # Inclusion filter: skip if not matched
+                if f.is_inclusion and not match:
+                    passed = False
+                    break
+                # Exclusion filter: skip if matched
+                if not f.is_inclusion and match:
+                    passed = False
+                    break
+
+            if passed:
+                return article
+            # Otherwise, loop and fetch next candidate
