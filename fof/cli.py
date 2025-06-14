@@ -8,6 +8,12 @@ from .feed_manager import FeedManager
 from .control_loop import ControlLoop
 from .config_manager import ConfigManager
 
+# Add this import for tab completion
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 DEFAULT_CONFIG_PATH = "~/.config/fof/"
 
 def print_feed_paths(feed_manager):
@@ -80,6 +86,10 @@ def main():
         default=None,
         help="If set, only enable the specified feed and its descendants in this session"
     )
+
+    # Enable tab-completion if argcomplete is installed
+    if argcomplete:
+        argcomplete.autocomplete(parser)
 
     args = parser.parse_args()
 
