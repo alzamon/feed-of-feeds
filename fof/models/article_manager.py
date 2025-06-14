@@ -28,14 +28,15 @@ class ArticleManager:
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
-                # Add fetched column if it doesn't exist
+                # Always create the table if it does not exist
+                self._create_cache_table(cursor)
+                # Now check for missing columns and add them if necessary
                 cursor.execute("PRAGMA table_info(cache)")
                 columns = [row[1] for row in cursor.fetchall()]
                 if "fetched" not in columns:
                     cursor.execute("ALTER TABLE cache ADD COLUMN fetched TIMESTAMP DEFAULT NULL")
                 if "tags" not in columns:
                     cursor.execute("ALTER TABLE cache ADD COLUMN tags TEXT DEFAULT NULL")
-                self._create_cache_table(cursor)
         except sqlite3.Error as e:
             logger.error(f"Error initializing database: {e}")
 
