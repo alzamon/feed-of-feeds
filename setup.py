@@ -12,6 +12,9 @@ extras_require.update({
     "test": ["pytest>=7.0.0,<9.0.0"],
 })
 
+# Add argcomplete for tab completion
+extras_require["completion"] = ["argcomplete>=3.0.0"]
+
 # Read the long description from README.md
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -24,6 +27,7 @@ setup(
         "feedparser>=6.0.0,<7.0.0",
         "pyyaml>=6.0,<7.0",
         "requests>=2.20.0,<3.0.0",
+        "argcomplete>=3.0.0",  # Added here for default install
     ],
     extras_require=extras_require,
     entry_points={
