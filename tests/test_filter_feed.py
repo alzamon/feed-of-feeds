@@ -18,12 +18,18 @@ class DummyFeed(BaseFeed):
         super().__init__("dummy", title=None, description="", last_updated=datetime.now(), feedpath=[], disabled_in_session=disabled_in_session)
         self._article = article
         self._disabled_in_session = disabled_in_session
+        self._fetched = False  # Simulate single-use feed
+
     @property
     def feed_type(self):
         return FeedType.REGULAR
+
     def fetch(self):
         if self._disabled_in_session:
             return None
+        if self._fetched:
+            return None
+        self._fetched = True
         return self._article
 
 def test_filterfeed_no_filters_passes_article():
@@ -164,4 +170,3 @@ def test_filterfeed_add_filter_method():
     assert len(ff.filters) == 1
     result = ff.fetch()
     assert result is art
-
