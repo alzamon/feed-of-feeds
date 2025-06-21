@@ -22,14 +22,11 @@ class BaseFeed(ABC):
         pass
 
     @abstractmethod
-    def fetch(self, max_age: Optional[timedelta] = None) -> Optional[Article]:
+    def fetch(self) -> Optional[Article]:
         """
         Fetch a single article from this feed.
 
-        Args:
-            max_age (Optional[timedelta]): Ignore articles older than this age.
-
         Returns:
-            Optional[Article]: The fetched article, or None if no suitable article is found.
+            Optional[Article]: The fetched article, or None if no suitable article is found or something went wrong.
         """
         pass
