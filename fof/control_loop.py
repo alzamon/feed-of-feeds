@@ -22,7 +22,6 @@ class ControlLoop:
                 f"Author: {self.current_article.author or 'Unknown'}",
                 f"Published: {self.current_article.published_date or 'Unknown date'}",
             ]
-            # Print tags if present
             if hasattr(self.current_article, "tags") and self.current_article.tags:
                 tag_str = ", ".join(self.current_article.tags)
                 lines.append(f"Tags: {tag_str}")
@@ -53,10 +52,33 @@ class ControlLoop:
 
     def _display_prompt(self, stdscr):
         max_y, max_x = stdscr.getmaxyx()
-        prompt = "\n[n] Next | [p] Previous | [o] Open | [+] Increase Weight | [-] Reduce Weight | [q] Quit"
-        prompt_lines = prompt.split("\n")
-        for i, line in enumerate(prompt_lines):
-            stdscr.addstr(max_y - len(prompt_lines) + i - 1, 0, line[:max_x])
+        prompt = "[?] Show hotkeys"
+        stdscr.addstr(max_y - 1, 0, prompt[:max_x])
+
+    def _display_hotkeys(self, stdscr):
+        max_y, max_x = stdscr.getmaxyx()
+        hotkey_help = (
+            "[n] Next article\n"
+            "[p] Previous (read) article\n"
+            "[o] Open article link in browser\n"
+            "[+] Increase weight along feed path\n"
+            "[-] Decrease weight along feed path\n"
+            "[q] Quit\n"
+            "[?] Show/hide this hotkey help\n"
+        )
+        # Display hotkeys, wrapped if necessary
+        row = 0
+        for line in hotkey_help.strip().split("\n"):
+            wrapped = textwrap.wrap(line, width=max_x)
+            for wline in wrapped:
+                if row < max_y - 1:
+                    stdscr.addstr(row, 0, wline)
+                    row += 1
+        # Add "Press any key to return..." at the bottom
+        press_any_key = "-- press any key to return --"
+        if row < max_y:
+            stdscr.addstr(max_y - 1, 0, press_any_key[:max_x])
+        stdscr.refresh()
 
     def _handle_key_input(self, stdscr):
         curses.curs_set(0)
@@ -67,13 +89,26 @@ class ControlLoop:
 
         self.current_article = self.feed_manager.next_article()
         self.browsing_read_history = False
+
         if self.current_article and not self.browsing_read_history:
             self.article_manager.mark_as_read(self.current_article.id)
         self._display_article(stdscr)
         self._display_prompt(stdscr)
+        stdscr.refresh()
 
         while True:
             key = stdscr.getch()
+            if key == ord("?"):
+                stdscr.clear()
+                self._display_hotkeys(stdscr)
+                stdscr.nodelay(False)
+                stdscr.getch()  # Wait for any key
+                stdscr.nodelay(True)
+                self._display_article(stdscr)
+                self._display_prompt(stdscr)
+                stdscr.refresh()
+                continue
+
             if key == ord("n"):
                 if self.browsing_read_history:
                     if self.current_article and getattr(self.current_article, "read", None):
