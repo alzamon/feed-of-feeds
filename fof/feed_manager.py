@@ -9,7 +9,7 @@ import logging
 from .models.article import Article
 from .models.base_feed import BaseFeed
 from .models.union_feed import UnionFeed, WeightedFeed
-from .models.regular_feed import RegularFeed
+from .models.syndication_feed import SyndicationFeed
 from .models.filter_feed import FilterFeed, Filter
 from .models.enums import FeedType, FilterType
 from .models.article_manager import ArticleManager
@@ -89,8 +89,8 @@ class FeedManager:
             my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age
             if not my_max_age:
                 raise ValueError("Root feed must have a max_age defined")
-            regular_feedpath =  feedpath + [feed_id] if not is_root else []
-            return RegularFeed(
+            syndication_feedpath =  feedpath + [feed_id] if not is_root else []
+            return SyndicationFeed(
                 id=feed_data["id"],
                 title=feed_data.get("title"),
                 description=feed_data.get("description", "No description provided"),
@@ -98,7 +98,7 @@ class FeedManager:
                 url=feed_data["url"],
                 max_age=my_max_age,
                 article_manager=self.article_manager,
-                feedpath=regular_feedpath,
+                feedpath=syndication_feedpath,
             )
         elif os.path.isfile(filter_path):
             with open(filter_path, "r", encoding="utf-8") as f:
@@ -163,7 +163,7 @@ class FeedManager:
                 child_path = os.path.join(path, subfeed_name)
                 self.serialize_to_directory(wf.feed, child_path)
 
-        elif feed.feed_type == FeedType.REGULAR:
+        elif feed.feed_type == FeedType.SYNDICATION:
             feed_path = os.path.join(path, "feed.json")
             with open(feed_path, "w", encoding="utf-8") as f:
                 json.dump(self.serialize_feed(feed), f, indent=2, ensure_ascii=False)
@@ -196,13 +196,13 @@ class FeedManager:
         if feed.feed_type == FeedType.UNION or feed.feed_type == FeedType.FILTER:
             name = feed.title or feed.id or "union"
             return self.config_manager.sanitize_filename(name)
-        elif feed.feed_type == FeedType.REGULAR:
+        elif feed.feed_type == FeedType.SYNDICATION:
             return self.config_manager.sanitize_filename(feed.title or feed.id or "feed")
         else:
             return self.config_manager.sanitize_filename(feed.title or feed.id or "feed")
 
     def serialize_feed(self, feed: BaseFeed) -> dict:
-        if feed.feed_type == FeedType.REGULAR:
+        if feed.feed_type == FeedType.SYNDICATION:
             return {
                 "id": feed.id,
                 "title": feed.title,
@@ -324,7 +324,7 @@ class FeedManager:
         # FilterFeed: has .source_feed
         elif hasattr(base_feed, "source_feed"):
             self.perform_on_feeds(base_feed.source_feed, performer, context.copy())
-        # RegularFeed: no children, done
+        # SyndicationFeed: no children, done
 
     def _set_disabled_in_session_for_feeds(self, active_feed_id: str):
         """
@@ -363,7 +363,7 @@ class FeedManager:
             # FilterFeed: has .source_feed
             elif hasattr(feed, "source_feed"):
                 collect_descendants(feed.source_feed)
-            # RegularFeed: just itself
+            # SyndicationFeed: just itself
 
         collect_descendants(selected_feed)
 
@@ -373,3 +373,4 @@ class FeedManager:
             feed.disabled_in_session = (feed_id not in allowed_ids)
 
         self.perform_on_feeds(self.root_feed, disable_unless_allowed)
+

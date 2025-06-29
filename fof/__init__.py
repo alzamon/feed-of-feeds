@@ -10,10 +10,9 @@ __version__ = "0.1.0"
 
 from .feed_manager import FeedManager
 from .models.base_feed import BaseFeed
-from .models.regular_feed import RegularFeed
+from .models.syndication_feed import SyndicationFeed
 from .models.union_feed import UnionFeed
 from .models.filter_feed import FilterFeed
 from .models.article import Article
 
-__all__ = ['FeedManager', 'BaseFeed', 'RegularFeed', 'UnionFeed', 'FilterFeed', 'Article']
-
+__all__ = ['FeedManager', 'BaseFeed', 'SyndicationFeed', 'UnionFeed', 'FilterFeed', 'Article']

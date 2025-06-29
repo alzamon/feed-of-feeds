@@ -9,7 +9,7 @@ from .base_feed import BaseFeed
 from ..time_period import parse_time_period
 
 if TYPE_CHECKING:
-    from .regular_feed import RegularFeed
+    from .syndication_feed import SyndicationFeed
     from .union_feed import UnionFeed
     from .article_manager import ArticleManager
 

@@ -9,7 +9,7 @@ from .enums import FeedType
 from ..time_period import parse_time_period
 
 if TYPE_CHECKING:
-    from .regular_feed import RegularFeed
+    from .syndication_feed import SyndicationFeed
     from .filter_feed import FilterFeed
 
 logger = logging.getLogger(__name__)
@@ -108,4 +108,3 @@ class UnionFeed(BaseFeed):
                 continue
         self.disabled_in_session = True
         return None
-

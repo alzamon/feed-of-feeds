@@ -12,15 +12,15 @@ if TYPE_CHECKING:
     from .filter_feed import FilterFeed
 
 @dataclass
-class RegularFeed(BaseFeed):
-    """A standard feed that fetches articles from a URL."""
+class SyndicationFeed(BaseFeed):
+    """A feed that fetches articles from a syndication source (e.g., RSS/Atom)."""
     url: str
     max_age: Optional[timedelta]  # Optional max age for filtering articles
     article_manager: ArticleManager  # ArticleManager instance
 
     @property
     def feed_type(self) -> FeedType:
-        return FeedType.REGULAR
+        return FeedType.SYNDICATION
 
     def fetch(self) -> Optional[Article]:
         """
@@ -59,4 +59,3 @@ class RegularFeed(BaseFeed):
         self.url = url
         self.max_age = max_age
         self.article_manager = article_manager
-

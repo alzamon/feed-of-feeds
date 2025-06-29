@@ -2,7 +2,7 @@ from enum import Enum
 
 class FeedType(Enum):
     """Types of feeds in the system."""
-    REGULAR = "regular"
+    SYNDICATION = "syndication"
     UNION = "union"
     FILTER = "filter"
 

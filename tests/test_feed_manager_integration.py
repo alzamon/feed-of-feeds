@@ -7,7 +7,7 @@ import os
 from fof.feed_manager import FeedManager
 from fof.models.union_feed import UnionFeed
 from fof.models.filter_feed import FilterFeed
-from fof.models.regular_feed import RegularFeed
+from fof.models.syndication_feed import SyndicationFeed
 from fof.models.enums import FilterType
 
 # Dummy managers to use for FeedManager initialization
@@ -33,8 +33,8 @@ def mock_files_structure():
     """
     Sets up a fake nested feed config, as described:
     tree_dir/
-      union.json  (union of "regular1" and "filter1")
-      regular1/feed.json
+      union.json  (union of "syndication1" and "filter1")
+      syndication1/feed.json
       filter1/filter.json
       filter1/source/feed.json
     """
@@ -47,12 +47,12 @@ def mock_files_structure():
             "description": "A union of feeds",
             "last_updated": now.isoformat(),
             "max_age": "7d",
-            "weights": {"regular1": 60, "filter1": 40}
+            "weights": {"syndication1": 60, "filter1": 40}
         },
-        "tree_dir/regular1/feed.json": {
-            "id": "regular1",
-            "title": "Regular Feed 1",
-            "description": "Regular feed description",
+        "tree_dir/syndication1/feed.json": {
+            "id": "syndication1",
+            "title": "Syndication Feed 1",
+            "description": "Syndication feed description",
             "last_updated": now.isoformat(),
             "url": "http://example.com/feed1",
             "max_age": "7d"
@@ -70,9 +70,9 @@ def mock_files_structure():
             }]
         },
         "tree_dir/filter1/source/feed.json": {
-            "id": "regular2",
-            "title": "Regular Feed 2",
-            "description": "Another regular feed",
+            "id": "syndication2",
+            "title": "Syndication Feed 2",
+            "description": "Another syndication feed",
             "last_updated": now.isoformat(),
             "url": "http://example.com/feed2",
             "max_age": "3d"
@@ -116,7 +116,7 @@ def test_nested_feed_hierarchy_load(patch_fs):
     assert len(root.feeds) == 2
 
     feed_types = {type(wf.feed) for wf in root.feeds}
-    assert RegularFeed in feed_types
+    assert SyndicationFeed in feed_types
     assert FilterFeed in feed_types
 
     # Find the filter feed and check its internals
@@ -126,6 +126,6 @@ def test_nested_feed_hierarchy_load(patch_fs):
     assert filter_feed.filters
     assert filter_feed.filters[0].filter_type == FilterType.TITLE_REGEX
     assert filter_feed.filters[0].pattern == "Python"
-    # Its source_feed should be a RegularFeed
-    assert isinstance(filter_feed.source_feed, RegularFeed)
-    assert filter_feed.source_feed.id == "regular2"
+    # Its source_feed should be a SyndicationFeed
+    assert isinstance(filter_feed.source_feed, SyndicationFeed)
+    assert filter_feed.source_feed.id == "syndication2"

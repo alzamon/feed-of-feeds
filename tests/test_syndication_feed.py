@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from fof.models.regular_feed import RegularFeed
 from fof.models.base_feed import BaseFeed
 from fof.models.enums import FeedType
+from fof.models.syndication_feed import SyndicationFeed
 
 class DummyArticle:
     def __init__(self, title="title", published_date=None, id="id"):
@@ -26,10 +27,10 @@ class DummyArticleManager:
         }
         return self._article
 
-def test_regular_feed_fetch_returns_article():
+def test_syndication_feed_fetch_returns_article():
     article = DummyArticle()
     manager = DummyArticleManager(article=article)
-    rf = RegularFeed(
+    rf = SyndicationFeed(
         id="feed1",
         title="Feed 1",
         description="desc",
@@ -48,9 +49,9 @@ def test_regular_feed_fetch_returns_article():
     assert manager.called_with["feedpath"] == ["root", "feed1"]
     assert manager.called_with["max_age"] == timedelta(days=2)
 
-def test_regular_feed_fetch_returns_none_and_sets_disabled_in_session():
+def test_syndication_feed_fetch_returns_none_and_sets_disabled_in_session():
     manager = DummyArticleManager(article=None)
-    rf = RegularFeed(
+    rf = SyndicationFeed(
         id="feed2",
         title="Feed 2",
         description="desc",
@@ -64,9 +65,9 @@ def test_regular_feed_fetch_returns_none_and_sets_disabled_in_session():
     assert result is None
     assert rf.disabled_in_session
 
-def test_regular_feed_feed_type_property():
+def test_syndication_feed_feed_type_property():
     manager = DummyArticleManager()
-    rf = RegularFeed(
+    rf = SyndicationFeed(
         id="feed3",
         title="Feed 3",
         description="desc",
@@ -76,5 +77,5 @@ def test_regular_feed_feed_type_property():
         article_manager=manager,
         feedpath=["root", "feed3"],
     )
-    assert rf.feed_type == FeedType.REGULAR
+    assert rf.feed_type == FeedType.SYNDICATION
 
