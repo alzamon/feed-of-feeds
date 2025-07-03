@@ -8,7 +8,6 @@ from .feed_manager import FeedManager
 from .control_loop import ControlLoop
 from .config_manager import ConfigManager
 
-# Add this import for tab completion
 try:
     import argcomplete
 except ImportError:
@@ -16,11 +15,10 @@ except ImportError:
 
 DEFAULT_CONFIG_PATH = "~/.config/fof/"
 
-def print_feed_paths(feed_manager):
+def print_feed_paths(feed_manager, base_feed=None):
     """
-    Recursively print all feed paths from the root, and the product of likelihoods for WeightedFeeds along each path.
-    Weights are interpreted as percentages and converted to fractions.
-    Uses FeedManager.perform_on_feeds with context for accumulation.
+    Recursively print all feed paths from the given base feed, and the product of
+    likelihoods for WeightedFeeds along each path.
     """
     def print_feed(feed, ctx):
         # Only print at leaf feeds (no children)
@@ -36,9 +34,10 @@ def print_feed_paths(feed_manager):
             print("  " + (url if url else "(no url)"))
             print("  Cumulative likelihood: {:.2f}%".format(ctx.get("likelihood", 1.0) * 100.0))
 
-    if getattr(feed_manager, "root_feed", None):
+    root = base_feed if base_feed is not None else getattr(feed_manager, "root_feed", None)
+    if root:
         feed_manager.perform_on_feeds(
-            feed_manager.root_feed,
+            root,
             print_feed,
             context={"likelihood": 1.0}
         )
@@ -69,6 +68,11 @@ def main():
         default=DEFAULT_CONFIG_PATH,
         help="Path to config file (default: ~/.config/fof)"
     )
+    feeds_list_parser.add_argument(
+        "--feed",
+        default=None,
+        help="Only show feeds under the selected feed id"
+    )
 
     # Cache subcommand
     cache_parser = subparsers.add_parser("cache", help="Cache management utilities")
@@ -97,11 +101,7 @@ def main():
         action="store_true",
         help="Enable debug logging"
     )
-    parser.add_argument(
-        "--feed",
-        default=None,
-        help="If set, only enable the specified feed and its descendants in this session"
-    )
+    # Remove global --feed argument; it's not needed globally.
 
     # Enable tab-completion if argcomplete is installed
     if argcomplete:
@@ -148,12 +148,19 @@ def main():
     feed_manager = FeedManager(
         article_manager=article_manager,
         config_manager=config_manager,
-        feed_id=getattr(args, "feed", None)
+        # The feed_id for session-wide filtering is NOT set from --feed anymore
     )
 
     # Handle subcommands
     if args.command == "feeds" and getattr(args, "feeds_command", None) == "list":
-        print_feed_paths(feed_manager)
+        feed_id = getattr(args, "feed", None)
+        base_feed = None
+        if feed_id:
+            base_feed = feed_manager.get_feed_by_id(feed_id)
+            if base_feed is None:
+                print(f"Feed with id '{feed_id}' not found.")
+                sys.exit(1)
+        print_feed_paths(feed_manager, base_feed=base_feed)
         sys.exit(0)
 
     if args.command == "cache" and getattr(args, "cache_command", None) == "clear":
