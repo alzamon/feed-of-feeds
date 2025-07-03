@@ -70,6 +70,22 @@ def main():
         help="Path to config file (default: ~/.config/fof)"
     )
 
+    # Cache subcommand
+    cache_parser = subparsers.add_parser("cache", help="Cache management utilities")
+    cache_subparsers = cache_parser.add_subparsers(dest="cache_command")
+
+    cache_clear_parser = cache_subparsers.add_parser("clear", help="Clear the article cache for all syndication feeds under a feed")
+    cache_clear_parser.add_argument(
+        "--config", "-c", 
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to config file (default: ~/.config/fof)"
+    )
+    cache_clear_parser.add_argument(
+        "--feed",
+        required=True,
+        help="Feed ID under which to clear the cache for all syndication feeds"
+    )
+
     # Global arguments for default mode (control loop)
     parser.add_argument(
         "--config", "-c", 
@@ -138,6 +154,29 @@ def main():
     # Handle subcommands
     if args.command == "feeds" and getattr(args, "feeds_command", None) == "list":
         print_feed_paths(feed_manager)
+        sys.exit(0)
+
+    if args.command == "cache" and getattr(args, "cache_command", None) == "clear":
+        # Find the feed by id (any type)
+        feed_id = getattr(args, "feed", None)
+        selected_feed = feed_manager.get_feed_by_id(feed_id)
+        if selected_feed is None:
+            print(f"Feed with id '{feed_id}' not found.")
+            sys.exit(1)
+
+        from .models.syndication_feed import SyndicationFeed
+
+        total_deleted = 0
+
+        def clear_if_syndication(feed, ctx):
+            nonlocal total_deleted
+            if isinstance(feed, SyndicationFeed):
+                deleted = article_manager.clear_cache(feed)
+                print(f"Cleared {deleted} articles from cache for syndication feed '{feed.id}'.")
+                total_deleted += deleted
+
+        feed_manager.perform_on_feeds(selected_feed, clear_if_syndication)
+        print(f"Total articles cleared: {total_deleted}")
         sys.exit(0)
     
     # Initialize control loop to handle interactions

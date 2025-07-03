@@ -132,6 +132,22 @@ class FeedManager:
             logger.error(f"Unknown feed directory structure at {path}")
             return None
 
+    def get_feed_by_id(self, feed_id: str):
+        """
+        Recursively search for a feed with the given id in the entire feed tree.
+        Returns the feed object if found, else None.
+        """
+        found_feed = None
+
+        def finder(feed, ctx):
+            nonlocal found_feed
+            if getattr(feed, "id", None) == feed_id:
+                found_feed = feed
+
+        if getattr(self, "root_feed", None):
+            self.perform_on_feeds(self.root_feed, finder)
+        return found_feed
+
     def _try_load_union_info(self, path: str):
         union_path = os.path.join(path, "union.json")
         if os.path.isfile(union_path):

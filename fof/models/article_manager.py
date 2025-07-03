@@ -257,3 +257,21 @@ class ArticleManager:
             if row:
                 return self._row_to_article(row)
         return None
+
+    def clear_cache(self, feed) -> int:
+        """
+        Clear cached articles for the exact feedpath of the given feed (SyndicationFeed).
+        Returns the number of rows deleted.
+        """
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                fp_json = json.dumps(feed.feedpath)
+                cursor.execute("DELETE FROM cache WHERE feedpath = ?", (fp_json,))
+                deleted = cursor.rowcount
+                conn.commit()
+                logger.info(f"Cleared {deleted} articles from cache for feedpath {feed.feedpath}.")
+                return deleted
+        except sqlite3.Error as e:
+            logger.error(f"Error clearing cache: {e}")
+            return 0
