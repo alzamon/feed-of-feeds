@@ -24,6 +24,13 @@ cd feed-of-feeds
 pip install -e .
 ```
 
+For systems with protected global Python package installs (like Ubuntu), use pipx:
+```bash
+git clone https://github.com/alzamon/feed-of-feeds.git
+cd feed-of-feeds
+pipx install -e .
+```
+
 For tab completion support:
 ```bash
 pip install argcomplete
@@ -42,6 +49,11 @@ eval "$(register-python-argcomplete fof)"
 2. **List configured feeds**:
    ```bash
    fof feeds list
+   ```
+
+   Or list feeds under a specific feed ID:
+   ```bash
+   fof feeds list --feed tech_news
    ```
 
 3. **View logs**:
@@ -226,12 +238,7 @@ pip install ".[test]"
 
 ## Dependencies
 
-- **feedparser**: RSS/Atom feed parsing
-- **requests**: HTTP fetching
-- **pyyaml**: YAML configuration support
-- **argcomplete**: Tab completion
-- **sqlite3**: Built-in database (Python standard library)
-- **curses**: Terminal interface (Python standard library)
+Dependencies are automatically installed via `pip install`. See `setup.py` for the complete list.
 
 ## License
 
