@@ -51,6 +51,9 @@ class ConfigManager:
         if not os.path.exists(update_dir) or not os.path.isdir(update_dir) or not os.listdir(update_dir):
             logger.warning(f"'update' directory '{update_dir}' does not exist or is empty. Persist skipped.")
             return
-        shutil.rmtree(tree_dir)
+        
+        # Remove existing tree directory if it exists
+        if os.path.exists(tree_dir):
+            shutil.rmtree(tree_dir)
         os.rename(update_dir, tree_dir)
         logger.info(f"Persisted update: replaced '{tree_dir}' with '{update_dir}'.")

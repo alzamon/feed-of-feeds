@@ -40,7 +40,13 @@ class FeedManager:
 
     def _load_config(self):
         """Load the configuration from the 'tree' directory and initialize feeds."""
-        config_dir = self.config_manager.get_tree_dir
+        try:
+            config_dir = self.config_manager.get_tree_dir
+        except FileNotFoundError:
+            logger.info("No tree directory found. This appears to be a first-time setup. Starting with no feeds configured.")
+            self.root_feed = None
+            return
+            
         try:
             feed = self._load_feed_from_directory(config_dir, feedpath=[], parent_max_age=None, is_root=True)
             if feed is None:
