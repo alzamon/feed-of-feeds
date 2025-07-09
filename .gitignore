@@ -36,6 +36,7 @@ ENV/
 .fof/
 *.db
 *.log
+test_temp/
 
 # OS specific
 .DS_Store
