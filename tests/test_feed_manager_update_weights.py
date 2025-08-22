@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 from fof.feed_manager import FeedManager
 from fof.models.union_feed import UnionFeed, WeightedFeed
-from fof.models.regular_feed import RegularFeed
+from fof.models.syndication_feed import SyndicationFeed
 from fof.models.base_feed import BaseFeed
 
 # Dummy managers for FeedManager
@@ -26,7 +26,7 @@ class DummyConfigManager:
 def simple_union_feed():
     # Create two dummy RegularFeed children
     article_manager = DummyArticleManager()
-    feed1 = RegularFeed(
+    feed1 = SyndicationFeed(
         id="feed1",
         title="Feed One",
         description="desc1",
@@ -36,7 +36,7 @@ def simple_union_feed():
         article_manager=article_manager,
         feedpath=["feed1"],
     )
-    feed2 = RegularFeed(
+    feed2 = SyndicationFeed(
         id="feed2",
         title="Feed Two",
         description="desc2",

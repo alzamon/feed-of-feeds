@@ -3,7 +3,7 @@ from datetime import datetime
 from fof.feed_manager import FeedManager
 from fof.models.union_feed import UnionFeed, WeightedFeed
 from fof.models.filter_feed import FilterFeed, Filter
-from fof.models.regular_feed import RegularFeed
+from fof.models.syndication_feed import SyndicationFeed
 from fof.models.enums import FilterType
 
 # Dummy managers for FeedManager
@@ -33,7 +33,7 @@ def complex_feed_tree():
     article_manager = DummyArticleManager()
 
     # Grandchild under sub_union
-    regular1 = RegularFeed(
+    regular1 = SyndicationFeed(
         id="regular1",
         title="Regular 1",
         description="desc1",
@@ -55,7 +55,7 @@ def complex_feed_tree():
     )
 
     # Filter branch
-    regular2 = RegularFeed(
+    regular2 = SyndicationFeed(
         id="regular2",
         title="Regular 2",
         description="desc2",

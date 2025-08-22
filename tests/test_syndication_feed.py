@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timedelta
 
-from fof.models.regular_feed import RegularFeed
+from fof.models.syndication_feed import SyndicationFeed
 from fof.models.base_feed import BaseFeed
 from fof.models.enums import FeedType
 from fof.models.syndication_feed import SyndicationFeed
