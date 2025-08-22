@@ -267,7 +267,7 @@ class FeedManager:
         All chdir and delete logic is handled by config_manager.persist_update.
         Assumes update dir does not exist before serialization.
         Only saves if there are actual changes to avoid unnecessary config rewrites.
-        Updates last_updated timestamp when changes are detected.
+        Updates last_updated timestamp for feeds that have changes.
         """
         update_dir = self.config_manager.get_update_dir
         tree_dir = self.config_manager.get_tree_dir
@@ -283,10 +283,16 @@ class FeedManager:
             logger.info("No configuration changes detected, skipping save.")
             return
         
-        # Changes detected, update the root feed's last_updated timestamp
-        self.root_feed.last_updated = datetime.now()
+        # Changes detected, identify which feeds have changed and update their timestamps
+        changed_feeds = self._identify_changed_feeds(tree_dir, update_dir)
+        current_time = datetime.now()
         
-        # Re-serialize with updated timestamp
+        # Update timestamps for changed feeds
+        for feed in changed_feeds:
+            feed.last_updated = current_time
+            logger.debug(f"Updated timestamp for changed feed: {feed.id}")
+        
+        # Re-serialize with updated timestamps
         import shutil
         shutil.rmtree(update_dir)
         self.serialize_to_directory(self.root_feed, update_dir)
@@ -348,6 +354,80 @@ class FeedManager:
         except (OSError, FileNotFoundError):
             # If either directory doesn't exist or there's an error, consider them different
             return False
+
+    def _identify_changed_feeds(self, old_dir: str, new_dir: str) -> List[BaseFeed]:
+        """
+        Identify which feeds have actually changed by comparing their serialized configurations.
+        Returns a list of BaseFeed objects that have changes.
+        """
+        changed_feeds = []
+        
+        def collect_feeds_with_paths(feed: BaseFeed, current_path: str = "") -> List[tuple]:
+            """Recursively collect all feeds with their actual file paths."""
+            feeds_with_paths = []
+            
+            if feed.feed_type == FeedType.UNION:
+                config_path = os.path.join(current_path, "union.json")
+                feeds_with_paths.append((feed, config_path))
+                
+                for wf in feed.feeds:
+                    folder_name = self.get_feed_folder_or_filename(wf.feed)
+                    child_path = os.path.join(current_path, folder_name)
+                    feeds_with_paths.extend(collect_feeds_with_paths(wf.feed, child_path))
+                    
+            elif feed.feed_type == FeedType.FILTER:
+                config_path = os.path.join(current_path, "filter.json")
+                feeds_with_paths.append((feed, config_path))
+                
+                if feed.source_feed:
+                    source_path = os.path.join(current_path, "source")
+                    feeds_with_paths.extend(collect_feeds_with_paths(feed.source_feed, source_path))
+                    
+            elif feed.feed_type == FeedType.SYNDICATION:
+                config_path = os.path.join(current_path, "feed.json")
+                feeds_with_paths.append((feed, config_path))
+            
+            return feeds_with_paths
+        
+        def configs_equal(old_path: str, new_path: str) -> bool:
+            """Compare two feed configuration files."""
+            try:
+                if not os.path.exists(old_path) or not os.path.exists(new_path):
+                    return False
+                
+                import json
+                with open(old_path, 'r') as f1, open(new_path, 'r') as f2:
+                    old_config = json.load(f1)
+                    new_config = json.load(f2)
+                    
+                    # Remove last_updated from comparison since we're checking for other changes
+                    old_config_copy = old_config.copy()
+                    new_config_copy = new_config.copy()
+                    old_config_copy.pop('last_updated', None)
+                    new_config_copy.pop('last_updated', None)
+                    
+                    return old_config_copy == new_config_copy
+            except (json.JSONDecodeError, OSError):
+                return False
+        
+        # Get all feeds with their actual paths
+        feeds_with_paths = collect_feeds_with_paths(self.root_feed)
+        
+        # Check each feed for changes
+        for feed, relative_path in feeds_with_paths:
+            try:
+                old_config_path = os.path.join(old_dir, relative_path)
+                new_config_path = os.path.join(new_dir, relative_path)
+                
+                if not configs_equal(old_config_path, new_config_path):
+                    changed_feeds.append(feed)
+                    logger.debug(f"Detected changes in feed: {feed.id}")
+            except Exception as e:
+                logger.debug(f"Error comparing feed {feed.id}: {e}")
+                # If we can't compare, assume it changed to be safe
+                changed_feeds.append(feed)
+        
+        return changed_feeds
 
     def next_article(self) -> Optional[Article]:
         if not self.root_feed:

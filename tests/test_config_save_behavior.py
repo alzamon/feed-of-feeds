@@ -3,7 +3,7 @@ import tempfile
 import os
 import json
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from fof.feed_manager import FeedManager
@@ -256,3 +256,92 @@ def test_config_rewritten_after_weight_change():
         feed_manager.save_config()
         changed_mtime = os.path.getmtime(union_json_path)
         assert changed_mtime > no_change_mtime, "Config was not rewritten despite making weight changes"
+
+
+def test_only_changed_feeds_get_timestamp_updates():
+    """Test that only feeds with actual changes get their timestamps updated."""
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        tree_dir = os.path.join(temp_dir, "tree")
+        os.makedirs(tree_dir)
+        
+        # Create root union
+        base_time = datetime.now() - timedelta(hours=1)
+        root_config = {
+            "id": "root",
+            "title": None,
+            "description": "root union",
+            "last_updated": base_time.isoformat(),
+            "max_age": "7d",
+            "weights": {"Feed 1": 60, "Feed 2": 40}
+        }
+        
+        root_json_path = os.path.join(tree_dir, "union.json")
+        with open(root_json_path, "w") as f:
+            json.dump(root_config, f, indent=2)
+        
+        # Create Feed 1
+        feed1_dir = os.path.join(tree_dir, "Feed 1")
+        os.makedirs(feed1_dir)
+        feed1_config = {
+            "id": "feed1",
+            "title": "Feed 1",
+            "description": "First feed",
+            "last_updated": base_time.isoformat(),
+            "url": "http://example.com/feed1.xml",
+            "max_age": "7d"
+        }
+        feed1_json_path = os.path.join(feed1_dir, "feed.json")
+        with open(feed1_json_path, "w") as f:
+            json.dump(feed1_config, f, indent=2)
+        
+        # Create Feed 2
+        feed2_dir = os.path.join(tree_dir, "Feed 2")
+        os.makedirs(feed2_dir)
+        feed2_config = {
+            "id": "feed2",
+            "title": "Feed 2",
+            "description": "Second feed",
+            "last_updated": base_time.isoformat(),
+            "url": "http://example.com/feed2.xml",
+            "max_age": "7d"
+        }
+        feed2_json_path = os.path.join(feed2_dir, "feed.json")
+        with open(feed2_json_path, "w") as f:
+            json.dump(feed2_config, f, indent=2)
+        
+        # Create feed manager
+        config_manager = ConfigManager(temp_dir)
+        article_manager = DummyArticleManager()
+        feed_manager = FeedManager(article_manager, config_manager)
+        
+        # Update weights - this should trigger changes to root feed only
+        feed_manager.update_weights(["feed1"], 10)
+        
+        # Save config
+        import time
+        time.sleep(0.01)
+        feed_manager.save_config()
+        
+        # Read updated configs
+        with open(root_json_path, "r") as f:
+            updated_root = json.load(f)
+        with open(feed1_json_path, "r") as f:
+            updated_feed1 = json.load(f)
+        with open(feed2_json_path, "r") as f:
+            updated_feed2 = json.load(f)
+        
+        # Parse timestamps
+        root_timestamp = datetime.fromisoformat(updated_root["last_updated"])
+        feed1_timestamp = datetime.fromisoformat(updated_feed1["last_updated"])
+        feed2_timestamp = datetime.fromisoformat(updated_feed2["last_updated"])
+        
+        # Root should be updated (has weight changes)
+        assert root_timestamp > base_time, "Root feed timestamp should be updated when weights change"
+        
+        # Feed1 and Feed2 should NOT be updated (they didn't change themselves)
+        assert feed1_timestamp == base_time, "Feed1 timestamp should remain unchanged when feed itself is not modified"
+        assert feed2_timestamp == base_time, "Feed2 timestamp should remain unchanged when feed itself is not modified"
+        
+        # Check that weight was actually updated
+        assert updated_root["weights"]["Feed 1"] == 70, "Feed 1 weight should have increased by 10"
