@@ -289,8 +289,22 @@ class FeedManager:
         """
         Compare two directory structures to see if they contain identical files.
         Returns True if the directories have the same structure and file contents.
+        Handles JSON files with special comparison to account for equivalent values
+        (e.g., 60 vs 60.0).
         """
         import filecmp
+        import json
+        
+        def json_files_equal(file1_path: str, file2_path: str) -> bool:
+            """Compare two JSON files, treating equivalent values as equal."""
+            try:
+                with open(file1_path, 'r') as f1, open(file2_path, 'r') as f2:
+                    data1 = json.load(f1)
+                    data2 = json.load(f2)
+                    return data1 == data2
+            except (json.JSONDecodeError, OSError):
+                # Fall back to binary comparison if JSON parsing fails
+                return filecmp.cmp(file1_path, file2_path, shallow=False)
         
         def compare_dirs(dcmp):
             """Recursively compare directory structures."""
@@ -298,9 +312,18 @@ class FeedManager:
             if dcmp.left_only or dcmp.right_only:
                 return False
             
-            # Check if any files have different contents
-            if dcmp.diff_files:
-                return False
+            # Check files with different contents
+            for file_name in dcmp.diff_files:
+                file1_path = os.path.join(dcmp.left, file_name)
+                file2_path = os.path.join(dcmp.right, file_name)
+                
+                # Special handling for JSON files
+                if file_name.endswith('.json'):
+                    if not json_files_equal(file1_path, file2_path):
+                        return False
+                else:
+                    # For non-JSON files, they are already identified as different
+                    return False
             
             # Recursively check subdirectories
             for sub_dcmp in dcmp.subdirs.values():
