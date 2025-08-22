@@ -2,6 +2,7 @@
 import random
 import json
 import os
+import shutil
 from typing import Dict, Optional, List, Callable, Any
 from datetime import timedelta, datetime
 import logging
@@ -94,7 +95,7 @@ class FeedManager:
                 id=feed_data["id"],
                 title=feed_data.get("title"),
                 description=feed_data.get("description", "No description provided"),
-                last_updated=datetime.now(),
+                last_updated=datetime.fromisoformat(feed_data["last_updated"]) if "last_updated" in feed_data else datetime.now(),
                 url=feed_data["url"],
                 max_age=my_max_age,
                 article_manager=self.article_manager,
@@ -265,10 +266,56 @@ class FeedManager:
         Write to an 'update' directory first, then move to 'tree' on success via config_manager.
         All chdir and delete logic is handled by config_manager.persist_update.
         Assumes update dir does not exist before serialization.
+        Only saves if there are actual changes to avoid unnecessary config rewrites.
         """
         update_dir = self.config_manager.get_update_dir
+        tree_dir = self.config_manager.get_tree_dir
+        
+        # Serialize to update directory
         self.serialize_to_directory(self.root_feed, update_dir)
+        
+        # Check if the new configuration is different from the existing one
+        if self._config_directories_equal(tree_dir, update_dir):
+            # No changes detected, clean up update directory and skip persist
+            import shutil
+            shutil.rmtree(update_dir)
+            logger.info("No configuration changes detected, skipping save.")
+            return
+        
+        # Changes detected, proceed with persist
         self.config_manager.persist_update(update_dir)
+    
+    def _config_directories_equal(self, dir1: str, dir2: str) -> bool:
+        """
+        Compare two directory structures to see if they contain identical files.
+        Returns True if the directories have the same structure and file contents.
+        """
+        import filecmp
+        
+        def compare_dirs(dcmp):
+            """Recursively compare directory structures."""
+            # Check if there are files only in one directory or the other
+            if dcmp.left_only or dcmp.right_only:
+                return False
+            
+            # Check if any files have different contents
+            if dcmp.diff_files:
+                return False
+            
+            # Recursively check subdirectories
+            for sub_dcmp in dcmp.subdirs.values():
+                if not compare_dirs(sub_dcmp):
+                    return False
+            
+            return True
+        
+        try:
+            # Use filecmp to compare directory structures
+            dcmp = filecmp.dircmp(dir1, dir2)
+            return compare_dirs(dcmp)
+        except (OSError, FileNotFoundError):
+            # If either directory doesn't exist or there's an error, consider them different
+            return False
 
     def next_article(self) -> Optional[Article]:
         if not self.root_feed:
