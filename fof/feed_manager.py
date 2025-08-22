@@ -267,6 +267,7 @@ class FeedManager:
         All chdir and delete logic is handled by config_manager.persist_update.
         Assumes update dir does not exist before serialization.
         Only saves if there are actual changes to avoid unnecessary config rewrites.
+        Updates last_updated timestamp when changes are detected.
         """
         update_dir = self.config_manager.get_update_dir
         tree_dir = self.config_manager.get_tree_dir
@@ -282,7 +283,15 @@ class FeedManager:
             logger.info("No configuration changes detected, skipping save.")
             return
         
-        # Changes detected, proceed with persist
+        # Changes detected, update the root feed's last_updated timestamp
+        self.root_feed.last_updated = datetime.now()
+        
+        # Re-serialize with updated timestamp
+        import shutil
+        shutil.rmtree(update_dir)
+        self.serialize_to_directory(self.root_feed, update_dir)
+        
+        # Proceed with persist
         self.config_manager.persist_update(update_dir)
     
     def _config_directories_equal(self, dir1: str, dir2: str) -> bool:
