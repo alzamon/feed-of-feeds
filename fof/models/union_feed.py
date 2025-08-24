@@ -14,6 +14,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Constants for weight calculations
+WEIGHT_PERCENTAGE_BASE = 100.0
+
 @dataclass
 class WeightedFeed:
     feed: BaseFeed
@@ -64,10 +67,10 @@ class UnionFeed(BaseFeed):
         if total == 0:
             if self.feeds:
                 for wf in self.feeds:
-                    wf.weight = 100.0 / len(self.feeds)
+                    wf.weight = WEIGHT_PERCENTAGE_BASE / len(self.feeds)
         else:
             for wf in self.feeds:
-                wf.weight = (wf.weight / total) * 100.0
+                wf.weight = (wf.weight / total) * WEIGHT_PERCENTAGE_BASE
 
     def fetch(self) -> Optional[Article]:
         """

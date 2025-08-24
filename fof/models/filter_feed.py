@@ -24,7 +24,12 @@ class Filter:
 
     def __post_init__(self):
         if self.filter_type in {FilterType.TITLE_REGEX, FilterType.CONTENT_REGEX, FilterType.LINK_REGEX}:
-            self.compiled_pattern = re.compile(self.pattern)
+            try:
+                self.compiled_pattern = re.compile(self.pattern)
+            except re.error as e:
+                logger.error(f"Invalid regex pattern '{self.pattern}' for filter {self.filter_type}: {e}")
+                # Set to None to disable this filter rather than crash
+                self.compiled_pattern = None
 
 @dataclass
 class FilterFeed(BaseFeed):
