@@ -345,3 +345,59 @@ def test_only_changed_feeds_get_timestamp_updates():
         
         # Check that weight was actually updated
         assert updated_root["weights"]["Feed 1"] == 70, "Feed 1 weight should have increased by 10"
+
+
+def test_config_manager_persist_update_atomic():
+    """Test that persist_update works atomically with proper error handling."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        config_manager = ConfigManager(temp_dir)
+        
+        # Create tree directory
+        tree_dir = os.path.join(temp_dir, "tree")
+        os.makedirs(tree_dir)
+        
+        # Create a test file in tree
+        test_file = os.path.join(tree_dir, "test.txt")
+        with open(test_file, "w") as f:
+            f.write("original content")
+        
+        # Create update directory
+        update_dir = os.path.join(temp_dir, "update")
+        os.makedirs(update_dir)
+        update_file = os.path.join(update_dir, "test.txt")
+        with open(update_file, "w") as f:
+            f.write("updated content")
+        
+        # Persist update should work
+        config_manager.persist_update(update_dir)
+        
+        # Check that tree directory now has the updated content
+        with open(test_file, "r") as f:
+            assert f.read() == "updated content"
+        
+        # Update directory should be gone
+        assert not os.path.exists(update_dir)
+
+
+def test_config_manager_persist_update_empty_directory():
+    """Test that persist_update skips empty update directories."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        config_manager = ConfigManager(temp_dir)
+        
+        # Create tree directory
+        tree_dir = os.path.join(temp_dir, "tree")
+        os.makedirs(tree_dir)
+        test_file = os.path.join(tree_dir, "test.txt")
+        with open(test_file, "w") as f:
+            f.write("original content")
+        
+        # Create empty update directory
+        update_dir = os.path.join(temp_dir, "update")
+        os.makedirs(update_dir)
+        
+        # Should skip persist
+        config_manager.persist_update(update_dir)
+        
+        # Original content should be unchanged
+        with open(test_file, "r") as f:
+            assert f.read() == "original content"

@@ -1,4 +1,5 @@
 import pytest
+import re
 from datetime import datetime, timedelta
 
 from fof.models.filter_feed import FilterFeed, Filter
@@ -170,3 +171,14 @@ def test_filterfeed_add_filter_method():
     assert len(ff.filters) == 1
     result = ff.fetch()
     assert result is art
+
+
+def test_filter_invalid_regex_handling():
+    """Test that Filter handles invalid regex gracefully."""
+    # Valid regex should work
+    valid_filter = Filter(FilterType.TITLE_REGEX, "test.*", True)
+    assert valid_filter.compiled_pattern is not None
+    
+    # Invalid regex should not crash but log error and set pattern to None
+    invalid_filter = Filter(FilterType.TITLE_REGEX, "[invalid", True)
+    assert invalid_filter.compiled_pattern is None
