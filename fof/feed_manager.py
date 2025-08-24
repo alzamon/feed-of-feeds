@@ -238,3 +238,27 @@ class FeedManager:
 
         self.perform_on_feeds(self.root_feed, disable_unless_allowed)
 
+    def purge_old_articles(self) -> int:
+        """
+        Purge old articles from all feeds based on their purge_age settings.
+        Returns the total number of articles purged.
+        """
+        total_purged = 0
+        
+        def purge_feed_articles(feed: BaseFeed, ctx: dict):
+            nonlocal total_purged
+            # Check if feed has purge_age set or can compute it from max_age
+            purge_age = getattr(feed, 'purge_age', None)
+            max_age = getattr(feed, 'max_age', None)
+            if purge_age or max_age:
+                purged = self.article_manager.purge_old_articles(feed)
+                total_purged += purged
+                if purged > 0:
+                    logger.info(f"Purged {purged} old articles from feed '{feed.id}'")
+
+        if self.root_feed:
+            self.perform_on_feeds(self.root_feed, purge_feed_articles)
+            logger.info(f"Total articles purged: {total_purged}")
+        
+        return total_purged
+

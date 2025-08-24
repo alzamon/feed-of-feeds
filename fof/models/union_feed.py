@@ -27,6 +27,7 @@ class WeightedFeed:
 class UnionFeed(BaseFeed):
     feeds: List[WeightedFeed] = field(default_factory=list)
     max_age: Optional[timedelta] = None
+    purge_age: Optional[timedelta] = None  # Optional age after which articles are purged from cache
 
     @property
     def feed_type(self) -> FeedType:
@@ -41,10 +42,13 @@ class UnionFeed(BaseFeed):
         feeds: List[WeightedFeed],
         max_age: Optional[timedelta],
         feedpath: List[str],
+        purge_age: Optional[timedelta] = None,
     ):
         super().__init__(id, title, description, last_updated, feedpath, disabled_in_session=False)
         self.feeds = feeds
         self.max_age = max_age
+        # Only set purge_age if explicitly provided
+        self.purge_age = purge_age
         self.normalize_weights()
 
     def add_feed(self, feed: BaseFeed, weight: float):

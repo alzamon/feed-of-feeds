@@ -32,6 +32,7 @@ class FilterFeed(BaseFeed):
     source_feed: BaseFeed
     filters: List[Filter] = field(default_factory=list)
     max_age: Optional[timedelta] = None  # Optional max age for filtering articles
+    purge_age: Optional[timedelta] = None  # Optional age after which articles are purged from cache
 
     def __init__(
         self,
@@ -43,11 +44,14 @@ class FilterFeed(BaseFeed):
         filters: List[Filter],
         max_age: Optional[timedelta],
         feedpath: List[str],
+        purge_age: Optional[timedelta] = None,
     ):
         super().__init__(id, title, description, last_updated, feedpath, disabled_in_session=False)
         self.source_feed = source_feed
         self.filters = filters or []
         self.max_age = max_age
+        # Only set purge_age if explicitly provided
+        self.purge_age = purge_age
 
     @property
     def feed_type(self) -> FeedType:

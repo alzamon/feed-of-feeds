@@ -32,6 +32,9 @@ class FeedSerializer:
                 "max_age": timedelta_to_period_str(feed.max_age) if getattr(feed, "max_age", None) else None,
                 "weights": weights,
             }
+            # Only include purge_age if it's not None
+            if getattr(feed, "purge_age", None) is not None:
+                union_meta["purge_age"] = timedelta_to_period_str(feed.purge_age)
             union_meta_path = os.path.join(path, "union.json")
             with open(union_meta_path, "w", encoding="utf-8") as f:
                 json.dump(union_meta, f, indent=2, ensure_ascii=False)
@@ -63,6 +66,9 @@ class FeedSerializer:
                     } for f in feed.filters
                 ]
             }
+            # Only include purge_age if it's not None
+            if feed.purge_age is not None:
+                config["purge_age"] = timedelta_to_period_str(feed.purge_age)
             with open(filter_config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
             self.serialize_to_directory(feed.source_feed, os.path.join(filter_dir, "source"))
@@ -82,7 +88,7 @@ class FeedSerializer:
     def serialize_feed(self, feed: BaseFeed) -> dict:
         """Serialize a feed object to a dictionary."""
         if feed.feed_type == FeedType.SYNDICATION:
-            return {
+            result = {
                 "id": feed.id,
                 "title": feed.title,
                 "description": feed.description,
@@ -90,8 +96,12 @@ class FeedSerializer:
                 "url": feed.url,
                 "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
             }
+            # Only include purge_age if it's not None
+            if feed.purge_age is not None:
+                result["purge_age"] = timedelta_to_period_str(feed.purge_age)
+            return result
         elif feed.feed_type == FeedType.FILTER:
-            return {
+            result = {
                 "id": feed.id,
                 "title": feed.title,
                 "description": feed.description,
@@ -106,8 +116,12 @@ class FeedSerializer:
                 ],
                 "feed": self.serialize_feed(feed.source_feed)
             }
+            # Only include purge_age if it's not None
+            if feed.purge_age is not None:
+                result["purge_age"] = timedelta_to_period_str(feed.purge_age)
+            return result
         elif feed.feed_type == FeedType.UNION:
-            return {
+            result = {
                 "id": feed.id,
                 "title": feed.title,
                 "description": feed.description,
@@ -120,4 +134,8 @@ class FeedSerializer:
                     } for wf in feed.feeds
                 ]
             }
+            # Only include purge_age if it's not None
+            if feed.purge_age is not None:
+                result["purge_age"] = timedelta_to_period_str(feed.purge_age)
+            return result
         raise ValueError(f"Unknown feed type: {feed.feed_type}")

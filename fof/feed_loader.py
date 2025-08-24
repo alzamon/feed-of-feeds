@@ -3,7 +3,7 @@ import json
 import os
 import logging
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .models.base_feed import BaseFeed
 from .models.union_feed import UnionFeed, WeightedFeed
@@ -37,6 +37,10 @@ class FeedLoader:
             union_feedpath = feedpath + [union_id] if not is_root else []
             max_age_str = union_info.get("max_age") if "max_age" in union_info else None
             my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age
+            
+            # Handle purge_age - only set if explicitly specified in config
+            purge_age_str = union_info.get("purge_age")
+            my_purge_age = parse_time_period(purge_age_str) if purge_age_str else None
             for sub_name, weight in weights.items():
                 sub_path = os.path.join(path, sub_name)
                 sub_feed = self.load_feed_from_directory(sub_path, feedpath=union_feedpath, parent_max_age=my_max_age)
@@ -51,7 +55,8 @@ class FeedLoader:
                 feeds=subfeeds,
                 last_updated=datetime.fromisoformat(union_info["last_updated"]) if "last_updated" in union_info else datetime.now(),
                 max_age=my_max_age,
-                feedpath=feedpath
+                feedpath=feedpath,
+                purge_age=my_purge_age
             )
         elif os.path.isfile(feed_path):
             with open(feed_path, "r", encoding="utf-8") as f:
@@ -61,6 +66,10 @@ class FeedLoader:
             my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age
             if not my_max_age:
                 raise ValueError("Root feed must have a max_age defined")
+                
+            # Handle purge_age - only set if explicitly specified in config
+            purge_age_str = feed_data.get("purge_age")
+            my_purge_age = parse_time_period(purge_age_str) if purge_age_str else None
             syndication_feedpath =  feedpath + [feed_id] if not is_root else []
             return SyndicationFeed(
                 id=feed_data["id"],
@@ -71,6 +80,7 @@ class FeedLoader:
                 max_age=my_max_age,
                 article_manager=self.article_manager,
                 feedpath=syndication_feedpath,
+                purge_age=my_purge_age,
             )
         elif os.path.isfile(filter_path):
             with open(filter_path, "r", encoding="utf-8") as f:
@@ -80,6 +90,10 @@ class FeedLoader:
             my_max_age = parse_time_period(max_age_str) if isinstance(max_age_str, str) and max_age_str else parent_max_age
             if not my_max_age:
                 raise ValueError("Root feed must have a max_age defined (inherited)")
+                
+            # Handle purge_age - only set if explicitly specified in config
+            purge_age_str = filter_data.get("purge_age")
+            my_purge_age = parse_time_period(purge_age_str) if purge_age_str else None
             filter_feedpath = feedpath + [filter_id] if not is_root else []
             source_path = os.path.join(path, "source")
             source_feed = self.load_feed_from_directory(source_path, feedpath=filter_feedpath, parent_max_age=my_max_age)
@@ -98,7 +112,8 @@ class FeedLoader:
                 source_feed=source_feed,
                 last_updated=datetime.fromisoformat(filter_data["last_updated"]) if "last_updated" in filter_data else datetime.now(),
                 max_age=my_max_age,
-                feedpath=filter_feedpath
+                feedpath=filter_feedpath,
+                purge_age=my_purge_age
             )
         else:
             logger.error(f"Unknown feed directory structure at {path}")

@@ -193,6 +193,10 @@ def main():
     
     # Initialize control loop to handle interactions
     ControlLoop(feed_manager, article_manager).start()
+    
+    # Purge old articles before saving config and exiting
+    feed_manager.purge_old_articles()
+    
     feed_manager.save_config()
 
 if __name__ == "__main__":
