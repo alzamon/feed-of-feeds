@@ -85,28 +85,31 @@ class FeedSerializer:
         else:
             return self.config_manager.sanitize_filename(feed.title or feed.id or "feed")
 
+    def _get_base_feed_dict(self, feed: BaseFeed) -> dict:
+        """Get the common fields for all feed types."""
+        return {
+            "id": feed.id,
+            "title": feed.title,
+            "description": feed.description,
+            "last_updated": feed.last_updated.isoformat(),
+            "max_age": timedelta_to_period_str(feed.max_age) if hasattr(feed, 'max_age') and feed.max_age else None,
+        }
+
+    def _add_purge_age_if_present(self, result: dict, feed: BaseFeed) -> None:
+        """Add purge_age to result if it exists and is not None."""
+        if hasattr(feed, 'purge_age') and feed.purge_age is not None:
+            result["purge_age"] = timedelta_to_period_str(feed.purge_age)
+
     def serialize_feed(self, feed: BaseFeed) -> dict:
         """Serialize a feed object to a dictionary."""
         if feed.feed_type == FeedType.SYNDICATION:
-            result = {
-                "id": feed.id,
-                "title": feed.title,
-                "description": feed.description,
-                "last_updated": feed.last_updated.isoformat(),
-                "url": feed.url,
-                "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
-            }
-            # Only include purge_age if it's not None
-            if feed.purge_age is not None:
-                result["purge_age"] = timedelta_to_period_str(feed.purge_age)
+            result = self._get_base_feed_dict(feed)
+            result["url"] = feed.url
+            self._add_purge_age_if_present(result, feed)
             return result
         elif feed.feed_type == FeedType.FILTER:
-            result = {
-                "id": feed.id,
-                "title": feed.title,
-                "description": feed.description,
-                "last_updated": feed.last_updated.isoformat(),
-                "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
+            result = self._get_base_feed_dict(feed)
+            result.update({
                 "criteria": [
                     {
                         "filter_type": f.filter_type.value,
@@ -115,27 +118,17 @@ class FeedSerializer:
                     } for f in feed.filters
                 ],
                 "feed": self.serialize_feed(feed.source_feed)
-            }
-            # Only include purge_age if it's not None
-            if feed.purge_age is not None:
-                result["purge_age"] = timedelta_to_period_str(feed.purge_age)
+            })
+            self._add_purge_age_if_present(result, feed)
             return result
         elif feed.feed_type == FeedType.UNION:
-            result = {
-                "id": feed.id,
-                "title": feed.title,
-                "description": feed.description,
-                "last_updated": feed.last_updated.isoformat(),
-                "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
-                "feeds": [
-                    {
-                        "weight": wf.weight,
-                        "feed": self.serialize_feed(wf.feed)
-                    } for wf in feed.feeds
-                ]
-            }
-            # Only include purge_age if it's not None
-            if feed.purge_age is not None:
-                result["purge_age"] = timedelta_to_period_str(feed.purge_age)
+            result = self._get_base_feed_dict(feed)
+            result["feeds"] = [
+                {
+                    "weight": wf.weight,
+                    "feed": self.serialize_feed(wf.feed)
+                } for wf in feed.feeds
+            ]
+            self._add_purge_age_if_present(result, feed)
             return result
         raise ValueError(f"Unknown feed type: {feed.feed_type}")

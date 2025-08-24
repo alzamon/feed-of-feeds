@@ -21,6 +21,9 @@ from .feed_loader import FeedLoader
 
 from .time_period import parse_time_period, timedelta_to_period_str
 
+# Constants for weight calculations
+WEIGHT_PERCENTAGE_BASE = 100.0
+
 logger = logging.getLogger(__name__)
 
 class FeedManager:
@@ -96,7 +99,6 @@ class FeedManager:
         # Check if the new configuration is different from the existing one
         if self.config_comparator.config_directories_equal(tree_dir, update_dir):
             # No changes detected, clean up update directory and skip persist
-            import shutil
             shutil.rmtree(update_dir)
             logger.info("No configuration changes detected, skipping save.")
             return
@@ -111,7 +113,6 @@ class FeedManager:
             logger.debug(f"Updated timestamp for changed feed: {feed.id}")
         
         # Re-serialize with updated timestamps
-        import shutil
         shutil.rmtree(update_dir)
         self.feed_serializer.serialize_to_directory(self.root_feed, update_dir)
         
@@ -173,13 +174,16 @@ class FeedManager:
 
         performer(base_feed, context)
 
+        # Navigate the feed hierarchy using duck typing to avoid tight coupling
+        # This approach allows for extensibility but could be improved with polymorphism
+        
         # WeightedFeed: has .feed (compose likelihood if present)
         if hasattr(base_feed, "weight") and hasattr(base_feed, "feed"):
             new_context = context.copy()
             if "likelihood" in new_context:
-                new_context["likelihood"] *= (base_feed.weight / 100.0)
+                new_context["likelihood"] *= (base_feed.weight / WEIGHT_PERCENTAGE_BASE)
             else:
-                new_context["likelihood"] = (base_feed.weight / 100.0)
+                new_context["likelihood"] = (base_feed.weight / WEIGHT_PERCENTAGE_BASE)
             self.perform_on_feeds(base_feed.feed, performer, new_context)
         # UnionFeed: has .feeds (list of WeightedFeed)
         elif hasattr(base_feed, "feeds"):

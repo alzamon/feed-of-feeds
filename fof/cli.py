@@ -15,6 +15,9 @@ except ImportError:
 
 DEFAULT_CONFIG_PATH = "~/.config/fof/"
 
+# Constants for percentage calculations
+PERCENTAGE_MULTIPLIER = 100.0
+
 def print_feed_paths(feed_manager, base_feed=None):
     """
     Recursively print all feed paths from the given base feed, and the product of
@@ -32,7 +35,7 @@ def print_feed_paths(feed_manager, base_feed=None):
         if is_leaf:
             print(" -> ".join(feedpath))
             print("  " + (url if url else "(no url)"))
-            print("  Cumulative likelihood: {:.2f}%".format(ctx.get("likelihood", 1.0) * 100.0))
+            print("  Cumulative likelihood: {:.2f}%".format(ctx.get("likelihood", 1.0) * PERCENTAGE_MULTIPLIER))
 
     root = base_feed if base_feed is not None else getattr(feed_manager, "root_feed", None)
     if root:

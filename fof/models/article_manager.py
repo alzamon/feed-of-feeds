@@ -13,6 +13,22 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Database column indices for cache table - keep in sync with _create_cache_table
+class CacheColumns:
+    ID = 0
+    TITLE = 1
+    CONTENT = 2
+    LINK = 3
+    AUTHOR = 4
+    PUBLISHED_DATE = 5
+    FEED_ID = 6
+    FEEDPATH = 7
+    READ = 8
+    FETCHED = 9
+    SCORE = 10
+    CACHED_AT = 11
+    TAGS = 12
+
 class ArticleManager:
     """Manages the state of articles with persistence using SQLite and fetching logic."""
 
@@ -31,14 +47,26 @@ class ArticleManager:
                 # Always create the table if it does not exist
                 self._create_cache_table(cursor)
                 # Now check for missing columns and add them if necessary
-                cursor.execute("PRAGMA table_info(cache)")
-                columns = [row[1] for row in cursor.fetchall()]
-                if "fetched" not in columns:
-                    cursor.execute("ALTER TABLE cache ADD COLUMN fetched TIMESTAMP DEFAULT NULL")
-                if "tags" not in columns:
-                    cursor.execute("ALTER TABLE cache ADD COLUMN tags TEXT DEFAULT NULL")
+                self._add_missing_columns(cursor)
         except sqlite3.Error as e:
             logger.error(f"Error initializing database: {e}")
+            raise
+
+    def _add_missing_columns(self, cursor):
+        """Add missing columns to the cache table if they don't exist."""
+        cursor.execute("PRAGMA table_info(cache)")
+        existing_columns = {row[1] for row in cursor.fetchall()}
+        
+        # Define columns that should exist
+        required_columns = {
+            "fetched": "ALTER TABLE cache ADD COLUMN fetched TIMESTAMP DEFAULT NULL",
+            "tags": "ALTER TABLE cache ADD COLUMN tags TEXT DEFAULT NULL"
+        }
+        
+        for column_name, add_sql in required_columns.items():
+            if column_name not in existing_columns:
+                cursor.execute(add_sql)
+                logger.info(f"Added missing column '{column_name}' to cache table")
 
     def _create_cache_table(self, cursor):
         cursor.execute("""
@@ -162,17 +190,17 @@ class ArticleManager:
 
     def _row_to_article(self, row) -> Article:
         return Article(
-            id=row[0],
-            title=row[1],
-            content=row[2],
-            link=row[3],
-            author=row[4],
-            published_date=datetime.fromisoformat(row[5]) if row[5] else None,
-            feed_id=row[6],
-            feedpath=json.loads(row[7]) if row[7] else None,
-            read=datetime.fromisoformat(row[8]) if row[8] else None,
-            score=row[10],
-            tags=json.loads(row[12]) if row[12] else []
+            id=row[CacheColumns.ID],
+            title=row[CacheColumns.TITLE],
+            content=row[CacheColumns.CONTENT],
+            link=row[CacheColumns.LINK],
+            author=row[CacheColumns.AUTHOR],
+            published_date=datetime.fromisoformat(row[CacheColumns.PUBLISHED_DATE]) if row[CacheColumns.PUBLISHED_DATE] else None,
+            feed_id=row[CacheColumns.FEED_ID],
+            feedpath=json.loads(row[CacheColumns.FEEDPATH]) if row[CacheColumns.FEEDPATH] else None,
+            read=datetime.fromisoformat(row[CacheColumns.READ]) if row[CacheColumns.READ] else None,
+            score=row[CacheColumns.SCORE],
+            tags=json.loads(row[CacheColumns.TAGS]) if row[CacheColumns.TAGS] else []
         )
 
     def _fetch_articles_from_web(self, url: str, feed_id: str, feedpath: List[str], max_age: Optional[timedelta]) -> List[Article]:
