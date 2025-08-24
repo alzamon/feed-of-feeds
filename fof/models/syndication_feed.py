@@ -17,6 +17,7 @@ class SyndicationFeed(BaseFeed):
     url: str
     max_age: Optional[timedelta]  # Optional max age for filtering articles
     article_manager: ArticleManager  # ArticleManager instance
+    purge_age: Optional[timedelta] = None  # Optional age after which articles are purged from cache
 
     @property
     def feed_type(self) -> FeedType:
@@ -47,6 +48,7 @@ class SyndicationFeed(BaseFeed):
         max_age: Optional[timedelta],
         article_manager: ArticleManager,
         feedpath: List[str],
+        purge_age: Optional[timedelta] = None,
     ):
         super().__init__(
             id,
@@ -59,3 +61,5 @@ class SyndicationFeed(BaseFeed):
         self.url = url
         self.max_age = max_age
         self.article_manager = article_manager
+        # Only set purge_age if explicitly provided
+        self.purge_age = purge_age

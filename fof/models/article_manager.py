@@ -121,7 +121,7 @@ class ArticleManager:
             article.author,
             article.published_date.isoformat() if article.published_date else None,
             article.feed_id,
-            json.dumps(article.feedpath) if article.feedpath else None,
+            json.dumps(article.feedpath) if article.feedpath is not None else None,
             article.id,  # Used to fetch existing 'read' value
             article.id,  # Used to fetch existing 'fetched' value
             article.score,
@@ -274,4 +274,38 @@ class ArticleManager:
                 return deleted
         except sqlite3.Error as e:
             logger.error(f"Error clearing cache: {e}")
+            return 0
+
+    def purge_old_articles(self, feed) -> int:
+        """
+        Purge old articles for a feed based on its purge_age.
+        Articles older than purge_age (based on published_date) will be deleted.
+        If purge_age is not set, defaults to 2 * max_age.
+        Returns the number of rows deleted.
+        """
+        # Determine the effective purge_age
+        purge_age = getattr(feed, 'purge_age', None)
+        if purge_age is None:
+            max_age = getattr(feed, 'max_age', None)
+            if max_age:
+                purge_age = timedelta(seconds=max_age.total_seconds() * 2)
+            else:
+                logger.debug(f"Feed {feed.id} has no purge_age or max_age set, skipping purge.")
+                return 0
+        
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                fp_json = json.dumps(feed.feedpath)
+                cutoff_date = (datetime.now() - purge_age).isoformat()
+                cursor.execute(
+                    "DELETE FROM cache WHERE feedpath = ? AND published_date < ?",
+                    (fp_json, cutoff_date)
+                )
+                deleted = cursor.rowcount
+                conn.commit()
+                logger.info(f"Purged {deleted} old articles from cache for feedpath {feed.feedpath} (older than {cutoff_date}).")
+                return deleted
+        except sqlite3.Error as e:
+            logger.error(f"Error purging old articles: {e}")
             return 0
