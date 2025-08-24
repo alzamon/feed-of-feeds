@@ -101,7 +101,11 @@ def main():
         action="store_true",
         help="Enable debug logging"
     )
-    # Remove global --feed argument; it's not needed globally.
+    parser.add_argument(
+        "--feed",
+        default=None,
+        help="Scope down to the selected feed and its descendants"
+    )
 
     # Enable tab-completion if argcomplete is installed
     if argcomplete:
@@ -109,6 +113,7 @@ def main():
 
     args = parser.parse_args()
 
+    # Get config path - prefer command-specific config if provided, otherwise use global
     config_path = os.path.expanduser(getattr(args, "config", DEFAULT_CONFIG_PATH))
     log_file = os.path.join(config_path, "fof.log")
     os.makedirs(config_path, exist_ok=True)
@@ -148,7 +153,7 @@ def main():
     feed_manager = FeedManager(
         article_manager=article_manager,
         config_manager=config_manager,
-        # The feed_id for session-wide filtering is NOT set from --feed anymore
+        feed_id=getattr(args, "feed", None)
     )
 
     # Handle subcommands
