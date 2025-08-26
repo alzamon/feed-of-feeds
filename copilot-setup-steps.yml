@@ -1,0 +1,26 @@
+# Copilot Setup Steps for Feed of Feeds (fof) project
+# This file configures the development environment for GitHub Copilot coding agents
+# to make them more efficient when working on this Python project.
+
+# Install the project in development mode with all dependencies
+- name: Install feed-of-feeds in development mode
+  run: pip install -e ".[dev]"
+
+# Install test dependencies explicitly to ensure they're available
+- name: Install test dependencies
+  run: pip install -e ".[test]"
+
+# Verify the installation worked by checking if the CLI is available
+- name: Verify installation
+  run: fof --help
+
+# Run a quick test to ensure the development environment is working
+- name: Run basic tests to verify setup
+  run: python -m pytest tests/test_syndication_feed.py -v
+
+# Show Python and package versions for debugging
+- name: Show environment info
+  run: |
+    python --version
+    pip show fof
+    pip list | grep -E "(pytest|feedparser|pyyaml|requests|argcomplete|colorama)"
