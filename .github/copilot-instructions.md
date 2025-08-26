@@ -40,7 +40,8 @@ This project **must work on both Termux and Ubuntu** environments. When making c
 ### Testing Strategy
 - Test on both Ubuntu and Termux when possible
 - Use containers or virtual environments to simulate different platform conditions
-- Pay attention to permission errors, path issues, and terminal capabilities
+- Pay attention to permission errors, path issues, and terminal capabilities, but keep in mind that
+  termux/termux-docker is not a perfect simulation of a real termux environment.
 - Verify CLI functionality and interactive features work on both platforms
 
 ### Code Patterns
