@@ -13,10 +13,33 @@ try:
 except ImportError:
     argcomplete = None
 
+try:
+    from colorama import init, Fore, Back, Style
+    # Initialize colorama for cross-platform color support
+    init()
+    COLORS_AVAILABLE = True
+except ImportError:
+    COLORS_AVAILABLE = False
+
 DEFAULT_CONFIG_PATH = "~/.config/fof/"
 
 # Constants for percentage calculations
 PERCENTAGE_MULTIPLIER = 100.0
+
+def _should_use_color():
+    """Check if we should use colors for output."""
+    return (
+        COLORS_AVAILABLE and 
+        hasattr(sys.stdout, 'isatty') and 
+        sys.stdout.isatty() and
+        os.getenv('NO_COLOR') is None
+    )
+
+def _colorize(text, color_code, style_code=''):
+    """Apply color to text if colors are available and appropriate."""
+    if _should_use_color():
+        return f"{style_code}{color_code}{text}{Style.RESET_ALL}"
+    return text
 
 def print_feed_paths(feed_manager, base_feed=None):
     """
@@ -33,9 +56,21 @@ def print_feed_paths(feed_manager, base_feed=None):
         feedpath = getattr(feed, "feedpath", [])
         url = getattr(feed, "url", None)
         if is_leaf:
-            print(" -> ".join(feedpath))
-            print("  " + (url if url else "(no url)"))
-            print("  Cumulative likelihood: {:.2f}%".format(ctx.get("likelihood", 1.0) * PERCENTAGE_MULTIPLIER))
+            # Color the feed path in bold cyan
+            feed_path_text = " -> ".join(feedpath)
+            colored_feed_path = _colorize(feed_path_text, Fore.CYAN, Style.BRIGHT)
+            print(colored_feed_path)
+            
+            # Color the URL in green
+            url_text = url if url else "(no url)"
+            colored_url = _colorize(url_text, Fore.GREEN)
+            print("  " + colored_url)
+            
+            # Color the likelihood percentage in yellow
+            likelihood_pct = ctx.get("likelihood", 1.0) * PERCENTAGE_MULTIPLIER
+            likelihood_text = "Cumulative likelihood: {:.2f}%".format(likelihood_pct)
+            colored_likelihood = _colorize(likelihood_text, Fore.YELLOW)
+            print("  " + colored_likelihood)
 
     root = base_feed if base_feed is not None else getattr(feed_manager, "root_feed", None)
     if root:
@@ -45,7 +80,9 @@ def print_feed_paths(feed_manager, base_feed=None):
             context={"likelihood": 1.0}
         )
     else:
-        print("No root feed loaded.")
+        no_feed_text = "No root feed loaded."
+        colored_no_feed = _colorize(no_feed_text, Fore.RED)
+        print(colored_no_feed)
 
 def main():
     """Main entry point for the application."""

@@ -28,6 +28,7 @@ setup(
         "pyyaml>=6.0,<7.0",
         "requests>=2.20.0,<3.0.0",
         "argcomplete>=3.0.0",  # Added here for default install
+        "colorama>=0.4.0,<1.0.0",  # For colored terminal output
     ],
     extras_require=extras_require,
     entry_points={
