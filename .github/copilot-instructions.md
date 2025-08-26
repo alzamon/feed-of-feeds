@@ -11,16 +11,10 @@ This project **must work on both Termux and Ubuntu** environments. When making c
 ## Platform-Specific Considerations
 
 ### Package Installation
-- **Ubuntu**: Use `pip` or `pipx` for user installations due to PEP 668 restrictions
+- **Ubuntu**: Use `pipx` for user installations due to PEP 668 restrictions
 - **Termux**: Use `pkg` for system packages and `pip` for Python packages
 - Always test installation methods on both platforms
 - Consider using `pip install --user` as a fallback option
-
-### Dependencies
-- **curses**: Works natively on Ubuntu; verify compatibility in Termux
-- **feedparser, requests, pyyaml**: Should work on both platforms
-- **argcomplete**: Tab completion may behave differently across platforms
-- Avoid platform-specific dependencies unless absolutely necessary
 
 ### File System Considerations
 - **Ubuntu**: Standard Linux filesystem hierarchy (`~/.config/`, `/tmp/`, etc.)
