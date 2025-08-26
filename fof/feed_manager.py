@@ -125,7 +125,7 @@ class FeedManager:
             return None
         return self.root_feed.fetch()
 
-    def update_weights(self, feedpath: List[str], increment: int):
+    def update_weights(self, feedpath: List[str], increment: int, article: Optional['Article'] = None):
         if not self.root_feed:
             raise ValueError("Root feed is not initialized.")
         current_feed = self.root_feed
@@ -148,6 +148,11 @@ class FeedManager:
                 wf.weight += increment
                 logger.info(f"Updated weight of feed '{sub_feed.id}' to {wf.weight}.")
             current_feed = sub_feed
+        
+        # Log the weight change event if article information is provided
+        if article is not None:
+            action = "liked" if increment > 0 else "disliked"
+            self.article_manager.log_weight_event(article.title, feedpath, action)
 
     def perform_on_feeds(
         self,

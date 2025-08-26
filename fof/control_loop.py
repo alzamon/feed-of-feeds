@@ -181,7 +181,7 @@ class ControlLoop:
             elif key == ord("+"):
                 if self.current_article and self.current_article.feedpath:
                     try:
-                        self.feed_manager.update_weights(self.current_article.feedpath, increment=10)
+                        self.feed_manager.update_weights(self.current_article.feedpath, increment=10, article=self.current_article)
                         self.feed_manager.save_config()
                         stdscr.addstr(max_y - 3, 0, "Increased weights along feedpath and saved configuration.".ljust(max_x))
                     except ValueError as e:
@@ -193,7 +193,7 @@ class ControlLoop:
             elif key == ord("-"):
                 if self.current_article and self.current_article.feedpath:
                     try:
-                        self.feed_manager.update_weights(self.current_article.feedpath, increment=-10)
+                        self.feed_manager.update_weights(self.current_article.feedpath, increment=-10, article=self.current_article)
                         self.feed_manager.save_config()
                         stdscr.addstr(max_y - 3, 0, "Decreased weights along feedpath and saved configuration.".ljust(max_x))
                     except ValueError as e:

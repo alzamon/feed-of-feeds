@@ -46,6 +46,7 @@ class ArticleManager:
                 cursor = conn.cursor()
                 # Always create the table if it does not exist
                 self._create_cache_table(cursor)
+                self._create_events_table(cursor)
                 # Now check for missing columns and add them if necessary
                 self._add_missing_columns(cursor)
         except sqlite3.Error as e:
@@ -87,6 +88,17 @@ class ArticleManager:
             )
         """)
 
+    def _create_events_table(self, cursor):
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                article_title TEXT NOT NULL,
+                feedpath TEXT NOT NULL,
+                action TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
     def mark_as_read(self, article_id: str):
         try:
             with sqlite3.connect(self.db_file) as conn:
@@ -110,6 +122,26 @@ class ArticleManager:
                 conn.commit()
         except sqlite3.Error as e:
             logger.error(f"Error marking article as fetched: {e}")
+
+    def log_weight_event(self, article_title: str, feedpath: List[str], action: str):
+        """Log a weight change event.
+        
+        Args:
+            article_title: Title of the article that was liked/disliked
+            feedpath: List of feed IDs representing the path to the feed
+            action: Either 'liked' or 'disliked'
+        """
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO events (article_title, feedpath, action) VALUES (?, ?, ?)",
+                    (article_title, json.dumps(feedpath), action)
+                )
+                conn.commit()
+                logger.info(f"Logged weight event: article '{article_title}' from feedpath {feedpath} was {action}")
+        except sqlite3.Error as e:
+            logger.error(f"Error logging weight event: {e}")
 
     def cache_articles(self, articles: List[Article]):
         try:
