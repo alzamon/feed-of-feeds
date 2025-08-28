@@ -84,6 +84,8 @@ class SyncManager:
             peers = self.peer_manager.load_peers()
             if not peers:
                 logger.info("No peers configured, export completed but no push")
+                # Still update sync timestamp for local export
+                self.article_sync.update_last_sync_timestamp()
                 return
             
             # Push to all peers
@@ -91,6 +93,8 @@ class SyncManager:
             
             if success_count > 0:
                 logger.info(f"Exit sync completed: pushed to {success_count} peers")
+                # Update last sync timestamp after successful push
+                self.article_sync.update_last_sync_timestamp()
             else:
                 logger.warning("Exit sync completed: failed to push to any peers")
                 
@@ -134,6 +138,10 @@ class SyncManager:
             local_file = self.article_sync.export_read_articles()
             success_count = self.ssh_sync.push_to_all_peers(peers, local_file)
             stats['pushed_peers'] = success_count
+            
+            # Update last sync timestamp after successful operations
+            if success_count > 0:
+                self.article_sync.update_last_sync_timestamp()
             
             # Cleanup
             self.ssh_sync.cleanup_cache()

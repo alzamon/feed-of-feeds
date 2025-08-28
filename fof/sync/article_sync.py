@@ -55,6 +55,7 @@ class ArticleSyncManager:
         self.config_path = Path(config_path).expanduser()
         self.device_name = device_name
         self.sync_dir = self.config_path / "sync"
+        self.sync_state_file = self.config_path / "sync_state.json"
     
     def export_read_articles(self) -> str:
         """Export all read articles metadata to JSON file. Returns the file path."""
@@ -142,16 +143,32 @@ class ArticleSyncManager:
             raise
     
     def _get_read_articles_from_db(self) -> List[Dict]:
-        """Get all read articles from the database."""
+        """Get read articles from the database that were read after the last sync."""
         try:
             with sqlite3.connect(self.article_manager.db_file) as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT id, title, link, author, read, feed_id
-                    FROM cache 
-                    WHERE read IS NOT NULL
-                    ORDER BY read DESC
-                """)
+                
+                # Get last sync timestamp
+                last_sync = self._get_last_sync_timestamp()
+                
+                if last_sync:
+                    # Only get articles read after last sync
+                    cursor.execute("""
+                        SELECT id, title, link, author, read, feed_id
+                        FROM cache 
+                        WHERE read IS NOT NULL AND read > ?
+                        ORDER BY read DESC
+                    """, (last_sync,))
+                    logger.debug(f"Exporting articles read after last sync: {last_sync}")
+                else:
+                    # No previous sync, get all read articles
+                    cursor.execute("""
+                        SELECT id, title, link, author, read, feed_id
+                        FROM cache 
+                        WHERE read IS NOT NULL
+                        ORDER BY read DESC
+                    """)
+                    logger.debug("No previous sync found, exporting all read articles")
                 
                 columns = ['id', 'title', 'link', 'author', 'read', 'feed_id']
                 return [dict(zip(columns, row)) for row in cursor.fetchall()]
@@ -220,3 +237,46 @@ class ArticleSyncManager:
         except sqlite3.Error as e:
             logger.error(f"Error marking article as read: {e}")
             return False
+    
+    def _get_last_sync_timestamp(self) -> Optional[str]:
+        """Get the timestamp of the last sync operation."""
+        try:
+            if self.sync_state_file.exists():
+                with open(self.sync_state_file, 'r') as f:
+                    data = json.load(f)
+                    return data.get('last_sync_timestamp')
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning(f"Error reading sync state: {e}")
+        return None
+    
+    def _set_last_sync_timestamp(self, timestamp: str) -> None:
+        """Set the timestamp of the last sync operation."""
+        try:
+            # Ensure config directory exists
+            self.config_path.mkdir(parents=True, exist_ok=True)
+            
+            # Load existing state or create new
+            state_data = {}
+            if self.sync_state_file.exists():
+                try:
+                    with open(self.sync_state_file, 'r') as f:
+                        state_data = json.load(f)
+                except (json.JSONDecodeError, OSError):
+                    pass
+            
+            # Update last sync timestamp
+            state_data['last_sync_timestamp'] = timestamp
+            
+            # Save state
+            with open(self.sync_state_file, 'w') as f:
+                json.dump(state_data, f, indent=2)
+                
+            logger.debug(f"Updated last sync timestamp: {timestamp}")
+            
+        except OSError as e:
+            logger.error(f"Error saving sync state: {e}")
+    
+    def update_last_sync_timestamp(self) -> None:
+        """Update the last sync timestamp to current time."""
+        current_time = datetime.now().isoformat()
+        self._set_last_sync_timestamp(current_time)

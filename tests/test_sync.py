@@ -247,3 +247,97 @@ class TestSyncManager:
             
             peers = sync_manager.list_peers()
             assert "test-peer" not in peers
+
+    def test_sync_timestamp_filtering(self):
+        """Test that only articles read after last sync are exported."""
+        import tempfile
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_dir = Path(tmpdir)
+            
+            # Create mock article manager with test database
+            db_file = temp_dir / "test.db"
+            article_manager = MagicMock()
+            article_manager.db_file = str(db_file)
+            
+            # Create test database with articles
+            import sqlite3
+            from datetime import datetime, timedelta
+            
+            # Create the database and table structure
+            with sqlite3.connect(str(db_file)) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE cache (
+                        id TEXT PRIMARY KEY,
+                        title TEXT,
+                        link TEXT,
+                        author TEXT,
+                        read TEXT,
+                        feed_id TEXT
+                    )
+                """)
+                
+                # Insert test articles with different read timestamps
+                now = datetime.now()
+                old_time = (now - timedelta(hours=2)).isoformat()
+                recent_time = (now - timedelta(minutes=10)).isoformat()
+                
+                test_articles = [
+                    ("article1", "Old Article", "http://example.com/1", "Author1", old_time, "feed1"),
+                    ("article2", "Recent Article", "http://example.com/2", "Author2", recent_time, "feed1"),
+                    ("article3", "Unread Article", "http://example.com/3", "Author3", None, "feed1"),
+                ]
+                
+                cursor.executemany(
+                    "INSERT INTO cache (id, title, link, author, read, feed_id) VALUES (?, ?, ?, ?, ?, ?)",
+                    test_articles
+                )
+                conn.commit()
+            
+            # Create sync manager and sync timestamp manager
+            config_path = temp_dir / "config"
+            sync_manager = ArticleSyncManager(article_manager, str(config_path), "test-device")
+            
+            # First export (no previous sync) - should export all read articles
+            export_file = sync_manager.export_read_articles()
+            with open(export_file, 'r') as f:
+                export_data = json.load(f)
+            
+            assert len(export_data['articles']) == 2  # Both read articles
+            article_ids = [a['guid'] for a in export_data['articles']]
+            assert "article1" in article_ids
+            assert "article2" in article_ids
+            
+            # Set last sync timestamp to 1 hour ago
+            one_hour_ago = (now - timedelta(hours=1)).isoformat()
+            sync_manager._set_last_sync_timestamp(one_hour_ago)
+            
+            # Second export - should only export recent article
+            export_file2 = sync_manager.export_read_articles()
+            with open(export_file2, 'r') as f:
+                export_data2 = json.load(f)
+            
+            assert len(export_data2['articles']) == 1  # Only recent article
+            assert export_data2['articles'][0]['guid'] == "article2"
+            
+            # Update sync timestamp to current time
+            sync_manager.update_last_sync_timestamp()
+            
+            # Mark another article as read after the sync timestamp
+            with sqlite3.connect(str(db_file)) as conn:
+                cursor = conn.cursor()
+                future_time = (now + timedelta(minutes=5)).isoformat()
+                cursor.execute(
+                    "UPDATE cache SET read = ? WHERE id = ?",
+                    (future_time, "article3")
+                )
+                conn.commit()
+            
+            # Third export - should only export the newly read article
+            export_file3 = sync_manager.export_read_articles()
+            with open(export_file3, 'r') as f:
+                export_data3 = json.load(f)
+            
+            assert len(export_data3['articles']) == 1  # Only newly read article
+            assert export_data3['articles'][0]['guid'] == "article3"
