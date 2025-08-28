@@ -8,6 +8,7 @@
 - **Weighted Sampling**: Feeds can have weights that influence article selection probability
 - **Interactive Article Reader**: Curses-based terminal interface for reading articles with keyboard navigation
 - **SQLite-backed Persistence**: All articles are cached locally with read/unread and fetched/unfetched state tracking
+- **Multi-Device Synchronization**: Sync read article status across multiple devices using SSH/SCP
 - **Directory-based Configuration**: Feed configurations stored as JSON files in a directory structure
 - **Content Filtering**: Filter articles by title, content, author, or link using regex patterns
 - **Tab Completion**: Shell tab completion support using [argcomplete](https://pypi.org/project/argcomplete/)
@@ -38,6 +39,20 @@ pip install argcomplete
 eval "$(register-python-argcomplete fof)"
 ```
 
+## Platform Compatibility
+
+FoF is designed to work on both standard Linux environments and Termux (Android):
+
+- **Ubuntu/Debian**: Full functionality including multi-device sync
+- **Termux (Android)**: Complete compatibility with package installation via `pkg install openssh`
+- **Other Linux**: Should work on most distributions with SSH client/server
+
+For multi-device sync on Termux:
+```bash
+pkg install openssh
+fof sync device prepare
+```
+
 ## Quick Start
 
 1. **Start the interactive reader** (main usage):
@@ -64,6 +79,21 @@ eval "$(register-python-argcomplete fof)"
 4. **Clear article cache**:
    ```bash
    fof cache clear --feed <feed_id>
+   ```
+
+5. **Set up multi-device sync** (optional):
+   ```bash
+   # Set device name
+   fof sync device name my-laptop
+   
+   # Prepare for sync (generates SSH keys, etc.)
+   fof sync device prepare
+   
+   # Add other devices
+   fof sync peer add desktop-pc 192.168.1.100 user
+   
+   # Check sync status
+   fof sync status
    ```
 
 ## Configuration
@@ -160,6 +190,68 @@ Clear cached articles for all syndication feeds under a specific feed:
 ```bash
 fof cache clear --feed tech_news
 ```
+
+#### Multi-Device Synchronization
+
+FoF supports synchronizing read article status across multiple devices using SSH/SCP.
+
+##### Device Setup
+
+Set your device name:
+```bash
+fof sync device name my-laptop
+```
+
+Prepare your device for syncing (generates SSH keys, sets up SSH server):
+```bash
+fof sync device prepare
+```
+
+##### Peer Management
+
+Add a sync peer:
+```bash
+fof sync peer add desktop-pc 192.168.1.100 myuser
+fof sync peer add server example.com serveruser --port 2222
+```
+
+List configured peers:
+```bash
+fof sync peer list
+```
+
+Remove a peer:
+```bash
+fof sync peer remove desktop-pc
+```
+
+##### Sync Operations
+
+Check sync status and peer connectivity:
+```bash
+fof sync status
+```
+
+Perform manual sync with all peers:
+```bash
+fof sync now
+```
+
+Automatic sync occurs on app startup (pull from peers) and exit (push to peers).
+
+##### How Sync Works
+
+1. **Export**: Read articles are exported to `~/.config/fof/sync/read_articles_on_<device>.json`
+2. **Pull**: On startup, the app downloads peer files via SCP
+3. **Merge**: Articles are deduplicated by GUID (preferred) or URL and marked as read locally
+4. **Push**: On exit, the local file is uploaded to all configured peers
+5. **Fallback**: Cached peer files are used if fresh downloads fail
+
+##### Requirements
+
+- SSH access between devices
+- OpenSSH client (`ssh`, `scp`, `ssh-keygen` commands)
+- SSH server running on each device that others sync from
 
 #### Logging
 
