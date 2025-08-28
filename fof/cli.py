@@ -7,6 +7,7 @@ from .models.article_manager import ArticleManager
 from .feed_manager import FeedManager
 from .control_loop import ControlLoop
 from .config_manager import ConfigManager
+from .sync import SyncManager, DevicePreparationManager
 
 try:
     import argcomplete
@@ -130,6 +131,80 @@ def main():
         help="Feed ID under which to clear the cache for all syndication feeds"
     )
 
+    # Sync subcommand
+    sync_parser = subparsers.add_parser("sync", help="Multi-device synchronization utilities")
+    sync_subparsers = sync_parser.add_subparsers(dest="sync_command")
+
+    # Sync status
+    sync_status_parser = sync_subparsers.add_parser("status", help="Show sync status and peer connectivity")
+    sync_status_parser.add_argument(
+        "--config", "-c", 
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to config file (default: ~/.config/fof)"
+    )
+
+    # Sync now (manual sync)
+    sync_now_parser = sync_subparsers.add_parser("now", help="Perform manual sync with all peers")
+    sync_now_parser.add_argument(
+        "--config", "-c", 
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to config file (default: ~/.config/fof)"
+    )
+
+    # Peer management
+    peer_parser = sync_subparsers.add_parser("peer", help="Manage sync peers")
+    peer_subparsers = peer_parser.add_subparsers(dest="peer_command")
+
+    # Add peer
+    peer_add_parser = peer_subparsers.add_parser("add", help="Add a new sync peer")
+    peer_add_parser.add_argument("device_name", help="Name for the peer device")
+    peer_add_parser.add_argument("host", help="Hostname or IP address")
+    peer_add_parser.add_argument("user", help="Username for SSH connection")
+    peer_add_parser.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
+    peer_add_parser.add_argument(
+        "--config", "-c", 
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to config file (default: ~/.config/fof)"
+    )
+
+    # Remove peer
+    peer_remove_parser = peer_subparsers.add_parser("remove", help="Remove a sync peer")
+    peer_remove_parser.add_argument("device_name", help="Name of the peer device to remove")
+    peer_remove_parser.add_argument(
+        "--config", "-c", 
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to config file (default: ~/.config/fof)"
+    )
+
+    # List peers
+    peer_list_parser = peer_subparsers.add_parser("list", help="List all configured peers")
+    peer_list_parser.add_argument(
+        "--config", "-c", 
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to config file (default: ~/.config/fof)"
+    )
+
+    # Device management
+    device_parser = sync_subparsers.add_parser("device", help="Manage device settings")
+    device_subparsers = device_parser.add_subparsers(dest="device_command")
+
+    # Set device name
+    device_name_parser = device_subparsers.add_parser("name", help="Get or set device name")
+    device_name_parser.add_argument("name", nargs="?", help="New device name (if not provided, shows current name)")
+    device_name_parser.add_argument(
+        "--config", "-c", 
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to config file (default: ~/.config/fof)"
+    )
+
+    # Device preparation
+    device_prep_parser = device_subparsers.add_parser("prepare", help="Prepare device for syncing (SSH setup)")
+    device_prep_parser.add_argument(
+        "--config", "-c", 
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to config file (default: ~/.config/fof)"
+    )
+
     # Global arguments for default mode (control loop)
     parser.add_argument(
         "--config", "-c", 
@@ -230,9 +305,97 @@ def main():
         feed_manager.perform_on_feeds(selected_feed, clear_if_syndication)
         print(f"Total articles cleared: {total_deleted}")
         sys.exit(0)
+
+    # Handle sync subcommands
+    if args.command == "sync":
+        sync_manager = SyncManager(article_manager, config_path)
+        
+        if getattr(args, "sync_command", None) == "status":
+            status = sync_manager.get_sync_status()
+            print(f"Device name: {status['device_name']}")
+            print(f"Config path: {status['config_path']}")
+            print(f"Configured peers: {status.get('peer_count', 0)}")
+            
+            if 'peers' in status:
+                print("\nPeer status:")
+                for device_name, peer_info in status['peers'].items():
+                    reachable = "✓" if peer_info['reachable'] else "✗"
+                    print(f"  {reachable} {device_name}: {peer_info['user']}@{peer_info['host']}:{peer_info['port']}")
+            
+            if 'error' in status:
+                print(f"Error: {status['error']}")
+            sys.exit(0)
+            
+        elif getattr(args, "sync_command", None) == "now":
+            print("Starting manual sync...")
+            stats = sync_manager.manual_sync()
+            print(f"Sync completed:")
+            print(f"  - Pulled from {stats['pulled_peers']} peers")
+            print(f"  - Merged {stats['merged_articles']} articles")
+            print(f"  - Pushed to {stats['pushed_peers']} peers")
+            sys.exit(0)
+            
+        elif getattr(args, "sync_command", None) == "peer":
+            peer_command = getattr(args, "peer_command", None)
+            
+            if peer_command == "add":
+                sync_manager.add_peer(args.device_name, args.host, args.user, args.port)
+                print(f"Added peer: {args.device_name}")
+                sys.exit(0)
+                
+            elif peer_command == "remove":
+                if sync_manager.remove_peer(args.device_name):
+                    print(f"Removed peer: {args.device_name}")
+                else:
+                    print(f"Peer not found: {args.device_name}")
+                    sys.exit(1)
+                sys.exit(0)
+                
+            elif peer_command == "list":
+                peers = sync_manager.list_peers()
+                if peers:
+                    print("Configured peers:")
+                    for device_name, peer in peers.items():
+                        print(f"  {device_name}: {peer.user}@{peer.host}:{peer.port}")
+                else:
+                    print("No peers configured.")
+                sys.exit(0)
+                
+        elif getattr(args, "sync_command", None) == "device":
+            device_command = getattr(args, "device_command", None)
+            
+            if device_command == "name":
+                if hasattr(args, 'name') and args.name:
+                    sync_manager.set_device_name(args.name)
+                    print(f"Device name set to: {args.name}")
+                else:
+                    current_name = sync_manager.get_device_name()
+                    print(f"Current device name: {current_name}")
+                sys.exit(0)
+                
+            elif device_command == "prepare":
+                prep_manager = DevicePreparationManager()
+                peers = list(sync_manager.list_peers().values())
+                
+                print("Preparing device for multi-device sync...")
+                success = prep_manager.prepare_device_interactive(peers)
+                
+                if success:
+                    print("Device preparation completed successfully!")
+                    sys.exit(0)
+                else:
+                    print("Device preparation failed.")
+                    sys.exit(1)
+    
+    # Initialize sync manager for startup sync
+    sync_manager = SyncManager(article_manager, config_path)
+    sync_manager.sync_on_startup()
     
     # Initialize control loop to handle interactions
     ControlLoop(feed_manager, article_manager).start()
+    
+    # Perform exit sync
+    sync_manager.sync_on_exit()
     
     # Purge old articles before saving config and exiting
     feed_manager.purge_old_articles()
