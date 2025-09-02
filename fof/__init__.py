@@ -15,4 +15,7 @@ from .models.union_feed import UnionFeed
 from .models.filter_feed import FilterFeed
 from .models.article import Article
 
-__all__ = ['FeedManager', 'BaseFeed', 'SyndicationFeed', 'UnionFeed', 'FilterFeed', 'Article']
+__all__ = [
+    'FeedManager', 'BaseFeed', 'SyndicationFeed', 'UnionFeed',
+    'FilterFeed', 'Article'
+]
