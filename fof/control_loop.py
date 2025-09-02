@@ -3,8 +3,9 @@ import curses
 import os
 import textwrap
 
+
 class ControlLoop:
-    """Manages display and keyboard interactions for navigating articles in a feed."""
+    """Manages display and keyboard interactions for navigating articles."""
 
     def __init__(self, feed_manager, article_manager):
         self.feed_manager = feed_manager
@@ -20,9 +21,11 @@ class ControlLoop:
                 f"Title: {self.current_article.title}",
                 f"Link: {self.current_article.link}",
                 f"Author: {self.current_article.author or 'Unknown'}",
-                f"Published: {self.current_article.published_date or 'Unknown date'}",
+                f"Published: {self.current_article.published_date or "
+                f"'Unknown date'}",
             ]
-            if hasattr(self.current_article, "tags") and self.current_article.tags:
+            if (hasattr(self.current_article, "tags") and
+                    self.current_article.tags):
                 tag_str = ", ".join(self.current_article.tags)
                 lines.append(f"Tags: {tag_str}")
             else:
@@ -30,12 +33,17 @@ class ControlLoop:
             lines.extend([
                 "",
                 "Feed Path:",
-                " -> ".join(self.current_article.feedpath) if self.current_article.feedpath else "Unknown",
+                (" -> ".join(self.current_article.feedpath)
+                 if self.current_article.feedpath else "Unknown"),
                 "",
                 "Content Preview:",
                 "---------------",
             ])
-            preview = self.current_article.content[:200] + "..." if len(self.current_article.content) > 200 else self.current_article.content
+            preview = (
+                self.current_article.content[:200] + "..."
+                if len(self.current_article.content) > 200
+                else self.current_article.content
+            )
             wrapped_preview = textwrap.wrap(preview, width=max_x)
             lines.extend(wrapped_preview)
             row = 0
@@ -111,44 +119,72 @@ class ControlLoop:
 
             if key == ord("n"):
                 if self.browsing_read_history:
-                    if self.current_article and getattr(self.current_article, "read", None):
-                        next_article = self.article_manager.get_next_read_article(
-                            self.current_article.read.isoformat()
+                    if (self.current_article and
+                            getattr(self.current_article, "read", None)):
+                        next_article = (
+                            self.article_manager.get_next_read_article(
+                                self.current_article.read.isoformat()
+                            )
                         )
                         if next_article:
                             self.current_article = next_article
-                            stdscr.addstr(max_y - 2, 0, "Moved to newer read article.".ljust(max_x))
+                            stdscr.addstr(
+                                max_y - 2, 0,
+                                "Moved to newer read article.".ljust(max_x)
+                            )
                             self._display_article(stdscr)
                             self._display_prompt(stdscr)
                         else:
                             # At most recent read article. Switch to unread mode.
                             self.browsing_read_history = False
-                            self.current_article = self.feed_manager.next_article()
+                            self.current_article = (
+                                self.feed_manager.next_article()
+                            )
                             if self.current_article:
-                                self.article_manager.mark_as_read(self.current_article.id)
-                                stdscr.addstr(max_y - 2, 0, "Switched to unread. Showing next unread article.".ljust(max_x))
+                                self.article_manager.mark_as_read(
+                                    self.current_article.id
+                                )
+                                stdscr.addstr(
+                                    max_y - 2, 0,
+                                    ("Switched to unread. Showing next unread "
+                                     "article.").ljust(max_x)
+                                )
                             else:
-                                stdscr.addstr(0, 0, "All caught up! No more articles to display.")
+                                stdscr.addstr(
+                                    0, 0,
+                                    "All caught up! No more articles to display."
+                                )
                             self._display_article(stdscr)
                             self._display_prompt(stdscr)
                     else:
-                        stdscr.addstr(max_y - 2, 0, "Not in read history.".ljust(max_x))
+                        stdscr.addstr(
+                            max_y - 2, 0,
+                            "Not in read history.".ljust(max_x)
+                        )
                         self._display_prompt(stdscr)
                 else:
                     # Get next unread article
                     self.current_article = self.feed_manager.next_article()
                     if self.current_article:
-                        self.article_manager.mark_as_read(self.current_article.id)
+                        self.article_manager.mark_as_read(
+                            self.current_article.id
+                        )
                     else:
-                        stdscr.addstr(0, 0, "All caught up! No more articles to display.")
+                        stdscr.addstr(
+                            0, 0,
+                            "All caught up! No more articles to display."
+                        )
                     self._display_article(stdscr)
                     self._display_prompt(stdscr)
 
             elif key == ord("p"):
                 prev_article = None
-                if self.current_article and getattr(self.current_article, "read", None):
-                    prev_article = self.article_manager.get_previous_read_article(
-                        self.current_article.read.isoformat()
+                if (self.current_article and
+                        getattr(self.current_article, "read", None)):
+                    prev_article = (
+                        self.article_manager.get_previous_read_article(
+                            self.current_article.read.isoformat()
+                        )
                     )
                 else:
                     most_recent = self.article_manager.get_previous_read_article()
