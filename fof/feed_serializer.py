@@ -1,7 +1,6 @@
 """Feed serialization functionality."""
 import json
 import os
-from typing import Dict, Any
 
 from .models.base_feed import BaseFeed
 from .models.enums import FeedType
@@ -10,11 +9,11 @@ from .time_period import timedelta_to_period_str
 
 class FeedSerializer:
     """Handles serialization of feed objects to JSON and directory structures."""
-    
+
     def __init__(self, config_manager):
         """Initialize with config manager for filename sanitization."""
         self.config_manager = config_manager
-    
+
     def serialize_to_directory(self, feed: BaseFeed, path: str):
         """Serialize a feed and its children to a directory structure."""
         os.makedirs(path, exist_ok=True)
@@ -25,16 +24,17 @@ class FeedSerializer:
                 weights[subfeed_name] = wf.weight
 
             union_meta = {
-                "id": getattr(feed, "id", None),
-                "title": getattr(feed, "title", None),
-                "description": getattr(feed, "description", ""),
-                "last_updated": feed.last_updated.isoformat() if getattr(feed, "last_updated", None) else None,
-                "max_age": timedelta_to_period_str(feed.max_age) if getattr(feed, "max_age", None) else None,
-                "weights": weights,
-            }
+                "id": getattr(
+                    feed, "id", None), "title": getattr(
+                    feed, "title", None), "description": getattr(
+                    feed, "description", ""), "last_updated": feed.last_updated.isoformat() if getattr(
+                    feed, "last_updated", None) else None, "max_age": timedelta_to_period_str(
+                        feed.max_age) if getattr(
+                            feed, "max_age", None) else None, "weights": weights, }
             # Only include purge_age if it's not None
             if getattr(feed, "purge_age", None) is not None:
-                union_meta["purge_age"] = timedelta_to_period_str(feed.purge_age)
+                union_meta["purge_age"] = timedelta_to_period_str(
+                    feed.purge_age)
             union_meta_path = os.path.join(path, "union.json")
             with open(union_meta_path, "w", encoding="utf-8") as f:
                 json.dump(union_meta, f, indent=2, ensure_ascii=False)
@@ -46,7 +46,8 @@ class FeedSerializer:
         elif feed.feed_type == FeedType.SYNDICATION:
             feed_path = os.path.join(path, "feed.json")
             with open(feed_path, "w", encoding="utf-8") as f:
-                json.dump(self.serialize_feed(feed), f, indent=2, ensure_ascii=False)
+                json.dump(self.serialize_feed(feed), f,
+                          indent=2, ensure_ascii=False)
 
         elif feed.feed_type == FeedType.FILTER:
             filter_dir = path
@@ -57,21 +58,21 @@ class FeedSerializer:
                 "title": feed.title,
                 "description": feed.description,
                 "last_updated": feed.last_updated.isoformat(),
-                "max_age": timedelta_to_period_str(feed.max_age) if feed.max_age else None,
+                "max_age": timedelta_to_period_str(
+                    feed.max_age) if feed.max_age else None,
                 "criteria": [
                     {
                         "filter_type": f.filter_type.value,
                         "pattern": f.pattern,
-                        "is_inclusion": f.is_inclusion
-                    } for f in feed.filters
-                ]
-            }
+                        "is_inclusion": f.is_inclusion} for f in feed.filters]}
             # Only include purge_age if it's not None
             if feed.purge_age is not None:
                 config["purge_age"] = timedelta_to_period_str(feed.purge_age)
             with open(filter_config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
-            self.serialize_to_directory(feed.source_feed, os.path.join(filter_dir, "source"))
+            self.serialize_to_directory(
+                feed.source_feed, os.path.join(
+                    filter_dir, "source"))
         else:
             raise ValueError(f"Unknown feed type: {feed.feed_type}")
 
@@ -81,9 +82,11 @@ class FeedSerializer:
             name = feed.title or feed.id or "union"
             return self.config_manager.sanitize_filename(name)
         elif feed.feed_type == FeedType.SYNDICATION:
-            return self.config_manager.sanitize_filename(feed.title or feed.id or "feed")
+            return self.config_manager.sanitize_filename(
+                feed.title or feed.id or "feed")
         else:
-            return self.config_manager.sanitize_filename(feed.title or feed.id or "feed")
+            return self.config_manager.sanitize_filename(
+                feed.title or feed.id or "feed")
 
     def _get_base_feed_dict(self, feed: BaseFeed) -> dict:
         """Get the common fields for all feed types."""
@@ -92,7 +95,10 @@ class FeedSerializer:
             "title": feed.title,
             "description": feed.description,
             "last_updated": feed.last_updated.isoformat(),
-            "max_age": timedelta_to_period_str(feed.max_age) if hasattr(feed, 'max_age') and feed.max_age else None,
+            "max_age": timedelta_to_period_str(
+                feed.max_age) if hasattr(
+                feed,
+                'max_age') and feed.max_age else None,
         }
 
     def _add_purge_age_if_present(self, result: dict, feed: BaseFeed) -> None:

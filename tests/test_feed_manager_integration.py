@@ -2,7 +2,6 @@ import pytest
 from datetime import datetime
 from unittest.mock import patch, mock_open
 import json
-import os
 
 from fof.feed_manager import FeedManager
 from fof.models.union_feed import UnionFeed
@@ -11,22 +10,30 @@ from fof.models.syndication_feed import SyndicationFeed
 from fof.models.enums import FilterType
 
 # Dummy managers to use for FeedManager initialization
+
+
 class DummyArticleManager:
     pass
 
+
 class DummyConfigManager:
     config_path = "dummy_path"
+
     @property
     def get_tree_dir(self):
         return "tree_dir"
+
     def sanitize_filename(self, name):
         # mimic the real one
         return name.replace(" ", "_")
+
     @property
     def get_update_dir(self):
         return "update_dir"
+
     def persist_update(self, dir):
         pass
+
 
 @pytest.fixture
 def mock_files_structure():
@@ -80,6 +87,7 @@ def mock_files_structure():
     }
     return files
 
+
 @pytest.fixture
 def patch_fs(mock_files_structure):
     # Patch os.path.isfile to return True for our mock files
@@ -101,9 +109,10 @@ def patch_fs(mock_files_structure):
         return "/".join(args)
 
     with patch("os.path.isfile", side_effect=isfile), \
-         patch("builtins.open", side_effect=my_open), \
-         patch("os.path.join", side_effect=join):
+            patch("builtins.open", side_effect=my_open), \
+            patch("os.path.join", side_effect=join):
         yield
+
 
 def test_nested_feed_hierarchy_load(patch_fs):
     article_manager = DummyArticleManager()
@@ -120,7 +129,9 @@ def test_nested_feed_hierarchy_load(patch_fs):
     assert FilterFeed in feed_types
 
     # Find the filter feed and check its internals
-    filter_feed = next((wf.feed for wf in root.feeds if isinstance(wf.feed, FilterFeed)), None)
+    filter_feed = next(
+        (wf.feed for wf in root.feeds if isinstance(
+            wf.feed, FilterFeed)), None)
     assert filter_feed is not None
     assert filter_feed.id == "filter1"
     assert filter_feed.filters

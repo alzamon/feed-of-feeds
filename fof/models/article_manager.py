@@ -1,4 +1,3 @@
-import hashlib
 import sqlite3
 from pathlib import Path
 from typing import Optional, List
@@ -13,7 +12,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Database column indices for cache table - keep in sync with _create_cache_table
+# Database column indices for cache table - keep in sync with
+# _create_cache_table
+
+
 class CacheColumns:
     ID = 0
     TITLE = 1
@@ -28,6 +30,7 @@ class CacheColumns:
     SCORE = 10
     CACHED_AT = 11
     TAGS = 12
+
 
 class ArticleManager:
     """Manages the state of articles with persistence using SQLite and fetching logic."""
@@ -56,17 +59,17 @@ class ArticleManager:
         """Add missing columns to the cache table if they don't exist."""
         cursor.execute("PRAGMA table_info(cache)")
         existing_columns = {row[1] for row in cursor.fetchall()}
-        
+
         # Define columns that should exist
         required_columns = {
             "fetched": "ALTER TABLE cache ADD COLUMN fetched TIMESTAMP DEFAULT NULL",
-            "tags": "ALTER TABLE cache ADD COLUMN tags TEXT DEFAULT NULL"
-        }
-        
+            "tags": "ALTER TABLE cache ADD COLUMN tags TEXT DEFAULT NULL"}
+
         for column_name, add_sql in required_columns.items():
             if column_name not in existing_columns:
                 cursor.execute(add_sql)
-                logger.info(f"Added missing column '{column_name}' to cache table")
+                logger.info(
+                    f"Added missing column '{column_name}' to cache table")
 
     def _create_cache_table(self, cursor):
         cursor.execute("""
@@ -124,11 +127,11 @@ class ArticleManager:
     def _insert_or_replace_article(self, cursor, article: Article):
         cursor.execute("""
             INSERT INTO cache (
-                id, title, content, link, author, published_date, 
+                id, title, content, link, author, published_date,
                 feed_id, feedpath, read, fetched, score, cached_at, tags
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 
-                      (SELECT read FROM cache WHERE id = ?), 
-                      (SELECT fetched FROM cache WHERE id = ?), 
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?,
+                      (SELECT read FROM cache WHERE id = ?),
+                      (SELECT fetched FROM cache WHERE id = ?),
                       ?, CURRENT_TIMESTAMP, ?)
             ON CONFLICT(id) DO UPDATE SET
                 title=excluded.title,
@@ -149,31 +152,41 @@ class ArticleManager:
             article.author,
             article.published_date.isoformat() if article.published_date else None,
             article.feed_id,
-            json.dumps(article.feedpath) if article.feedpath is not None else None,
+            json.dumps(
+                article.feedpath) if article.feedpath is not None else None,
             article.id,  # Used to fetch existing 'read' value
             article.id,  # Used to fetch existing 'fetched' value
             article.score,
             json.dumps(article.tags) if article.tags else None
         ))
 
-    def fetch_article(self, feedpath: List[str], url: str, feed_id: str, max_age: Optional[timedelta]) -> Optional[Article]:
+    def fetch_article(
+            self,
+            feedpath: List[str],
+            url: str,
+            feed_id: str,
+            max_age: Optional[timedelta]) -> Optional[Article]:
         article = self._fetch_unfetched_article_from_cache(feedpath, max_age)
         if article:
             self.mark_as_fetched(article.id)
             return article
-        articles = self._fetch_articles_from_web(url, feed_id, feedpath, max_age)
+        articles = self._fetch_articles_from_web(
+            url, feed_id, feedpath, max_age)
         self.cache_articles(articles)
         article = self._fetch_unfetched_article_from_cache(feedpath, max_age)
         if article:
             self.mark_as_fetched(article.id)
         return article
 
-    def _fetch_unfetched_article_from_cache(self, feedpath: List[str], max_age: Optional[timedelta]) -> Optional[Article]:
+    def _fetch_unfetched_article_from_cache(
+            self,
+            feedpath: List[str],
+            max_age: Optional[timedelta]) -> Optional[Article]:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
-            now = datetime.now().isoformat()
+            datetime.now().isoformat()
             sql = """
-                SELECT * FROM cache 
+                SELECT * FROM cache
                 WHERE feedpath = ? AND fetched IS NULL AND read IS NULL
             """
             params = [json.dumps(feedpath)]
@@ -203,7 +216,12 @@ class ArticleManager:
             tags=json.loads(row[CacheColumns.TAGS]) if row[CacheColumns.TAGS] else []
         )
 
-    def _fetch_articles_from_web(self, url: str, feed_id: str, feedpath: List[str], max_age: Optional[timedelta]) -> List[Article]:
+    def _fetch_articles_from_web(
+            self,
+            url: str,
+            feed_id: str,
+            feedpath: List[str],
+            max_age: Optional[timedelta]) -> List[Article]:
         response = requests.get(url, timeout=5)
         response.raise_for_status()
         parsed = feedparser.parse(response.text)
@@ -211,20 +229,28 @@ class ArticleManager:
         articles = []
         if parsed.entries:
             for entry in parsed.entries:
-                article = self._create_article_from_entry(entry, feed_id, feedpath, max_age)
+                article = self._create_article_from_entry(
+                    entry, feed_id, feedpath, max_age)
                 if article:
                     articles.append(article)
         return articles
 
-    def _create_article_from_entry(self, entry, feed_id: str, feedpath: List[str], max_age: Optional[timedelta]) -> Optional[Article]:
+    def _create_article_from_entry(
+            self,
+            entry,
+            feed_id: str,
+            feedpath: List[str],
+            max_age: Optional[timedelta]) -> Optional[Article]:
         title = entry.get('title', 'No Title')
         content = entry.get('summary', '')
         published_date = None
 
         if entry.get('published_parsed'):
-            published_date = datetime.fromtimestamp(time.mktime(entry.published_parsed))
+            published_date = datetime.fromtimestamp(
+                time.mktime(entry.published_parsed))
         elif entry.get('updated_parsed'):
-            published_date = datetime.fromtimestamp(time.mktime(entry.updated_parsed))
+            published_date = datetime.fromtimestamp(
+                time.mktime(entry.updated_parsed))
 
         if max_age and published_date and datetime.now() - published_date > max_age:
             return None
@@ -233,7 +259,8 @@ class ArticleManager:
         link = entry.get('link', '')
         author = entry.get('author', 'Unknown')
 
-        # Extract tags from entry if available (RSS feeds may provide tags/categories)
+        # Extract tags from entry if available (RSS feeds may provide
+        # tags/categories)
         tags = []
         if 'tags' in entry:
             tags = [tag['term'] for tag in entry['tags'] if 'term' in tag]
@@ -250,7 +277,9 @@ class ArticleManager:
             tags=tags
         )
 
-    def get_previous_read_article(self, current_read_timestamp: Optional[str] = None) -> Optional[Article]:
+    def get_previous_read_article(
+            self,
+            current_read_timestamp: Optional[str] = None) -> Optional[Article]:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             if current_read_timestamp:
@@ -272,7 +301,9 @@ class ArticleManager:
                 return self._row_to_article(row)
         return None
 
-    def get_next_read_article(self, current_read_timestamp: str) -> Optional[Article]:
+    def get_next_read_article(
+            self,
+            current_read_timestamp: str) -> Optional[Article]:
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -295,10 +326,13 @@ class ArticleManager:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
                 fp_json = json.dumps(feed.feedpath)
-                cursor.execute("DELETE FROM cache WHERE feedpath = ?", (fp_json,))
+                cursor.execute(
+                    "DELETE FROM cache WHERE feedpath = ?", (fp_json,))
                 deleted = cursor.rowcount
                 conn.commit()
-                logger.info(f"Cleared {deleted} articles from cache for feedpath {feed.feedpath}.")
+                logger.info(
+                    f"Cleared {deleted} articles from cache for feedpath {
+                        feed.feedpath}.")
                 return deleted
         except sqlite3.Error as e:
             logger.error(f"Error clearing cache: {e}")
@@ -318,9 +352,11 @@ class ArticleManager:
             if max_age:
                 purge_age = timedelta(seconds=max_age.total_seconds() * 2)
             else:
-                logger.debug(f"Feed {feed.id} has no purge_age or max_age set, skipping purge.")
+                logger.debug(
+                    f"Feed {
+                        feed.id} has no purge_age or max_age set, skipping purge.")
                 return 0
-        
+
         try:
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
@@ -332,7 +368,9 @@ class ArticleManager:
                 )
                 deleted = cursor.rowcount
                 conn.commit()
-                logger.info(f"Purged {deleted} old articles from cache for feedpath {feed.feedpath} (older than {cutoff_date}).")
+                logger.info(
+                    f"Purged {deleted} old articles from cache for feedpath {
+                        feed.feedpath} (older than {cutoff_date}).")
                 return deleted
         except sqlite3.Error as e:
             logger.error(f"Error purging old articles: {e}")

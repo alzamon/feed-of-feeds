@@ -1,10 +1,12 @@
 from enum import Enum
 
+
 class FeedType(Enum):
     """Types of feeds in the system."""
     SYNDICATION = "syndication"
     UNION = "union"
     FILTER = "filter"
+
 
 class FilterType(Enum):
     """Types of filters that can be applied to feeds."""

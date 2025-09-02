@@ -1,5 +1,4 @@
 """Tests for FeedSerializer functionality."""
-import pytest
 import tempfile
 from datetime import datetime, timedelta
 
@@ -13,11 +12,11 @@ def test_feed_serializer_reduced_repetition():
     with tempfile.TemporaryDirectory() as temp_dir:
         config_manager = ConfigManager(temp_dir)
         serializer = FeedSerializer(config_manager)
-        
+
         # Create a mock ArticleManager
         class MockArticleManager:
             pass
-        
+
         # Create a syndication feed
         feed = SyndicationFeed(
             id="test_feed",
@@ -30,9 +29,9 @@ def test_feed_serializer_reduced_repetition():
             feedpath=["root"],
             purge_age=timedelta(days=30)
         )
-        
+
         result = serializer.serialize_feed(feed)
-        
+
         # Check that all expected fields are present
         assert result["id"] == "test_feed"
         assert result["title"] == "Test Feed"

@@ -7,21 +7,29 @@ from fof.models.syndication_feed import SyndicationFeed
 from fof.models.enums import FilterType
 
 # Dummy managers for FeedManager
+
+
 class DummyArticleManager:
     pass
 
+
 class DummyConfigManager:
     config_path = "dummy_path"
+
     @property
     def get_tree_dir(self):
         return "tree_dir"
+
     def sanitize_filename(self, name):
         return name.replace(" ", "_")
+
     @property
     def get_update_dir(self):
         return "update_dir"
+
     def persist_update(self, dir):
         pass
+
 
 @pytest.fixture
 def complex_feed_tree():
@@ -93,6 +101,7 @@ def complex_feed_tree():
 
     return root_union, sub_union, regular1, filter1, regular2
 
+
 def test_set_disabled_in_session_for_feeds(complex_feed_tree):
     root_union, sub_union, regular1, filter1, regular2 = complex_feed_tree
     fm = FeedManager(DummyArticleManager(), DummyConfigManager())
@@ -100,14 +109,16 @@ def test_set_disabled_in_session_for_feeds(complex_feed_tree):
 
     # Call: select regular1 (grandchild of sub_union)
     fm._set_disabled_in_session_for_feeds("regular1")
-    # Only root_union, sub_union, and regular1 enabled; filter1 and regular2 disabled
+    # Only root_union, sub_union, and regular1 enabled; filter1 and regular2
+    # disabled
     assert not root_union.disabled_in_session
     assert not sub_union.disabled_in_session
     assert not regular1.disabled_in_session
     assert filter1.disabled_in_session
     assert regular2.disabled_in_session
 
-    # Call: select filter1 (should enable root_union, filter1, regular2; sub_union/regular1 disabled)
+    # Call: select filter1 (should enable root_union, filter1, regular2;
+    # sub_union/regular1 disabled)
     fm._set_disabled_in_session_for_feeds("filter1")
     assert not root_union.disabled_in_session
     assert sub_union.disabled_in_session
