@@ -21,18 +21,19 @@ class BaseFeed(ABC):
     def qualified_id(self) -> str:
         """
         Return the globally unique qualified ID for this feed.
-        
-        The qualified ID is constructed from the feedpath (path to this feed)
-        plus the feed's local ID. For example, a feed with local ID 'cicd'
-        and feedpath ['work', 'da'] would have qualified ID 'work/da/cicd'.
-        
+
+        The qualified ID is constructed from the feedpath, which contains
+        the complete path including this feed's ID. For example, a feed with
+        feedpath ['work', 'da', 'cicd'] would have qualified ID
+        'work/da/cicd'.
+
         Returns:
-            str: The qualified feed ID combining feedpath and local ID
+            str: The qualified feed ID from the feedpath
         """
         if not self.feedpath:
             # Root feed uses its local ID directly
             return self.id
-        return '/'.join(self.feedpath + [self.id])
+        return '/'.join(self.feedpath)
 
     @property
     @abstractmethod
@@ -45,5 +46,6 @@ class BaseFeed(ABC):
         Fetch a single article from this feed.
 
         Returns:
-            Optional[Article]: The fetched article, or None if no suitable article is found or something went wrong.
+            Optional[Article]: The fetched article, or None if no suitable
+                article is found or something went wrong.
         """

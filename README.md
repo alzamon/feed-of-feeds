@@ -119,6 +119,51 @@ Feed configurations are stored as JSON files in a hierarchical directory structu
 }
 ```
 
+### Path-Qualified Feed IDs
+
+FoF supports modular configuration through **path-qualified feed IDs** that enable self-contained subtrees without ID conflicts.
+
+#### Local vs. Qualified IDs
+
+- **Local ID**: Simple identifier used in configuration files (e.g., `"id": "cicd"`)
+- **Qualified ID**: Global identifier that includes the full path (e.g., `work/da/cicd`)
+
+#### Configuration Convention
+
+Each feed defines a simple local `id` in its configuration file:
+
+```json
+{
+  "id": "cicd",
+  "title": "CI/CD Feed",
+  "description": "Build and deployment feeds"
+}
+```
+
+The system automatically generates qualified IDs based on the directory structure:
+
+- Feed at `~/.config/fof/tree/work/da/cicd/` gets qualified ID: `work/da/cicd`
+- Feed at `~/.config/fof/tree/personal/cicd/` gets qualified ID: `personal/cicd`
+
+#### Benefits
+
+- **No Manual Editing**: Moving subtrees doesn't require updating feed IDs
+- **Conflict Resolution**: Feeds with the same local ID in different subtrees are distinguished
+- **Modular Design**: Subtrees can be developed and mounted independently
+
+#### CLI Usage
+
+You can reference feeds by either local or qualified ID:
+
+```bash
+# Using local ID (finds first match)
+fof --feed cicd
+
+# Using qualified ID (specific match)  
+fof --feed work/da/cicd
+fof --feed personal/cicd
+```
+
 ## Usage
 
 ### Interactive Article Reader

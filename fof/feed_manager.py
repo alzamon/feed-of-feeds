@@ -81,8 +81,8 @@ class FeedManager:
             if hasattr(feed, "weight") and hasattr(feed, "feed"):
                 return
             # Match by local ID or qualified ID
-            if (getattr(feed, "id", None) == feed_id or 
-                getattr(feed, "qualified_id", None) == feed_id):
+            if (getattr(feed, "id", None) == feed_id or
+                    getattr(feed, "qualified_id", None) == feed_id):
                 found_feed = feed
 
         if getattr(self, "root_feed", None):
@@ -241,7 +241,7 @@ class FeedManager:
                 return
             # Support both local and qualified ID lookup
             if (getattr(feed, 'id', None) == active_feed_id or
-                getattr(feed, 'qualified_id', None) == active_feed_id):
+                    getattr(feed, 'qualified_id', None) == active_feed_id):
                 selected_feed = feed
         self.perform_on_feeds(self.root_feed, find_feed)
         if not selected_feed:
