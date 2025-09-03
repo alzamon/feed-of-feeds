@@ -1,0 +1,82 @@
+"""Tests for platform-specific quirks functionality."""
+import pytest
+import subprocess
+from unittest.mock import patch
+from fof.platform_quirks import get_browser_open_command, open_url_in_browser
+
+
+class TestPlatformQuirks:
+    """Test platform-specific browser opening functionality."""
+
+    def test_get_browser_open_command_windows(self):
+        """Test browser command for Windows platform."""
+        with patch('platform.system', return_value='Windows'):
+            command = get_browser_open_command("https://example.com")
+            assert command == ["start", "https://example.com"]
+
+    def test_get_browser_open_command_macos(self):
+        """Test browser command for macOS platform."""
+        with patch('platform.system', return_value='Darwin'):
+            command = get_browser_open_command("https://example.com")
+            assert command == ["open", "https://example.com"]
+
+    def test_get_browser_open_command_linux(self):
+        """Test browser command for Linux platform."""
+        with patch('platform.system', return_value='Linux'):
+            command = get_browser_open_command("https://example.com")
+            assert command == ["xdg-open", "https://example.com"]
+
+    def test_get_browser_open_command_unsupported_platform(self):
+        """Test error handling for unsupported platforms."""
+        with patch('platform.system', return_value='UnknownOS'):
+            with pytest.raises(RuntimeError, match="Unsupported platform"):
+                get_browser_open_command("https://example.com")
+
+    @patch('subprocess.Popen')
+    def test_open_url_in_browser_linux_success(self, mock_popen):
+        """Test successful URL opening on Linux with output redirection."""
+        with patch('platform.system', return_value='Linux'):
+            result = open_url_in_browser("https://example.com")
+
+            assert result is True
+            mock_popen.assert_called_once_with(
+                ["xdg-open", "https://example.com"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+
+    @patch('subprocess.Popen')
+    def test_open_url_in_browser_windows_success(self, mock_popen):
+        """Test successful URL opening on Windows."""
+        with patch('platform.system', return_value='Windows'):
+            result = open_url_in_browser("https://example.com")
+
+            assert result is True
+            mock_popen.assert_called_once_with(
+                ["start", "https://example.com"])
+
+    @patch('subprocess.Popen')
+    def test_open_url_in_browser_macos_success(self, mock_popen):
+        """Test successful URL opening on macOS."""
+        with patch('platform.system', return_value='Darwin'):
+            result = open_url_in_browser("https://example.com")
+
+            assert result is True
+            mock_popen.assert_called_once_with(["open", "https://example.com"])
+
+    @patch('subprocess.Popen')
+    def test_open_url_in_browser_failure(self, mock_popen):
+        """Test error handling when subprocess fails."""
+        mock_popen.side_effect = OSError("Command not found")
+
+        with patch('platform.system', return_value='Linux'):
+            result = open_url_in_browser("https://example.com")
+
+            assert result is False
+
+    def test_open_url_in_browser_unsupported_platform(self):
+        """Test error handling for unsupported platform."""
+        with patch('platform.system', return_value='UnknownOS'):
+            result = open_url_in_browser("https://example.com")
+
+            assert result is False

@@ -1,6 +1,6 @@
 import curses
-import os
 import textwrap
+from .platform_quirks import open_url_in_browser
 
 
 class ControlLoop:
@@ -212,9 +212,16 @@ class ControlLoop:
                             0,
                             f"Opening URL: {
                                 self.current_article.link}...".ljust(max_x))
-                        os.system(f"xdg-open '{self.current_article.link}'")
-                        stdscr.addstr(
-                            max_y - 2, 0, "Opened link in browser.".ljust(max_x))
+                        success = open_url_in_browser(
+                            self.current_article.link)
+                        if success:
+                            stdscr.addstr(
+                                max_y - 2, 0,
+                                "Opened link in browser.".ljust(max_x))
+                        else:
+                            stdscr.addstr(
+                                max_y - 2, 0,
+                                "Failed to open browser.".ljust(max_x))
                     else:
                         stdscr.addstr(
                             max_y - 2, 0, "No valid link to open.".ljust(max_x))
