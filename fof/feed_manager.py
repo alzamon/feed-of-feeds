@@ -77,12 +77,12 @@ class FeedManager:
 
         def finder(feed, ctx):
             nonlocal found_feed
-            # Skip WeightedFeed wrappers - they don't have id or qualified_id
+            # Skip WeightedFeed wrappers - they don't have id
             if hasattr(feed, "weight") and hasattr(feed, "feed"):
                 return
-            # Match by local ID or qualified ID
+            # Match by qualified ID or local ID
             if (getattr(feed, "id", None) == feed_id or
-                    getattr(feed, "qualified_id", None) == feed_id):
+                    getattr(feed, "local_id", None) == feed_id):
                 found_feed = feed
 
         if getattr(self, "root_feed", None):
@@ -241,7 +241,7 @@ class FeedManager:
                 return
             # Support both local and qualified ID lookup
             if (getattr(feed, 'id', None) == active_feed_id or
-                    getattr(feed, 'qualified_id', None) == active_feed_id):
+                    getattr(feed, 'local_id', None) == active_feed_id):
                 selected_feed = feed
         self.perform_on_feeds(self.root_feed, find_feed)
         if not selected_feed:
@@ -249,13 +249,24 @@ class FeedManager:
                 f"Feed with id '{active_feed_id}' not found for disabling in session.")
             return
 
-        # Ancestors: all ids in the feedpath of the selected feed
-        allowed_ids = set(getattr(selected_feed, 'feedpath', []))
-        # Include the selected feed itself
-        allowed_ids.add(getattr(selected_feed, 'id', None))
+        # Build set of allowed qualified IDs
+        allowed_ids = set()
+        
+        # Ancestors: construct qualified IDs for each prefix of the selected feed's path
+        selected_feedpath = getattr(selected_feed, 'feedpath', [])
+        for i in range(1, len(selected_feedpath) + 1):
+            ancestor_id = '/'.join(selected_feedpath[:i])
+            allowed_ids.add(ancestor_id)
+        
+        # Include root feed if it exists
+        if not selected_feedpath:
+            # Selected feed is root
+            allowed_ids.add(getattr(selected_feed, 'id', None))
+        else:
+            # Add root feed to allowed (root has empty feedpath)
+            allowed_ids.add("root")
 
         # Descendants: recursively collect all feed ids under the selected feed
-        # (including itself)
         def collect_descendants(feed: BaseFeed):
             feed_id = getattr(feed, 'id', None)
             if feed_id is not None:

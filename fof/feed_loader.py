@@ -61,7 +61,6 @@ class FeedLoader:
                         f"Failed to load subfeed {sub_name} in {path}")
             union_feedpath_for_self = feedpath + [union_id] if not is_root else []
             return UnionFeed(
-                id=union_id,
                 title=union_info.get("title") if "title" in union_info else os.path.basename(path),
                 description=union_info.get("description") if "description" in union_info else "",
                 feeds=subfeeds,
@@ -86,7 +85,6 @@ class FeedLoader:
                 purge_age_str) if purge_age_str else None
             syndication_feedpath = feedpath + [feed_id] if not is_root else []
             return SyndicationFeed(
-                id=feed_data["id"],
                 title=feed_data.get("title"),
                 description=feed_data.get(
                     "description",
@@ -126,7 +124,6 @@ class FeedLoader:
                 ) for c in filter_data["criteria"]
             ]
             return FilterFeed(
-                id=filter_id,
                 title=filter_data.get("title"),
                 description=filter_data.get("description"),
                 filters=filters,

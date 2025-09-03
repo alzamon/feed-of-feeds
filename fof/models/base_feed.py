@@ -9,7 +9,6 @@ from .enums import FeedType
 @dataclass
 class BaseFeed(ABC):
     """Abstract base feed class for all feed types."""
-    id: str
     title: str
     description: str
     last_updated: datetime
@@ -18,7 +17,7 @@ class BaseFeed(ABC):
     disabled_in_session: bool
 
     @property
-    def qualified_id(self) -> str:
+    def id(self) -> str:
         """
         Return the globally unique qualified ID for this feed.
 
@@ -31,9 +30,21 @@ class BaseFeed(ABC):
             str: The qualified feed ID from the feedpath
         """
         if not self.feedpath:
-            # Root feed uses its local ID directly
-            return self.id
+            # Root feed case - use a default identifier
+            return "root"
         return '/'.join(self.feedpath)
+
+    @property
+    def local_id(self) -> str:
+        """
+        Return the local ID for this feed (last component of the path).
+
+        Returns:
+            str: The local feed ID used in configuration files
+        """
+        if not self.feedpath:
+            return "root"
+        return self.feedpath[-1]
 
     @property
     @abstractmethod

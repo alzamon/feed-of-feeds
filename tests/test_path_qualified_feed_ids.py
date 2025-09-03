@@ -128,7 +128,7 @@ def subtree_config_dir():
 
 
 def test_qualified_id_property(subtree_config_dir):
-    """Test that qualified_id property generates correct path-qualified IDs."""
+    """Test that id property generates correct path-qualified IDs."""
     config_manager = ConfigManager(config_path=subtree_config_dir)
     article_manager = ArticleManager(config_manager=config_manager)
     feed_manager = FeedManager(
@@ -136,31 +136,31 @@ def test_qualified_id_property(subtree_config_dir):
         config_manager=config_manager
     )
 
-    # Test root feed (should use local ID directly)
+    # Test root feed (should use "root" as ID)
     root_feed = feed_manager.root_feed
     assert root_feed.id == "root"
-    assert root_feed.qualified_id == "root"
+    assert root_feed.local_id == "root"
     assert root_feed.feedpath == []
 
     # Test work feed (child of root, feedpath includes work)
     work_feed = feed_manager.get_feed_by_id("work")
     assert work_feed is not None
     assert work_feed.id == "work"
-    assert work_feed.qualified_id == "work"
+    assert work_feed.local_id == "work"
     assert work_feed.feedpath == ["work"]
 
     # Test work/da feed (child of work, feedpath includes work and da)
     da_feed = feed_manager.get_feed_by_id("work/da")
     assert da_feed is not None
-    assert da_feed.id == "da"
-    assert da_feed.qualified_id == "work/da"
+    assert da_feed.id == "work/da"
+    assert da_feed.local_id == "da"
     assert da_feed.feedpath == ["work", "da"]
 
     # Test work/da/cicd feed (using qualified ID to be specific)
     work_cicd_feed = feed_manager.get_feed_by_id("work/da/cicd")
     assert work_cicd_feed is not None
-    assert work_cicd_feed.id == "cicd"
-    assert work_cicd_feed.qualified_id == "work/da/cicd"
+    assert work_cicd_feed.id == "work/da/cicd"
+    assert work_cicd_feed.local_id == "cicd"
     assert work_cicd_feed.feedpath == ["work", "da", "cicd"]
 
 
@@ -177,21 +177,21 @@ def test_qualified_id_lookup(subtree_config_dir):
     # We'll just verify that A cicd is found, not which specific one
     cicd_by_local = feed_manager.get_feed_by_id("cicd")
     assert cicd_by_local is not None
-    assert cicd_by_local.id == "cicd"
+    assert cicd_by_local.local_id == "cicd"
     # Could be either work or personal cicd
-    assert cicd_by_local.qualified_id in ["work/da/cicd", "personal/cicd"]
+    assert cicd_by_local.id in ["work/da/cicd", "personal/cicd"]
 
     # Test lookup by qualified ID (should find specific feed)
     work_cicd_by_qualified = feed_manager.get_feed_by_id("work/da/cicd")
     assert work_cicd_by_qualified is not None
     assert work_cicd_by_qualified.title == "CI/CD Feed"
-    assert work_cicd_by_qualified.qualified_id == "work/da/cicd"
+    assert work_cicd_by_qualified.id == "work/da/cicd"
 
     # Test lookup of personal cicd by qualified ID
     personal_cicd_by_qualified = feed_manager.get_feed_by_id("personal/cicd")
     assert personal_cicd_by_qualified is not None
     assert personal_cicd_by_qualified.title == "Personal CI/CD"
-    assert personal_cicd_by_qualified.qualified_id == "personal/cicd"
+    assert personal_cicd_by_qualified.id == "personal/cicd"
 
     # Test non-existent qualified ID
     non_existent = feed_manager.get_feed_by_id("nonexistent/path/feed")
@@ -291,14 +291,14 @@ def test_conflicting_local_ids_resolved_by_qualified_ids(subtree_config_dir):
     assert work_cicd != personal_cicd
 
     # Verify they have different titles but same local ID
-    assert work_cicd.id == "cicd"
-    assert personal_cicd.id == "cicd"
+    assert work_cicd.local_id == "cicd"
+    assert personal_cicd.local_id == "cicd"
     assert work_cicd.title == "CI/CD Feed"
     assert personal_cicd.title == "Personal CI/CD"
 
     # Verify they have different qualified IDs
-    assert work_cicd.qualified_id == "work/da/cicd"
-    assert personal_cicd.qualified_id == "personal/cicd"
+    assert work_cicd.id == "work/da/cicd"
+    assert personal_cicd.id == "personal/cicd"
 
 
 def test_subtree_mounting_no_manual_editing_required(subtree_config_dir):
@@ -313,7 +313,7 @@ def test_subtree_mounting_no_manual_editing_required(subtree_config_dir):
     # Get original feeds
     original_work_cicd = feed_manager.get_feed_by_id("work/da/cicd")
     assert original_work_cicd is not None
-    assert original_work_cicd.qualified_id == "work/da/cicd"
+    assert original_work_cicd.id == "work/da/cicd"
 
     # Simulate moving the subtree by creating a new structure
     # (In practice, this would be done by filesystem operations)
@@ -336,10 +336,10 @@ def test_subtree_mounting_no_manual_editing_required(subtree_config_dir):
         # Skip WeightedFeed wrappers
         if hasattr(feed, "weight") and hasattr(feed, "feed"):
             continue
-        assert '/' not in feed.id, f"Feed {feed.qualified_id} has complex local ID: {feed.id}"
+        assert '/' not in feed.local_id, f"Feed {feed.id} has complex local ID: {feed.local_id}"
         
     # But qualified IDs should reflect hierarchy
-    qualified_ids = [feed.qualified_id for feed in all_feeds if not (hasattr(feed, "weight") and hasattr(feed, "feed"))]
+    qualified_ids = [feed.id for feed in all_feeds if not (hasattr(feed, "weight") and hasattr(feed, "feed"))]
     assert "work" in qualified_ids
     assert "work/da" in qualified_ids
     assert "work/da/cicd" in qualified_ids
