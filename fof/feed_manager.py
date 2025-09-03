@@ -70,13 +70,19 @@ class FeedManager:
     def get_feed_by_id(self, feed_id: str):
         """
         Recursively search for a feed with the given id in the entire feed tree.
+        Supports both local IDs (e.g., 'cicd') and qualified IDs (e.g., 'work/da/cicd').
         Returns the feed object if found, else None.
         """
         found_feed = None
 
         def finder(feed, ctx):
             nonlocal found_feed
-            if getattr(feed, "id", None) == feed_id:
+            # Skip WeightedFeed wrappers - they don't have id or qualified_id
+            if hasattr(feed, "weight") and hasattr(feed, "feed"):
+                return
+            # Match by local ID or qualified ID
+            if (getattr(feed, "id", None) == feed_id or 
+                getattr(feed, "qualified_id", None) == feed_id):
                 found_feed = feed
 
         if getattr(self, "root_feed", None):
@@ -230,7 +236,12 @@ class FeedManager:
 
         def find_feed(feed: BaseFeed, ctx: dict):
             nonlocal selected_feed
-            if getattr(feed, 'id', None) == active_feed_id:
+            # Skip WeightedFeed wrappers
+            if hasattr(feed, "weight") and hasattr(feed, "feed"):
+                return
+            # Support both local and qualified ID lookup
+            if (getattr(feed, 'id', None) == active_feed_id or
+                getattr(feed, 'qualified_id', None) == active_feed_id):
                 selected_feed = feed
         self.perform_on_feeds(self.root_feed, find_feed)
         if not selected_feed:
@@ -262,6 +273,9 @@ class FeedManager:
 
         # Now disable all feeds not in allowed_ids
         def disable_unless_allowed(feed: BaseFeed, ctx: dict):
+            # Skip WeightedFeed wrappers
+            if hasattr(feed, "weight") and hasattr(feed, "feed"):
+                return
             feed_id = getattr(feed, 'id', None)
             feed.disabled_in_session = (feed_id not in allowed_ids)
 

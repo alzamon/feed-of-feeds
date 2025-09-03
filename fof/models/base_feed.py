@@ -18,6 +18,23 @@ class BaseFeed(ABC):
     disabled_in_session: bool
 
     @property
+    def qualified_id(self) -> str:
+        """
+        Return the globally unique qualified ID for this feed.
+        
+        The qualified ID is constructed from the feedpath (path to this feed)
+        plus the feed's local ID. For example, a feed with local ID 'cicd'
+        and feedpath ['work', 'da'] would have qualified ID 'work/da/cicd'.
+        
+        Returns:
+            str: The qualified feed ID combining feedpath and local ID
+        """
+        if not self.feedpath:
+            # Root feed uses its local ID directly
+            return self.id
+        return '/'.join(self.feedpath + [self.id])
+
+    @property
     @abstractmethod
     def feed_type(self) -> FeedType:
         """Return the type of this feed."""
