@@ -218,8 +218,10 @@ Union feeds use weighted random sampling to select articles:
 ### Running Tests
 
 ```bash
-pip install pytest
-python -m pytest tests/ -v
+python -m venv .venv
+source .venv/bin/activate
+pip install ".[dev]"
+pytest
 ```
 
 ### Development Installation
