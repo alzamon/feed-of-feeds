@@ -14,7 +14,7 @@ except ImportError:
     argcomplete = None
 
 try:
-    from colorama import init, Fore, Back, Style
+    from colorama import init, Fore, Style
     # Initialize colorama for cross-platform color support
     init()
     COLORS_AVAILABLE = True
@@ -26,14 +26,16 @@ DEFAULT_CONFIG_PATH = "~/.config/fof/"
 # Constants for percentage calculations
 PERCENTAGE_MULTIPLIER = 100.0
 
+
 def _should_use_color():
     """Check if we should use colors for output."""
     return (
-        COLORS_AVAILABLE and 
-        hasattr(sys.stdout, 'isatty') and 
-        sys.stdout.isatty() and
-        os.getenv('NO_COLOR') is None
+        COLORS_AVAILABLE
+        and hasattr(sys.stdout, 'isatty')
+        and sys.stdout.isatty()
+        and os.getenv('NO_COLOR') is None
     )
+
 
 def _colorize(text, color_code, style_code=''):
     """Apply color to text if colors are available and appropriate."""
@@ -41,16 +43,18 @@ def _colorize(text, color_code, style_code=''):
         return f"{style_code}{color_code}{text}{Style.RESET_ALL}"
     return text
 
+
 def print_feed_paths(feed_manager, base_feed=None):
     """
-    Recursively print all feed paths from the given base feed, and the product of
-    likelihoods for WeightedFeeds along each path.
+    Recursively print all feed paths from the given base feed, and the
+    product of likelihoods for WeightedFeeds along each path.
     """
     def print_feed(feed, ctx):
         # Only print at leaf feeds (no children)
         is_leaf = not (
             hasattr(feed, "feeds") or
-            (hasattr(feed, "source_feed") and feed.source_feed is not None) or
+            (hasattr(feed, "source_feed") and
+             feed.source_feed is not None) or
             (hasattr(feed, "feed") and feed.feed is not None)
         )
         feedpath = getattr(feed, "feedpath", [])
@@ -58,21 +62,30 @@ def print_feed_paths(feed_manager, base_feed=None):
         if is_leaf:
             # Color the feed path in bold cyan
             feed_path_text = " -> ".join(feedpath)
-            colored_feed_path = _colorize(feed_path_text, Fore.CYAN, Style.BRIGHT)
+            colored_feed_path = _colorize(
+                feed_path_text, Fore.CYAN, Style.BRIGHT
+            )
             print(colored_feed_path)
-            
+
             # Color the URL in green
             url_text = url if url else "(no url)"
             colored_url = _colorize(url_text, Fore.GREEN)
             print("  " + colored_url)
-            
+
             # Color the likelihood percentage in yellow
-            likelihood_pct = ctx.get("likelihood", 1.0) * PERCENTAGE_MULTIPLIER
-            likelihood_text = "Cumulative likelihood: {:.2f}%".format(likelihood_pct)
+            likelihood_pct = (
+                ctx.get("likelihood", 1.0) * PERCENTAGE_MULTIPLIER
+            )
+            likelihood_text = "Cumulative likelihood: {:.2f}%".format(
+                likelihood_pct
+            )
             colored_likelihood = _colorize(likelihood_text, Fore.YELLOW)
             print("  " + colored_likelihood)
 
-    root = base_feed if base_feed is not None else getattr(feed_manager, "root_feed", None)
+    root = (
+        base_feed if base_feed is not None
+        else getattr(feed_manager, "root_feed", None)
+    )
     if root:
         feed_manager.perform_on_feeds(
             root,
@@ -84,6 +97,7 @@ def print_feed_paths(feed_manager, base_feed=None):
         colored_no_feed = _colorize(no_feed_text, Fore.RED)
         print(colored_no_feed)
 
+
 def main():
     """Main entry point for the application."""
     parser = argparse.ArgumentParser(description="FoF - Feed of Feeds")
@@ -91,20 +105,26 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
 
     # Logs subcommand
-    logs_parser = subparsers.add_parser("logs", help="Print the log file and exit")
+    logs_parser = subparsers.add_parser(
+        "logs", help="Print the log file and exit"
+    )
     logs_parser.add_argument(
-        "--config", "-c", 
+        "--config", "-c",
         default=DEFAULT_CONFIG_PATH,
         help="Path to config file (default: ~/.config/fof)"
     )
 
     # Feeds subcommand
-    feeds_parser = subparsers.add_parser("feeds", help="Feed tree utilities")
+    feeds_parser = subparsers.add_parser(
+        "feeds", help="Feed tree utilities"
+    )
     feeds_subparsers = feeds_parser.add_subparsers(dest="feeds_command")
 
-    feeds_list_parser = feeds_subparsers.add_parser("list", help="List all feed paths")
+    feeds_list_parser = feeds_subparsers.add_parser(
+        "list", help="List all feed paths"
+    )
     feeds_list_parser.add_argument(
-        "--config", "-c", 
+        "--config", "-c",
         default=DEFAULT_CONFIG_PATH,
         help="Path to config file (default: ~/.config/fof)"
     )
@@ -115,24 +135,30 @@ def main():
     )
 
     # Cache subcommand
-    cache_parser = subparsers.add_parser("cache", help="Cache management utilities")
+    cache_parser = subparsers.add_parser(
+        "cache", help="Cache management utilities"
+    )
     cache_subparsers = cache_parser.add_subparsers(dest="cache_command")
 
-    cache_clear_parser = cache_subparsers.add_parser("clear", help="Clear the article cache for all syndication feeds under a feed")
+    cache_clear_parser = cache_subparsers.add_parser(
+        "clear",
+        help="Clear the article cache for all syndication feeds under a feed"
+    )
     cache_clear_parser.add_argument(
-        "--config", "-c", 
+        "--config", "-c",
         default=DEFAULT_CONFIG_PATH,
         help="Path to config file (default: ~/.config/fof)"
     )
     cache_clear_parser.add_argument(
         "--feed",
         required=True,
-        help="Feed ID under which to clear the cache for all syndication feeds"
+        help=("Feed ID under which to clear the cache for "
+              "all syndication feeds")
     )
 
     # Global arguments for default mode (control loop)
     parser.add_argument(
-        "--config", "-c", 
+        "--config", "-c",
         default=DEFAULT_CONFIG_PATH,
         help="Path to config file (default: ~/.config/fof)"
     )
@@ -153,8 +179,11 @@ def main():
 
     args = parser.parse_args()
 
-    # Get config path - prefer command-specific config if provided, otherwise use global
-    config_path = os.path.expanduser(getattr(args, "config", DEFAULT_CONFIG_PATH))
+    # Get config path - prefer command-specific config if provided,
+    # otherwise use global
+    config_path = os.path.expanduser(
+        getattr(args, "config", DEFAULT_CONFIG_PATH)
+    )
     log_file = os.path.join(config_path, "fof.log")
     os.makedirs(config_path, exist_ok=True)
 
@@ -182,7 +211,10 @@ def main():
         handlers.append(console_handler)
 
     logging.basicConfig(
-        level=logging.DEBUG if getattr(args, "verbose", False) else logging.INFO,
+        level=(
+            logging.DEBUG if getattr(args, "verbose", False)
+            else logging.INFO
+        ),
         handlers=handlers
     )
     logging.info("Logging started.")
@@ -197,7 +229,8 @@ def main():
     )
 
     # Handle subcommands
-    if args.command == "feeds" and getattr(args, "feeds_command", None) == "list":
+    if (args.command == "feeds" and
+            getattr(args, "feeds_command", None) == "list"):
         feed_id = getattr(args, "feed", None)
         base_feed = None
         if feed_id:
@@ -208,7 +241,8 @@ def main():
         print_feed_paths(feed_manager, base_feed=base_feed)
         sys.exit(0)
 
-    if args.command == "cache" and getattr(args, "cache_command", None) == "clear":
+    if (args.command == "cache" and
+            getattr(args, "cache_command", None) == "clear"):
         # Find the feed by id (any type)
         feed_id = getattr(args, "feed", None)
         selected_feed = feed_manager.get_feed_by_id(feed_id)
@@ -224,20 +258,24 @@ def main():
             nonlocal total_deleted
             if isinstance(feed, SyndicationFeed):
                 deleted = article_manager.clear_cache(feed)
-                print(f"Cleared {deleted} articles from cache for syndication feed '{feed.id}'.")
+                print(
+                    f"Cleared {deleted} articles from cache for "
+                    f"syndication feed '{feed.id}'."
+                )
                 total_deleted += deleted
 
         feed_manager.perform_on_feeds(selected_feed, clear_if_syndication)
         print(f"Total articles cleared: {total_deleted}")
         sys.exit(0)
-    
+
     # Initialize control loop to handle interactions
     ControlLoop(feed_manager, article_manager).start()
-    
+
     # Purge old articles before saving config and exiting
     feed_manager.purge_old_articles()
-    
+
     feed_manager.save_config()
+
 
 if __name__ == "__main__":
     main()

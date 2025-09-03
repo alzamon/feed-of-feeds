@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional, List
 from .article import Article
 from .enums import FeedType
+
 
 @dataclass
 class BaseFeed(ABC):
@@ -12,14 +13,14 @@ class BaseFeed(ABC):
     title: str
     description: str
     last_updated: datetime
-    feedpath: List[str]  # Required parameter to track the path from the root feed to this feed
+    # Required parameter to track the path from the root feed to this feed
+    feedpath: List[str]
     disabled_in_session: bool
 
     @property
     @abstractmethod
     def feed_type(self) -> FeedType:
         """Return the type of this feed."""
-        pass
 
     @abstractmethod
     def fetch(self) -> Optional[Article]:
@@ -29,4 +30,3 @@ class BaseFeed(ABC):
         Returns:
             Optional[Article]: The fetched article, or None if no suitable article is found or something went wrong.
         """
-        pass

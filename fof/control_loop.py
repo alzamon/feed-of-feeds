@@ -1,10 +1,10 @@
-import urllib.parse
 import curses
 import os
 import textwrap
 
+
 class ControlLoop:
-    """Manages display and keyboard interactions for navigating articles in a feed."""
+    """Manages display and keyboard interactions for navigating articles."""
 
     def __init__(self, feed_manager, article_manager):
         self.feed_manager = feed_manager
@@ -17,12 +17,13 @@ class ControlLoop:
         stdscr.clear()
         if self.current_article:
             lines = [
-                f"Title: {self.current_article.title}",
-                f"Link: {self.current_article.link}",
-                f"Author: {self.current_article.author or 'Unknown'}",
-                f"Published: {self.current_article.published_date or 'Unknown date'}",
-            ]
-            if hasattr(self.current_article, "tags") and self.current_article.tags:
+                f"Title: {
+                    self.current_article.title}", f"Link: {
+                    self.current_article.link}", f"Author: {
+                    self.current_article.author or 'Unknown'}", f"Published: {
+                    self.current_article.published_date or 'Unknown date'}", ]
+            if (hasattr(self.current_article, "tags")
+               and self.current_article.tags):
                 tag_str = ", ".join(self.current_article.tags)
                 lines.append(f"Tags: {tag_str}")
             else:
@@ -30,12 +31,17 @@ class ControlLoop:
             lines.extend([
                 "",
                 "Feed Path:",
-                " -> ".join(self.current_article.feedpath) if self.current_article.feedpath else "Unknown",
+                (" -> ".join(self.current_article.feedpath)
+                 if self.current_article.feedpath else "Unknown"),
                 "",
                 "Content Preview:",
                 "---------------",
             ])
-            preview = self.current_article.content[:200] + "..." if len(self.current_article.content) > 200 else self.current_article.content
+            preview = (
+                self.current_article.content[:200] + "..."
+                if len(self.current_article.content) > 200
+                else self.current_article.content
+            )
             wrapped_preview = textwrap.wrap(preview, width=max_x)
             lines.extend(wrapped_preview)
             row = 0
@@ -111,56 +117,89 @@ class ControlLoop:
 
             if key == ord("n"):
                 if self.browsing_read_history:
-                    if self.current_article and getattr(self.current_article, "read", None):
-                        next_article = self.article_manager.get_next_read_article(
-                            self.current_article.read.isoformat()
+                    if (self.current_article
+                       and getattr(self.current_article, "read", None)):
+                        next_article = (
+                            self.article_manager.get_next_read_article(
+                                self.current_article.read.isoformat()
+                            )
                         )
                         if next_article:
                             self.current_article = next_article
-                            stdscr.addstr(max_y - 2, 0, "Moved to newer read article.".ljust(max_x))
+                            stdscr.addstr(
+                                max_y - 2, 0,
+                                "Moved to newer read article.".ljust(max_x)
+                            )
                             self._display_article(stdscr)
                             self._display_prompt(stdscr)
                         else:
-                            # At most recent read article. Switch to unread mode.
+                            # At most recent read article. Switch to unread
+                            # mode.
                             self.browsing_read_history = False
-                            self.current_article = self.feed_manager.next_article()
+                            self.current_article = (
+                                self.feed_manager.next_article()
+                            )
                             if self.current_article:
-                                self.article_manager.mark_as_read(self.current_article.id)
-                                stdscr.addstr(max_y - 2, 0, "Switched to unread. Showing next unread article.".ljust(max_x))
+                                self.article_manager.mark_as_read(
+                                    self.current_article.id
+                                )
+                                stdscr.addstr(
+                                    max_y - 2, 0,
+                                    ("Switched to unread. Showing next unread "
+                                     "article.").ljust(max_x)
+                                )
                             else:
-                                stdscr.addstr(0, 0, "All caught up! No more articles to display.")
+                                stdscr.addstr(
+                                    0, 0,
+                                    "All caught up! No more articles to "
+                                    "display."
+                                )
                             self._display_article(stdscr)
                             self._display_prompt(stdscr)
                     else:
-                        stdscr.addstr(max_y - 2, 0, "Not in read history.".ljust(max_x))
+                        stdscr.addstr(
+                            max_y - 2, 0,
+                            "Not in read history.".ljust(max_x)
+                        )
                         self._display_prompt(stdscr)
                 else:
                     # Get next unread article
                     self.current_article = self.feed_manager.next_article()
                     if self.current_article:
-                        self.article_manager.mark_as_read(self.current_article.id)
+                        self.article_manager.mark_as_read(
+                            self.current_article.id
+                        )
                     else:
-                        stdscr.addstr(0, 0, "All caught up! No more articles to display.")
+                        stdscr.addstr(
+                            0, 0,
+                            "All caught up! No more articles to display."
+                        )
                     self._display_article(stdscr)
                     self._display_prompt(stdscr)
 
             elif key == ord("p"):
                 prev_article = None
-                if self.current_article and getattr(self.current_article, "read", None):
-                    prev_article = self.article_manager.get_previous_read_article(
-                        self.current_article.read.isoformat()
+                if (self.current_article
+                   and getattr(self.current_article, "read", None)):
+                    prev_article = (
+                        self.article_manager.get_previous_read_article(
+                            self.current_article.read.isoformat()
+                        )
                     )
                 else:
                     most_recent = self.article_manager.get_previous_read_article()
                     if most_recent and self.current_article and most_recent.id == self.current_article.id:
-                        prev_article = self.article_manager.get_previous_read_article(most_recent.read.isoformat())
+                        prev_article = self.article_manager.get_previous_read_article(
+                            most_recent.read.isoformat())
                     else:
                         prev_article = most_recent
                 if prev_article:
                     self.current_article = prev_article
-                    stdscr.addstr(max_y - 2, 0, "Moved to previous read article.".ljust(max_x))
+                    stdscr.addstr(
+                        max_y - 2, 0, "Moved to previous read article.".ljust(max_x))
                 else:
-                    stdscr.addstr(max_y - 2, 0, "No read articles yet.".ljust(max_x))
+                    stdscr.addstr(
+                        max_y - 2, 0, "No read articles yet.".ljust(max_x))
                 self.browsing_read_history = True
                 self._display_article(stdscr)
                 self._display_prompt(stdscr)
@@ -168,38 +207,54 @@ class ControlLoop:
             elif key == ord("o"):
                 try:
                     if self.current_article and self.current_article.link:
-                        stdscr.addstr(max_y - 2, 0, f"Opening URL: {self.current_article.link}...".ljust(max_x))
-                        encoded_url = urllib.parse.quote(self.current_article.link, safe=":/?")
-                        os.system(f"xdg-open {self.current_article.link}")
-                        stdscr.addstr(max_y - 2, 0, "Opened link in browser.".ljust(max_x))
+                        stdscr.addstr(
+                            max_y - 2,
+                            0,
+                            f"Opening URL: {
+                                self.current_article.link}...".ljust(max_x))
+                        os.system(f"xdg-open '{self.current_article.link}'")
+                        stdscr.addstr(
+                            max_y - 2, 0, "Opened link in browser.".ljust(max_x))
                     else:
-                        stdscr.addstr(max_y - 2, 0, "No valid link to open.".ljust(max_x))
+                        stdscr.addstr(
+                            max_y - 2, 0, "No valid link to open.".ljust(max_x))
                 except Exception as e:
-                    stdscr.addstr(max_y - 2, 0, f"Failed to open browser: {e}".ljust(max_x))
+                    stdscr.addstr(
+                        max_y - 2, 0, f"Failed to open browser: {e}".ljust(max_x))
                 self._display_prompt(stdscr)
 
             elif key == ord("+"):
                 if self.current_article and self.current_article.feedpath:
                     try:
-                        self.feed_manager.update_weights(self.current_article.feedpath, increment=10)
+                        self.feed_manager.update_weights(
+                            self.current_article.feedpath, increment=10)
                         self.feed_manager.save_config()
-                        stdscr.addstr(max_y - 3, 0, "Increased weights along feedpath and saved configuration.".ljust(max_x))
+                        stdscr.addstr(
+                            max_y - 3,
+                            0,
+                            "Increased weights along feedpath and saved configuration.".ljust(max_x))
                     except ValueError as e:
                         stdscr.addstr(max_y - 3, 0, f"Error: {e}".ljust(max_x))
                 else:
-                    stdscr.addstr(max_y - 3, 0, "No feed associated with this article.".ljust(max_x))
+                    stdscr.addstr(
+                        max_y - 3, 0, "No feed associated with this article.".ljust(max_x))
                 self._display_prompt(stdscr)
 
             elif key == ord("-"):
                 if self.current_article and self.current_article.feedpath:
                     try:
-                        self.feed_manager.update_weights(self.current_article.feedpath, increment=-10)
+                        self.feed_manager.update_weights(
+                            self.current_article.feedpath, increment=-10)
                         self.feed_manager.save_config()
-                        stdscr.addstr(max_y - 3, 0, "Decreased weights along feedpath and saved configuration.".ljust(max_x))
+                        stdscr.addstr(
+                            max_y - 3,
+                            0,
+                            "Decreased weights along feedpath and saved configuration.".ljust(max_x))
                     except ValueError as e:
                         stdscr.addstr(max_y - 3, 0, f"Error: {e}".ljust(max_x))
                 else:
-                    stdscr.addstr(max_y - 3, 0, "No feed associated with this article.".ljust(max_x))
+                    stdscr.addstr(
+                        max_y - 3, 0, "No feed associated with this article.".ljust(max_x))
                 self._display_prompt(stdscr)
 
             elif key == ord("q"):

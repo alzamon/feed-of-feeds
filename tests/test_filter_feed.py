@@ -1,10 +1,9 @@
-import pytest
-import re
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from fof.models.filter_feed import FilterFeed, Filter
 from fof.models.enums import FilterType, FeedType
 from fof.models.base_feed import BaseFeed
+
 
 class DummyArticle:
     def __init__(self, title=None, content=None, link=None):
@@ -14,9 +13,16 @@ class DummyArticle:
         self.published_date = datetime.now()
         self.id = "dummy"
 
+
 class DummyFeed(BaseFeed):
     def __init__(self, article=None, disabled_in_session=False):
-        super().__init__("dummy", title=None, description="", last_updated=datetime.now(), feedpath=[], disabled_in_session=disabled_in_session)
+        super().__init__(
+            "dummy",
+            title=None,
+            description="",
+            last_updated=datetime.now(),
+            feedpath=[],
+            disabled_in_session=disabled_in_session)
         self._article = article
         self._disabled_in_session = disabled_in_session
         self._fetched = False  # Simulate single-use feed
@@ -33,6 +39,7 @@ class DummyFeed(BaseFeed):
         self._fetched = True
         return self._article
 
+
 def test_filterfeed_no_filters_passes_article():
     art = DummyArticle(title="foo", content="bar", link="baz")
     dummy_feed = DummyFeed(article=art)
@@ -48,6 +55,7 @@ def test_filterfeed_no_filters_passes_article():
     )
     result = ff.fetch()
     assert result is art
+
 
 def test_filterfeed_title_regex_inclusion_pass():
     art = DummyArticle(title="hello world", content="body", link="url")
@@ -66,6 +74,7 @@ def test_filterfeed_title_regex_inclusion_pass():
     result = ff.fetch()
     assert result is art
 
+
 def test_filterfeed_title_regex_inclusion_fail():
     art = DummyArticle(title="goodbye", content="body", link="url")
     dummy_feed = DummyFeed(article=art)
@@ -82,6 +91,7 @@ def test_filterfeed_title_regex_inclusion_fail():
     )
     result = ff.fetch()
     assert result is None
+
 
 def test_filterfeed_content_regex_exclusion():
     art = DummyArticle(title="foo", content="forbidden", link="baz")
@@ -100,6 +110,7 @@ def test_filterfeed_content_regex_exclusion():
     result = ff.fetch()
     assert result is None
 
+
 def test_filterfeed_link_regex_inclusion():
     art = DummyArticle(title="foo", content="bar", link="baz.com/article/123")
     dummy_feed = DummyFeed(article=art)
@@ -117,8 +128,12 @@ def test_filterfeed_link_regex_inclusion():
     result = ff.fetch()
     assert result is art
 
+
 def test_filterfeed_multiple_filters_all_must_pass():
-    art = DummyArticle(title="Special Title", content="Special Content", link="https://x.com/42")
+    art = DummyArticle(
+        title="Special Title",
+        content="Special Content",
+        link="https://x.com/42")
     dummy_feed = DummyFeed(article=art)
     filters = [
         Filter(FilterType.TITLE_REGEX, "Special"),
@@ -138,6 +153,7 @@ def test_filterfeed_multiple_filters_all_must_pass():
     result = ff.fetch()
     assert result is art
 
+
 def test_filterfeed_disabled_in_session_propagation():
     dummy_feed = DummyFeed(article=None, disabled_in_session=True)
     ff = FilterFeed(
@@ -153,6 +169,7 @@ def test_filterfeed_disabled_in_session_propagation():
     result = ff.fetch()
     assert result is None
     assert ff.disabled_in_session
+
 
 def test_filterfeed_add_filter_method():
     art = DummyArticle(title="xyzz", content="abcd", link="test")
@@ -178,7 +195,7 @@ def test_filter_invalid_regex_handling():
     # Valid regex should work
     valid_filter = Filter(FilterType.TITLE_REGEX, "test.*", True)
     assert valid_filter.compiled_pattern is not None
-    
+
     # Invalid regex should not crash but log error and set pattern to None
     invalid_filter = Filter(FilterType.TITLE_REGEX, "[invalid", True)
     assert invalid_filter.compiled_pattern is None

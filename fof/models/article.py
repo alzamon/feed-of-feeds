@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, List
 
+
 @dataclass
 class Article:
     """Represents a single article from a feed."""

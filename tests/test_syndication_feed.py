@@ -1,16 +1,16 @@
-import pytest
 from datetime import datetime, timedelta
 
 from fof.models.syndication_feed import SyndicationFeed
-from fof.models.base_feed import BaseFeed
 from fof.models.enums import FeedType
 from fof.models.syndication_feed import SyndicationFeed
+
 
 class DummyArticle:
     def __init__(self, title="title", published_date=None, id="id"):
         self.title = title
         self.published_date = published_date or datetime.now()
         self.id = id
+
 
 class DummyArticleManager:
     def __init__(self, article=None):
@@ -26,6 +26,7 @@ class DummyArticleManager:
             "max_age": max_age
         }
         return self._article
+
 
 def test_syndication_feed_fetch_returns_article():
     article = DummyArticle()
@@ -49,6 +50,7 @@ def test_syndication_feed_fetch_returns_article():
     assert manager.called_with["feedpath"] == ["root", "feed1"]
     assert manager.called_with["max_age"] == timedelta(days=2)
 
+
 def test_syndication_feed_fetch_returns_none_and_sets_disabled_in_session():
     manager = DummyArticleManager(article=None)
     rf = SyndicationFeed(
@@ -65,6 +67,7 @@ def test_syndication_feed_fetch_returns_none_and_sets_disabled_in_session():
     assert result is None
     assert rf.disabled_in_session
 
+
 def test_syndication_feed_feed_type_property():
     manager = DummyArticleManager()
     rf = SyndicationFeed(
@@ -78,4 +81,3 @@ def test_syndication_feed_feed_type_property():
         feedpath=["root", "feed3"],
     )
     assert rf.feed_type == FeedType.SYNDICATION
-

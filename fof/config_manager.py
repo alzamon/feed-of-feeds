@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 # Constants
 BACKUP_SUFFIX = ".backup"
 
+
 class ConfigManager:
     """Configuration manager that holds and validates the config path."""
 
@@ -23,7 +24,9 @@ class ConfigManager:
         tree_dir = os.path.join(self.config_path, "tree")
         if not os.path.exists(tree_dir) or not os.path.isdir(tree_dir):
             logger.error(f"'tree' directory not found at {tree_dir}.")
-            raise FileNotFoundError(f"'tree' directory not found at {tree_dir}.")
+            raise FileNotFoundError(
+                f"'tree' directory not found at {tree_dir}."
+            )
         return tree_dir
 
     @property
@@ -39,8 +42,9 @@ class ConfigManager:
         """
         Remove or replace characters not suitable for filenames.
         """
-        return "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).rstrip()
-
+        return "".join(
+            c for c in name if c.isalnum() or c in (' ', '_', '-')
+        ).rstrip()
 
     def persist_update(self, update_dir: str):
         """
@@ -50,8 +54,13 @@ class ConfigManager:
         tree_dir = os.path.join(self.config_path, "tree")
 
         # Check if update_dir exists and is non-empty
-        if not os.path.exists(update_dir) or not os.path.isdir(update_dir) or not os.listdir(update_dir):
-            logger.warning(f"'update' directory '{update_dir}' does not exist or is empty. Persist skipped.")
+        if (not os.path.exists(update_dir)
+                or not os.path.isdir(update_dir)
+                or not os.listdir(update_dir)):
+            logger.warning(
+                f"'update' directory '{update_dir}' does not exist or is "
+                f"empty. Persist skipped."
+            )
             return
 
         # Create backup for rollback if needed
@@ -62,16 +71,18 @@ class ConfigManager:
                 if os.path.exists(backup_dir):
                     shutil.rmtree(backup_dir)
                 os.rename(tree_dir, backup_dir)
-            
+
             # Atomically move update to tree
             os.rename(update_dir, tree_dir)
-            
+
             # Clean up backup on success
             if backup_dir and os.path.exists(backup_dir):
                 shutil.rmtree(backup_dir)
-                
-            logger.info(f"Persisted update: replaced '{tree_dir}' with '{update_dir}'.")
-            
+
+            logger.info(
+                f"Persisted update: replaced '{tree_dir}' with "
+                f"'{update_dir}'."
+            )
         except Exception as e:
             logger.error(f"Error during persist_update: {e}")
             # Rollback if possible
@@ -80,7 +91,7 @@ class ConfigManager:
                     if os.path.exists(tree_dir):
                         shutil.rmtree(tree_dir)
                     os.rename(backup_dir, tree_dir)
-                    logger.info(f"Rolled back to previous tree directory")
+                    logger.info("Rolled back to previous tree directory")
                 except Exception as rollback_error:
                     logger.error(f"Failed to rollback: {rollback_error}")
             raise

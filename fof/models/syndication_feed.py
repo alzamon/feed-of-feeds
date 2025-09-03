@@ -1,15 +1,14 @@
 from dataclasses import dataclass
-from typing import Optional, List, Dict, TYPE_CHECKING
+from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime, timedelta
 from .base_feed import BaseFeed
 from .article import Article
 from .enums import FeedType
 from .article_manager import ArticleManager
-from ..time_period import parse_time_period
 
 if TYPE_CHECKING:
-    from .union_feed import UnionFeed
-    from .filter_feed import FilterFeed
+    pass
+
 
 @dataclass
 class SyndicationFeed(BaseFeed):
@@ -17,7 +16,8 @@ class SyndicationFeed(BaseFeed):
     url: str
     max_age: Optional[timedelta]  # Optional max age for filtering articles
     article_manager: ArticleManager  # ArticleManager instance
-    purge_age: Optional[timedelta] = None  # Optional age after which articles are purged from cache
+    # Optional age after which articles are purged from cache
+    purge_age: Optional[timedelta] = None
 
     @property
     def feed_type(self) -> FeedType:

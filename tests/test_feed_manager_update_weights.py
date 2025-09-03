@@ -3,24 +3,31 @@ from datetime import datetime
 from fof.feed_manager import FeedManager
 from fof.models.union_feed import UnionFeed, WeightedFeed
 from fof.models.syndication_feed import SyndicationFeed
-from fof.models.base_feed import BaseFeed
 
 # Dummy managers for FeedManager
+
+
 class DummyArticleManager:
     pass
 
+
 class DummyConfigManager:
     config_path = "dummy_path"
+
     @property
     def get_tree_dir(self):
         return "tree_dir"
+
     def sanitize_filename(self, name):
         return name.replace(" ", "_")
+
     @property
     def get_update_dir(self):
         return "update_dir"
+
     def persist_update(self, dir):
         pass
+
 
 @pytest.fixture
 def simple_union_feed():
@@ -60,6 +67,7 @@ def simple_union_feed():
         feedpath=[],
     )
     return union_feed, wf1, wf2
+
 
 def test_update_weights_on_union_feed(simple_union_feed):
     union_feed, wf1, wf2 = simple_union_feed
