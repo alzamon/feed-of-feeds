@@ -119,8 +119,8 @@ class ConfigComparator:
         def configs_equal(old_path: str, new_path: str) -> bool:
             """Compare two feed configuration files."""
             try:
-                if (not os.path.exists(old_path) or
-                        not os.path.exists(new_path)):
+                if (not os.path.exists(old_path)
+                        or not os.path.exists(new_path)):
                     return False
 
                 with open(old_path, 'r') as f1, open(new_path, 'r') as f2:

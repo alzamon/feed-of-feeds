@@ -30,10 +30,10 @@ PERCENTAGE_MULTIPLIER = 100.0
 def _should_use_color():
     """Check if we should use colors for output."""
     return (
-        COLORS_AVAILABLE and
-        hasattr(sys.stdout, 'isatty') and
-        sys.stdout.isatty() and
-        os.getenv('NO_COLOR') is None
+        COLORS_AVAILABLE
+        and hasattr(sys.stdout, 'isatty')
+        and sys.stdout.isatty()
+        and os.getenv('NO_COLOR') is None
     )
 
 

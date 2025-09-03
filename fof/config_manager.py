@@ -54,9 +54,9 @@ class ConfigManager:
         tree_dir = os.path.join(self.config_path, "tree")
 
         # Check if update_dir exists and is non-empty
-        if (not os.path.exists(update_dir) or
-                not os.path.isdir(update_dir) or
-                not os.listdir(update_dir)):
+        if (not os.path.exists(update_dir)
+                or not os.path.isdir(update_dir)
+                or not os.listdir(update_dir)):
             logger.warning(
                 f"'update' directory '{update_dir}' does not exist or is "
                 f"empty. Persist skipped."

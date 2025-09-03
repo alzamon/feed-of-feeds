@@ -37,7 +37,8 @@ setup(
         ],
     },
     author="alzamon",
-    description="Feed of Feeds - A hierarchical feed reader with weighted sampling",
+    description="Feed of Feeds - A hierarchical feed reader with weighted \
+                 sampling",
     long_description=long_description,
     long_description_content_type="text/markdown",
     keywords="rss, atom, feed, reader",

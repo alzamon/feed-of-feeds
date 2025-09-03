@@ -22,8 +22,8 @@ class ControlLoop:
                     self.current_article.link}", f"Author: {
                     self.current_article.author or 'Unknown'}", f"Published: {
                     self.current_article.published_date or 'Unknown date'}", ]
-            if (hasattr(self.current_article, "tags") and
-                    self.current_article.tags):
+            if (hasattr(self.current_article, "tags")
+               and self.current_article.tags):
                 tag_str = ", ".join(self.current_article.tags)
                 lines.append(f"Tags: {tag_str}")
             else:
@@ -117,8 +117,8 @@ class ControlLoop:
 
             if key == ord("n"):
                 if self.browsing_read_history:
-                    if (self.current_article and
-                            getattr(self.current_article, "read", None)):
+                    if (self.current_article
+                       and getattr(self.current_article, "read", None)):
                         next_article = (
                             self.article_manager.get_next_read_article(
                                 self.current_article.read.isoformat()
@@ -179,8 +179,8 @@ class ControlLoop:
 
             elif key == ord("p"):
                 prev_article = None
-                if (self.current_article and
-                        getattr(self.current_article, "read", None)):
+                if (self.current_article
+                   and getattr(self.current_article, "read", None)):
                     prev_article = (
                         self.article_manager.get_previous_read_article(
                             self.current_article.read.isoformat()
