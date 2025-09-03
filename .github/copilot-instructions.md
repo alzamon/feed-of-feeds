@@ -9,15 +9,9 @@ changes, always consider compatibility with both platforms:
 
 - **Ubuntu**: Standard Linux desktop/server environment
 - **Termux**: Android terminal emulator with Linux userland
+- **Git-BASH**: Optional, but should be considered if feasible
 
 ## Platform-Specific Considerations
-
-### Package Installation
-
-- **Ubuntu**: Use `pipx` for user installations due to PEP 668 restrictions
-- **Termux**: Use `pkg` for system packages and `pip` for Python packages
-- Always test installation methods on both platforms
-- Consider using `pip install --user` as a fallback option
 
 ### File System Considerations
 
@@ -43,14 +37,16 @@ changes, always consider compatibility with both platforms:
 
 ## Development Guidelines
 
+### Linting and Formatting
+- The project is set up for linting with `flake8`.
+
 ### Testing Strategy
 
 - Test on both Ubuntu and Termux when possible
 - Use containers or virtual environments to simulate different platform conditions
 - Pay attention to permission errors, path issues, and terminal capabilities,
-  but keep in mind that
-  termux/termux-docker is not a perfect simulation of a real termux environment.
-- Verify CLI functionality and interactive features work on both platforms
+  but keep in mind that termux/termux-docker is not a perfect simulation of a
+  real termux environment.
 
 ### Code Patterns
 
@@ -65,20 +61,6 @@ changes, always consider compatibility with both platforms:
 - Include troubleshooting for common platform-specific issues
 - Test all documented installation methods
 - Consider package manager differences (apt vs pkg)
-
-## Error Handling
-
-- Gracefully handle platform-specific errors (permissions, missing features)
-- Provide helpful error messages that guide users to platform-specific solutions
-- Log platform information when debugging issues
-- Test error scenarios on both platforms
-
-## Configuration
-
-- Ensure config file paths work on both platforms
-- Handle different home directory structures
-- Test configuration persistence across platform restarts
-- Consider platform-specific default configurations if needed
 
 When implementing features or fixing bugs, always verify that changes work
 correctly on both Termux and Ubuntu environments.
