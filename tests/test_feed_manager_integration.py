@@ -49,7 +49,7 @@ def mock_files_structure():
     # All the config file contents, keyed by their full paths
     files = {
         "tree_dir/union.json": {
-            "id": "root_union",
+            "id": "root",
             "title": "Root Union",
             "description": "A union of feeds",
             "last_updated": now.isoformat(),
@@ -120,7 +120,7 @@ def test_nested_feed_hierarchy_load(patch_fs):
     fm = FeedManager(article_manager, config_manager)
     root = fm.root_feed
     assert isinstance(root, UnionFeed)
-    assert root.id == "root_union"
+    assert root.id == "root"
     assert root.title == "Root Union"
     assert len(root.feeds) == 2
 

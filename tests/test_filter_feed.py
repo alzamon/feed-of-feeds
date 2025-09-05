@@ -17,11 +17,10 @@ class DummyArticle:
 class DummyFeed(BaseFeed):
     def __init__(self, article=None, disabled_in_session=False):
         super().__init__(
-            "dummy",
-            title=None,
+            title="dummy",
             description="",
             last_updated=datetime.now(),
-            feedpath=[],
+            feedpath=["dummy"],
             disabled_in_session=disabled_in_session)
         self._article = article
         self._disabled_in_session = disabled_in_session
@@ -44,14 +43,14 @@ def test_filterfeed_no_filters_passes_article():
     art = DummyArticle(title="foo", content="bar", link="baz")
     dummy_feed = DummyFeed(article=art)
     ff = FilterFeed(
-        id="f",
+        
         title="t",
         description="d",
         last_updated=datetime.now(),
         source_feed=dummy_feed,
         filters=[],
         max_age=None,
-        feedpath=[],
+        feedpath=["f"],
     )
     result = ff.fetch()
     assert result is art
@@ -62,14 +61,14 @@ def test_filterfeed_title_regex_inclusion_pass():
     dummy_feed = DummyFeed(article=art)
     filt = Filter(FilterType.TITLE_REGEX, "hello")
     ff = FilterFeed(
-        id="f",
+        
         title="t",
         description="d",
         last_updated=datetime.now(),
         source_feed=dummy_feed,
         filters=[filt],
         max_age=None,
-        feedpath=[],
+        feedpath=["f"],
     )
     result = ff.fetch()
     assert result is art
@@ -80,14 +79,14 @@ def test_filterfeed_title_regex_inclusion_fail():
     dummy_feed = DummyFeed(article=art)
     filt = Filter(FilterType.TITLE_REGEX, "hello")
     ff = FilterFeed(
-        id="f",
+        
         title="t",
         description="d",
         last_updated=datetime.now(),
         source_feed=dummy_feed,
         filters=[filt],
         max_age=None,
-        feedpath=[],
+        feedpath=["f"],
     )
     result = ff.fetch()
     assert result is None
@@ -98,14 +97,14 @@ def test_filterfeed_content_regex_exclusion():
     dummy_feed = DummyFeed(article=art)
     filt = Filter(FilterType.CONTENT_REGEX, "forbidden", is_inclusion=False)
     ff = FilterFeed(
-        id="f",
+        
         title="t",
         description="d",
         last_updated=datetime.now(),
         source_feed=dummy_feed,
         filters=[filt],
         max_age=None,
-        feedpath=[],
+        feedpath=["f"],
     )
     result = ff.fetch()
     assert result is None
@@ -116,14 +115,14 @@ def test_filterfeed_link_regex_inclusion():
     dummy_feed = DummyFeed(article=art)
     filt = Filter(FilterType.LINK_REGEX, r"article/\d+")
     ff = FilterFeed(
-        id="f",
+        
         title="t",
         description="d",
         last_updated=datetime.now(),
         source_feed=dummy_feed,
         filters=[filt],
         max_age=None,
-        feedpath=[],
+        feedpath=["f"],
     )
     result = ff.fetch()
     assert result is art
@@ -141,14 +140,14 @@ def test_filterfeed_multiple_filters_all_must_pass():
         Filter(FilterType.LINK_REGEX, r"x\.com"),
     ]
     ff = FilterFeed(
-        id="f",
+        
         title="t",
         description="d",
         last_updated=datetime.now(),
         source_feed=dummy_feed,
         filters=filters,
         max_age=None,
-        feedpath=[],
+        feedpath=["f"],
     )
     result = ff.fetch()
     assert result is art
@@ -157,14 +156,14 @@ def test_filterfeed_multiple_filters_all_must_pass():
 def test_filterfeed_disabled_in_session_propagation():
     dummy_feed = DummyFeed(article=None, disabled_in_session=True)
     ff = FilterFeed(
-        id="f",
+        
         title="t",
         description="d",
         last_updated=datetime.now(),
         source_feed=dummy_feed,
         filters=[],
         max_age=None,
-        feedpath=[],
+        feedpath=["f"],
     )
     result = ff.fetch()
     assert result is None
@@ -175,14 +174,14 @@ def test_filterfeed_add_filter_method():
     art = DummyArticle(title="xyzz", content="abcd", link="test")
     dummy_feed = DummyFeed(article=art)
     ff = FilterFeed(
-        id="f",
+        
         title="t",
         description="d",
         last_updated=datetime.now(),
         source_feed=dummy_feed,
         filters=[],
         max_age=None,
-        feedpath=[],
+        feedpath=["f"],
     )
     ff.add_filter(FilterType.TITLE_REGEX, "xyz")
     assert len(ff.filters) == 1

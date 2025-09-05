@@ -11,14 +11,14 @@ class DummyFeed(BaseFeed):
             disabled_in_session=False,
             article=None,
             raise_on_fetch=False):
+        # Use the id as the feedpath for simplicity in tests
+        feedpath = [id] if id != "root" else []
         super().__init__(
-            id,
-            title=None,
+            title=id,  # Use id as title for test simplicity
             description="",
             last_updated=datetime.now(),
-            feedpath=[],
+            feedpath=feedpath,
             disabled_in_session=disabled_in_session)
-        self.id = id
         self._article = article
         self._raise_on_fetch = raise_on_fetch
 
@@ -39,13 +39,12 @@ def test_normalize_weights_basic():
         WeightedFeed(DummyFeed("c"), 50),
     ]
     uf = UnionFeed(
-        id="test",
-        title=None,
+        title="test",
         description="",
         last_updated=datetime.now(),
         feeds=feeds,
         max_age=None,
-        feedpath=[],
+        feedpath=["test"],
     )
     weights = [wf.weight for wf in uf.feeds]
     assert abs(sum(weights) - 100.0) < 1e-6
@@ -60,13 +59,13 @@ def test_normalize_weights_zero_total():
         WeightedFeed(DummyFeed("d"), 0),
     ]
     uf = UnionFeed(
-        id="test",
-        title=None,
+        title="test",
+        
         description="",
         last_updated=datetime.now(),
         feeds=feeds,
         max_age=None,
-        feedpath=[],
+        feedpath=["test"],
     )
     weights = [wf.weight for wf in uf.feeds]
     assert abs(sum(weights) - 100.0) < 1e-6
@@ -80,13 +79,13 @@ def test_normalize_weights_after_add_feed():
         WeightedFeed(DummyFeed("b"), 40),
     ]
     uf = UnionFeed(
-        id="test",
-        title=None,
+        title="test",
+        
         description="",
         last_updated=datetime.now(),
         feeds=feeds,
         max_age=None,
-        feedpath=[],
+        feedpath=["test"],
     )
     uf.add_feed(DummyFeed("c"), 100)
     weights = [wf.weight for wf in uf.feeds]
@@ -99,13 +98,13 @@ def test_normalize_weights_after_add_feed():
 
 def test_normalize_weights_empty_union():
     uf = UnionFeed(
-        id="test",
-        title=None,
+        title="test",
+        
         description="",
         last_updated=datetime.now(),
         feeds=[],
         max_age=None,
-        feedpath=[],
+        feedpath=["test"],
     )
     assert uf.feeds == []  # Should not crash or raise
 
@@ -116,13 +115,13 @@ def test_normalize_weights_large_numbers():
         WeightedFeed(DummyFeed("b"), 4000),
     ]
     uf = UnionFeed(
-        id="test",
-        title=None,
+        title="test",
+        
         description="",
         last_updated=datetime.now(),
         feeds=feeds,
         max_age=None,
-        feedpath=[],
+        feedpath=["test"],
     )
     weights = [wf.weight for wf in uf.feeds]
     assert abs(sum(weights) - 100.0) < 1e-6
@@ -131,13 +130,13 @@ def test_normalize_weights_large_numbers():
 
 def test_fetch_returns_none_and_sets_disabled_in_session_when_no_feeds():
     uf = UnionFeed(
-        id="test",
-        title=None,
+        title="test",
+        
         description="",
         last_updated=datetime.now(),
         feeds=[],
         max_age=None,
-        feedpath=[],
+        feedpath=["test"],
     )
     result = uf.fetch()
     assert result is None
@@ -166,12 +165,12 @@ def test_fetch_skips_failed_feeds_and_picks_working():
     ]
     uf = UnionFeed(
         id="union",
-        title=None,
+        
         description="",
         last_updated=datetime.now(),
         feeds=feeds,
         max_age=None,
-        feedpath=[],
+        feedpath=["test"],
     )
     result = uf.fetch()
     assert result is article
@@ -192,13 +191,13 @@ def test_fetch_respects_max_age_and_skips_old_articles():
                 article=old_article),
             100)]
     uf = UnionFeed(
-        id="test",
-        title=None,
+        title="test",
+        
         description="",
         last_updated=datetime.now(),
         feeds=feeds,
         max_age=timedelta(days=7),
-        feedpath=[],
+        feedpath=["test"],
     )
     result = uf.fetch()
     assert result is None
@@ -211,13 +210,13 @@ def test_add_feed_with_zero_weight_and_normalization():
         WeightedFeed(DummyFeed("b"), 50),
     ]
     uf = UnionFeed(
-        id="test",
-        title=None,
+        title="test",
+        
         description="",
         last_updated=datetime.now(),
         feeds=feeds,
         max_age=None,
-        feedpath=[],
+        feedpath=["test"],
     )
     uf.add_feed(DummyFeed("c"), 0)
     weights = [wf.weight for wf in uf.feeds]

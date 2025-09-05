@@ -32,14 +32,13 @@ def test_syndication_feed_fetch_returns_article():
     article = DummyArticle()
     manager = DummyArticleManager(article=article)
     rf = SyndicationFeed(
-        id="feed1",
         title="Feed 1",
         description="desc",
         last_updated=datetime.now(),
         url="http://example.com/feed",
         max_age=timedelta(days=2),
         article_manager=manager,
-        feedpath=["root", "feed1"],
+        feedpath=["feed1"],
     )
     result = rf.fetch()
     assert result is article
@@ -47,21 +46,20 @@ def test_syndication_feed_fetch_returns_article():
     # Check that the ArticleManager was called with correct arguments
     assert manager.called_with["url"] == "http://example.com/feed"
     assert manager.called_with["feed_id"] == "feed1"
-    assert manager.called_with["feedpath"] == ["root", "feed1"]
+    assert manager.called_with["feedpath"] == ["feed1"]
     assert manager.called_with["max_age"] == timedelta(days=2)
 
 
 def test_syndication_feed_fetch_returns_none_and_sets_disabled_in_session():
     manager = DummyArticleManager(article=None)
     rf = SyndicationFeed(
-        id="feed2",
         title="Feed 2",
         description="desc",
         last_updated=datetime.now(),
         url="http://example.com/feed2",
         max_age=None,
         article_manager=manager,
-        feedpath=["root", "feed2"],
+        feedpath=["feed2"],
     )
     result = rf.fetch()
     assert result is None
@@ -71,13 +69,12 @@ def test_syndication_feed_fetch_returns_none_and_sets_disabled_in_session():
 def test_syndication_feed_feed_type_property():
     manager = DummyArticleManager()
     rf = SyndicationFeed(
-        id="feed3",
         title="Feed 3",
         description="desc",
         last_updated=datetime.now(),
         url="http://example.com/feed3",
         max_age=None,
         article_manager=manager,
-        feedpath=["root", "feed3"],
+        feedpath=["feed3"],
     )
     assert rf.feed_type == FeedType.SYNDICATION

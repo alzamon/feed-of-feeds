@@ -24,7 +24,7 @@ def test_syndication_feed_purge_with_explicit_purge_age():
 
         # Create a syndication feed with explicit purge_age
         feed = SyndicationFeed(
-            id="test_feed",
+            title="Test Feed",
             title="Test Feed",
             description="A test feed",
             last_updated=datetime.now(),
@@ -44,7 +44,7 @@ def test_syndication_feed_purge_with_explicit_purge_age():
             link="http://example.com/old",
             author="Author",
             published_date=now - timedelta(days=15),  # Older than purge_age
-            feed_id="test_feed",
+            feed_title="Test Feed",
             feedpath=["test_feed"]
         )
 
@@ -55,7 +55,7 @@ def test_syndication_feed_purge_with_explicit_purge_age():
             link="http://example.com/new",
             author="Author",
             published_date=now - timedelta(days=5),  # Newer than purge_age
-            feed_id="test_feed",
+            feed_title="Test Feed",
             feedpath=["test_feed"]
         )
 
@@ -101,7 +101,7 @@ def test_syndication_feed_purge_with_default_purge_age():
         # Create a syndication feed without explicit purge_age (should default
         # to 2 * max_age)
         feed = SyndicationFeed(
-            id="test_feed",
+            title="Test Feed",
             title="Test Feed",
             description="A test feed",
             last_updated=datetime.now(),
@@ -122,7 +122,7 @@ def test_syndication_feed_purge_with_default_purge_age():
             author="Author",
             # Older than default purge_age (14 days)
             published_date=now - timedelta(days=20),
-            feed_id="test_feed",
+            feed_title="Test Feed",
             feedpath=["test_feed"]
         )
 
@@ -134,7 +134,7 @@ def test_syndication_feed_purge_with_default_purge_age():
             author="Author",
             # Between max_age and purge_age
             published_date=now - timedelta(days=10),
-            feed_id="test_feed",
+            feed_title="Test Feed",
             feedpath=["test_feed"]
         )
 
@@ -145,7 +145,7 @@ def test_syndication_feed_purge_with_default_purge_age():
             link="http://example.com/new",
             author="Author",
             published_date=now - timedelta(days=3),  # Newer than max_age
-            feed_id="test_feed",
+            feed_title="Test Feed",
             feedpath=["test_feed"]
         )
 
@@ -211,7 +211,7 @@ def test_feed_manager_purge_old_articles():
             link="http://example.com/old",
             author="Author",
             published_date=now - timedelta(days=20),  # Older than purge_age
-            feed_id="test_feed",
+            feed_title="Test Feed",
             feedpath=[]  # Root feed has empty feedpath
         )])
 
@@ -230,7 +230,7 @@ def test_no_purge_when_no_max_age_or_purge_age():
 
         # Create a syndication feed without max_age or purge_age
         feed = SyndicationFeed(
-            id="test_feed",
+            title="Test Feed",
             title="Test Feed",
             description="A test feed",
             last_updated=datetime.now(),
@@ -250,7 +250,7 @@ def test_no_purge_when_no_max_age_or_purge_age():
             link="http://example.com/very_old",
             author="Author",
             published_date=now - timedelta(days=365),  # Very old
-            feed_id="test_feed",
+            feed_title="Test Feed",
             feedpath=["test_feed"]
         )
 

@@ -33,7 +33,7 @@ class DummyConfigManager:
 
 @pytest.fixture
 def complex_feed_tree():
-    # Root: UnionFeed (id="root_union")
+    # Root: UnionFeed (id="root")
     #   - Child 1: UnionFeed (id="sub_union")
     #       - Grandchild: RegularFeed (id="regular1")
     #   - Child 2: FilterFeed (id="filter1") wrapping RegularFeed (id="regular2")
@@ -42,52 +42,47 @@ def complex_feed_tree():
 
     # Grandchild under sub_union
     regular1 = SyndicationFeed(
-        id="regular1",
         title="Regular 1",
         description="desc1",
         last_updated=now,
         url="http://example.com/1",
         max_age=None,
         article_manager=article_manager,
-        feedpath=["root_union", "sub_union", "regular1"],
+        feedpath=["sub_union", "regular1"],
     )
 
     sub_union = UnionFeed(
-        id="sub_union",
         title="Sub Union",
         description="A sub-union",
         last_updated=now,
         feeds=[WeightedFeed(feed=regular1, weight=100)],
         max_age=None,
-        feedpath=["root_union", "sub_union"],
+        feedpath=["sub_union"],
     )
 
     # Filter branch
     regular2 = SyndicationFeed(
-        id="regular2",
         title="Regular 2",
         description="desc2",
         last_updated=now,
         url="http://example.com/2",
         max_age=None,
         article_manager=article_manager,
-        feedpath=["root_union", "filter1", "regular2"],
+        feedpath=["filter1", "regular2"],
     )
     filt = Filter(FilterType.TITLE_REGEX, "Python", is_inclusion=True)
     filter1 = FilterFeed(
-        id="filter1",
         title="Filter 1",
         description="filters on title",
         last_updated=now,
         source_feed=regular2,
         filters=[filt],
         max_age=None,
-        feedpath=["root_union", "filter1"],
+        feedpath=["filter1"],
     )
 
     # Root union
     root_union = UnionFeed(
-        id="root_union",
         title="Root Union",
         description="top-level union",
         last_updated=now,
@@ -96,7 +91,7 @@ def complex_feed_tree():
             WeightedFeed(feed=filter1, weight=40)
         ],
         max_age=None,
-        feedpath=["root_union"],
+        feedpath=[],
     )
 
     return root_union, sub_union, regular1, filter1, regular2
@@ -126,8 +121,8 @@ def test_set_disabled_in_session_for_feeds(complex_feed_tree):
     assert not filter1.disabled_in_session
     assert not regular2.disabled_in_session
 
-    # Call: select root_union (all enabled)
-    fm._set_disabled_in_session_for_feeds("root_union")
+    # Call: select root (all enabled)
+    fm._set_disabled_in_session_for_feeds("root")
     assert not root_union.disabled_in_session
     assert not sub_union.disabled_in_session
     assert not regular1.disabled_in_session

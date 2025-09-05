@@ -19,14 +19,13 @@ def test_feed_serializer_reduced_repetition():
 
         # Create a syndication feed
         feed = SyndicationFeed(
-            id="test_feed",
             title="Test Feed",
             description="A test feed",
             last_updated=datetime.now(),
             url="http://example.com/feed.xml",
             max_age=timedelta(days=7),
             article_manager=MockArticleManager(),
-            feedpath=["root"],
+            feedpath=["test_feed"],
             purge_age=timedelta(days=30)
         )
 
