@@ -39,7 +39,6 @@ class UnionFeed(BaseFeed):
 
     def __init__(
         self,
-        id: str,
         title: Optional[str],
         description: str,
         last_updated: datetime,
@@ -49,7 +48,6 @@ class UnionFeed(BaseFeed):
         purge_age: Optional[timedelta] = None,
     ):
         super().__init__(
-            id,
             title,
             description,
             last_updated,

@@ -25,7 +25,7 @@ class FeedSerializer:
 
             union_meta = {
                 "id": getattr(
-                    feed, "id", None), "title": getattr(
+                    feed, "local_id", None), "title": getattr(
                     feed, "title", None), "description": getattr(
                     feed, "description", ""), "last_updated": feed.last_updated.isoformat() if getattr(
                     feed, "last_updated", None) else None, "max_age": timedelta_to_period_str(
@@ -54,7 +54,7 @@ class FeedSerializer:
             os.makedirs(filter_dir, exist_ok=True)
             filter_config_path = os.path.join(filter_dir, "filter.json")
             config = {
-                "id": feed.id,
+                "id": feed.local_id,
                 "title": feed.title,
                 "description": feed.description,
                 "last_updated": feed.last_updated.isoformat(),
@@ -79,19 +79,19 @@ class FeedSerializer:
     def get_feed_folder_or_filename(self, feed: BaseFeed) -> str:
         """Get the folder or filename for a feed based on its type and properties."""
         if feed.feed_type == FeedType.UNION or feed.feed_type == FeedType.FILTER:
-            name = feed.title or feed.id or "union"
+            name = feed.title or feed.local_id or "union"
             return self.config_manager.sanitize_filename(name)
         elif feed.feed_type == FeedType.SYNDICATION:
             return self.config_manager.sanitize_filename(
-                feed.title or feed.id or "feed")
+                feed.title or feed.local_id or "feed")
         else:
             return self.config_manager.sanitize_filename(
-                feed.title or feed.id or "feed")
+                feed.title or feed.local_id or "feed")
 
     def _get_base_feed_dict(self, feed: BaseFeed) -> dict:
         """Get the common fields for all feed types."""
         return {
-            "id": feed.id,
+            "id": feed.local_id,
             "title": feed.title,
             "description": feed.description,
             "last_updated": feed.last_updated.isoformat(),

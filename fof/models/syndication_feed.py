@@ -40,7 +40,6 @@ class SyndicationFeed(BaseFeed):
 
     def __init__(
         self,
-        id: str,
         title: str,
         description: str,
         last_updated: datetime,
@@ -51,7 +50,6 @@ class SyndicationFeed(BaseFeed):
         purge_age: Optional[timedelta] = None,
     ):
         super().__init__(
-            id,
             title,
             description,
             last_updated,
