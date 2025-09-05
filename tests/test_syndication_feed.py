@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 
 from fof.models.syndication_feed import SyndicationFeed
 from fof.models.enums import FeedType
-from fof.models.syndication_feed import SyndicationFeed
 
 
 class DummyArticle:

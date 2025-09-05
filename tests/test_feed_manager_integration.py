@@ -139,4 +139,4 @@ def test_nested_feed_hierarchy_load(patch_fs):
     assert filter_feed.filters[0].pattern == "Python"
     # Its source_feed should be a SyndicationFeed
     assert isinstance(filter_feed.source_feed, SyndicationFeed)
-    assert filter_feed.source_feed.id == "syndication2"
+    assert filter_feed.source_feed.id == "filter1/syndication2"

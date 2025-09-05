@@ -164,8 +164,7 @@ def test_fetch_skips_failed_feeds_and_picks_working():
             50),
     ]
     uf = UnionFeed(
-        id="union",
-        
+        title="union",
         description="",
         last_updated=datetime.now(),
         feeds=feeds,
