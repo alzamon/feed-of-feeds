@@ -26,7 +26,6 @@ def test_config_dir():
     # Create root union.json
     union_config = {
         "feed_type": "union",
-        "id": "root",
         "title": "Root Feed",
         "description": "Root union feed for testing",
         "max_age": "7d",
@@ -41,7 +40,6 @@ def test_config_dir():
     os.makedirs(news_dir)
     news_config = {
         "feed_type": "syndication",
-        "id": "news",
         "title": "News Feed",
         "description": "A news syndication feed",
         "url": "https://feeds.feedburner.com/oreilly/radar",
@@ -56,7 +54,6 @@ def test_config_dir():
     os.makedirs(tech_dir)
     tech_config = {
         "feed_type": "syndication",
-        "id": "tech",
         "title": "Tech Feed",
         "description": "A tech syndication feed",
         "url": "https://feeds.feedburner.com/TechCrunch",

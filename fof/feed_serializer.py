@@ -24,8 +24,7 @@ class FeedSerializer:
                 weights[subfeed_name] = wf.weight
 
             union_meta = {
-                "id": getattr(
-                    feed, "id", None), "title": getattr(
+                "title": getattr(
                     feed, "title", None), "description": getattr(
                     feed, "description", ""), "last_updated": feed.last_updated.isoformat() if getattr(
                     feed, "last_updated", None) else None, "max_age": timedelta_to_period_str(
@@ -54,7 +53,6 @@ class FeedSerializer:
             os.makedirs(filter_dir, exist_ok=True)
             filter_config_path = os.path.join(filter_dir, "filter.json")
             config = {
-                "id": feed.id,
                 "title": feed.title,
                 "description": feed.description,
                 "last_updated": feed.last_updated.isoformat(),
@@ -91,7 +89,6 @@ class FeedSerializer:
     def _get_base_feed_dict(self, feed: BaseFeed) -> dict:
         """Get the common fields for all feed types."""
         return {
-            "id": feed.id,
             "title": feed.title,
             "description": feed.description,
             "last_updated": feed.last_updated.isoformat(),

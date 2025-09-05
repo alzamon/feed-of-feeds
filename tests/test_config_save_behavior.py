@@ -22,10 +22,9 @@ def test_config_not_rewritten_when_no_changes():
         tree_dir = os.path.join(temp_dir, "tree")
         os.makedirs(tree_dir)
 
-        # Create a simple syndication feed config
+        # Create a simple syndication feed config (without ID field - new format)
         now = datetime.now()
         feed_config = {
-            "id": "test_feed",
             "title": "Test Feed",
             "description": "A test feed",
             "last_updated": now.isoformat(),
@@ -70,9 +69,7 @@ def test_config_rewritten_when_changes_made():
 
         # Create union feed structure
         now = datetime.now()
-        union_config = {
-            "id": "test_union",
-            "title": "Test Union",
+        union_config = {            "title": "Test Union",
             "description": "A test union",
             "last_updated": now.isoformat(),
             "max_age": "7d",
@@ -87,9 +84,7 @@ def test_config_rewritten_when_changes_made():
         # Create subdirectory and feed configs
         feed1_dir = os.path.join(tree_dir, "feed1")
         os.makedirs(feed1_dir)
-        feed1_config = {
-            "id": "feed1",
-            "title": "Feed 1",
+        feed1_config = {            "title": "Feed 1",
             "description": "First feed",
             "url": "http://example.com/feed1.xml",
             "max_age": "7d"
@@ -99,9 +94,7 @@ def test_config_rewritten_when_changes_made():
 
         feed2_dir = os.path.join(tree_dir, "feed2")
         os.makedirs(feed2_dir)
-        feed2_config = {
-            "id": "feed2",
-            "title": "Feed 2",
+        feed2_config = {            "title": "Feed 2",
             "description": "Second feed",
             "url": "http://example.com/feed2.xml",
             "max_age": "7d"
@@ -144,9 +137,7 @@ def test_multiple_saves_without_changes():
 
         # Create a simple syndication feed config
         now = datetime.now()
-        feed_config = {
-            "id": "test_feed",
-            "title": "Test Feed",
+        feed_config = {            "title": "Test Feed",
             "description": "A test feed",
             "last_updated": now.isoformat(),
             "url": "http://example.com/feed.xml",
@@ -188,9 +179,7 @@ def test_config_rewritten_after_weight_change():
 
         # Create union feed structure
         now = datetime.now()
-        union_config = {
-            "id": "test_union",
-            "title": "Test Union",
+        union_config = {            "title": "Test Union",
             "description": "A test union",
             "last_updated": now.isoformat(),
             "max_age": "7d",
@@ -205,9 +194,7 @@ def test_config_rewritten_after_weight_change():
         # Create subdirectory and feed configs - use same names as weights
         feed1_dir = os.path.join(tree_dir, "Feed 1")
         os.makedirs(feed1_dir)
-        feed1_config = {
-            "id": "feed1",
-            "title": "Feed 1",
+        feed1_config = {            "title": "Feed 1",
             "description": "First feed",
             "last_updated": now.isoformat(),
             "url": "http://example.com/feed1.xml",
@@ -218,9 +205,7 @@ def test_config_rewritten_after_weight_change():
 
         feed2_dir = os.path.join(tree_dir, "Feed 2")
         os.makedirs(feed2_dir)
-        feed2_config = {
-            "id": "feed2",
-            "title": "Feed 2",
+        feed2_config = {            "title": "Feed 2",
             "description": "Second feed",
             "last_updated": now.isoformat(),
             "url": "http://example.com/feed2.xml",
@@ -247,7 +232,7 @@ def test_config_rewritten_after_weight_change():
         time.sleep(0.01)
 
         # Make an actual change - update weights
-        feed_manager.update_weights(["feed1"], 10)
+        feed_manager.update_weights(["Feed 1"], 10)
 
         # Save config after making changes - should rewrite
         feed_manager.save_config()
@@ -264,9 +249,7 @@ def test_only_changed_feeds_get_timestamp_updates():
 
         # Create root union
         base_time = datetime.now() - timedelta(hours=1)
-        root_config = {
-            "id": "root",
-            "title": None,
+        root_config = {            "title": None,
             "description": "root union",
             "last_updated": base_time.isoformat(),
             "max_age": "7d",
@@ -280,9 +263,7 @@ def test_only_changed_feeds_get_timestamp_updates():
         # Create Feed 1
         feed1_dir = os.path.join(tree_dir, "Feed 1")
         os.makedirs(feed1_dir)
-        feed1_config = {
-            "id": "feed1",
-            "title": "Feed 1",
+        feed1_config = {            "title": "Feed 1",
             "description": "First feed",
             "last_updated": base_time.isoformat(),
             "url": "http://example.com/feed1.xml",
@@ -295,9 +276,7 @@ def test_only_changed_feeds_get_timestamp_updates():
         # Create Feed 2
         feed2_dir = os.path.join(tree_dir, "Feed 2")
         os.makedirs(feed2_dir)
-        feed2_config = {
-            "id": "feed2",
-            "title": "Feed 2",
+        feed2_config = {            "title": "Feed 2",
             "description": "Second feed",
             "last_updated": base_time.isoformat(),
             "url": "http://example.com/feed2.xml",
@@ -313,7 +292,7 @@ def test_only_changed_feeds_get_timestamp_updates():
         feed_manager = FeedManager(article_manager, config_manager)
 
         # Update weights - this should trigger changes to root feed only
-        feed_manager.update_weights(["feed1"], 10)
+        feed_manager.update_weights(["Feed 1"], 10)
 
         # Save config
         import time
@@ -337,7 +316,7 @@ def test_only_changed_feeds_get_timestamp_updates():
         assert root_timestamp > base_time, "Root feed timestamp should be updated when weights change"
 
         # Feed1 and Feed2 should NOT be updated (they didn't change themselves)
-        assert feed1_timestamp == base_time, "Feed1 timestamp should remain unchanged when feed itself is not modified"
+        assert feed1_timestamp == base_time, "Feed 1 timestamp should remain unchanged when feed itself is not modified"
         assert feed2_timestamp == base_time, "Feed2 timestamp should remain unchanged when feed itself is not modified"
 
         # Check that weight was actually updated

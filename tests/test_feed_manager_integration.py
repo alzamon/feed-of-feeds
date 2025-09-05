@@ -49,7 +49,6 @@ def mock_files_structure():
     # All the config file contents, keyed by their full paths
     files = {
         "tree_dir/union.json": {
-            "id": "root_union",
             "title": "Root Union",
             "description": "A union of feeds",
             "last_updated": now.isoformat(),
@@ -57,7 +56,6 @@ def mock_files_structure():
             "weights": {"syndication1": 60, "filter1": 40}
         },
         "tree_dir/syndication1/feed.json": {
-            "id": "syndication1",
             "title": "Syndication Feed 1",
             "description": "Syndication feed description",
             "last_updated": now.isoformat(),
@@ -65,7 +63,6 @@ def mock_files_structure():
             "max_age": "7d"
         },
         "tree_dir/filter1/filter.json": {
-            "id": "filter1",
             "title": "Filter Feed 1",
             "description": "Filters by title",
             "last_updated": now.isoformat(),
@@ -77,7 +74,6 @@ def mock_files_structure():
             }]
         },
         "tree_dir/filter1/source/feed.json": {
-            "id": "syndication2",
             "title": "Syndication Feed 2",
             "description": "Another syndication feed",
             "last_updated": now.isoformat(),
@@ -120,7 +116,7 @@ def test_nested_feed_hierarchy_load(patch_fs):
     fm = FeedManager(article_manager, config_manager)
     root = fm.root_feed
     assert isinstance(root, UnionFeed)
-    assert root.id == "root_union"
+    assert root.id == "root"
     assert root.title == "Root Union"
     assert len(root.feeds) == 2
 
@@ -139,4 +135,4 @@ def test_nested_feed_hierarchy_load(patch_fs):
     assert filter_feed.filters[0].pattern == "Python"
     # Its source_feed should be a SyndicationFeed
     assert isinstance(filter_feed.source_feed, SyndicationFeed)
-    assert filter_feed.source_feed.id == "syndication2"
+    assert filter_feed.source_feed.id == "source"

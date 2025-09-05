@@ -32,8 +32,8 @@ def test_feed_serializer_reduced_repetition():
 
         result = serializer.serialize_feed(feed)
 
-        # Check that all expected fields are present
-        assert result["id"] == "test_feed"
+        # Check that all expected fields are present (but NOT id)
+        assert "id" not in result  # ID should no longer be in serialized output
         assert result["title"] == "Test Feed"
         assert result["description"] == "A test feed"
         assert result["url"] == "http://example.com/feed.xml"

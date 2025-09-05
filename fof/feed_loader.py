@@ -38,8 +38,7 @@ class FeedLoader:
                 union_info = json.load(f)
             weights = union_info.get("weights", {})
             subfeeds = []
-            union_id = union_info.get(
-                "id") if "id" in union_info else os.path.basename(path)
+            union_id = "root" if is_root else os.path.basename(path)
             union_feedpath = feedpath + [union_id] if not is_root else []
             max_age_str = union_info.get(
                 "max_age") if "max_age" in union_info else None
@@ -72,7 +71,7 @@ class FeedLoader:
         elif os.path.isfile(feed_path):
             with open(feed_path, "r", encoding="utf-8") as f:
                 feed_data = json.load(f)
-            feed_id = feed_data.get("id")
+            feed_id = "root" if is_root else os.path.basename(path)
             max_age_str = feed_data.get("max_age")
             my_max_age = parse_time_period(max_age_str) if isinstance(
                 max_age_str, str) and max_age_str else parent_max_age
@@ -85,7 +84,7 @@ class FeedLoader:
                 purge_age_str) if purge_age_str else None
             syndication_feedpath = feedpath + [feed_id] if not is_root else []
             return SyndicationFeed(
-                id=feed_data["id"],
+                id=feed_id,
                 title=feed_data.get("title"),
                 description=feed_data.get(
                     "description",
@@ -101,7 +100,7 @@ class FeedLoader:
         elif os.path.isfile(filter_path):
             with open(filter_path, "r", encoding="utf-8") as f:
                 filter_data = json.load(f)
-            filter_id = filter_data["id"]
+            filter_id = "root" if is_root else os.path.basename(path)
             max_age_str = filter_data.get("max_age")
             my_max_age = parse_time_period(max_age_str) if isinstance(
                 max_age_str, str) and max_age_str else parent_max_age
