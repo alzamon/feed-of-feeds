@@ -24,7 +24,6 @@ def test_syndication_feed_purge_with_explicit_purge_age():
 
         # Create a syndication feed with explicit purge_age
         feed = SyndicationFeed(
-            id="test_feed",
             title="Test Feed",
             description="A test feed",
             last_updated=datetime.now(),
@@ -101,7 +100,6 @@ def test_syndication_feed_purge_with_default_purge_age():
         # Create a syndication feed without explicit purge_age (should default
         # to 2 * max_age)
         feed = SyndicationFeed(
-            id="test_feed",
             title="Test Feed",
             description="A test feed",
             last_updated=datetime.now(),
@@ -230,7 +228,6 @@ def test_no_purge_when_no_max_age_or_purge_age():
 
         # Create a syndication feed without max_age or purge_age
         feed = SyndicationFeed(
-            id="test_feed",
             title="Test Feed",
             description="A test feed",
             last_updated=datetime.now(),
