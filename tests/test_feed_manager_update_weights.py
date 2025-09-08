@@ -34,7 +34,6 @@ def simple_union_feed():
     # Create two dummy RegularFeed children
     article_manager = DummyArticleManager()
     feed1 = SyndicationFeed(
-        id="feed1",
         title="Feed One",
         description="desc1",
         last_updated=datetime.now(),
@@ -44,7 +43,6 @@ def simple_union_feed():
         feedpath=["feed1"],
     )
     feed2 = SyndicationFeed(
-        id="feed2",
         title="Feed Two",
         description="desc2",
         last_updated=datetime.now(),
@@ -58,7 +56,6 @@ def simple_union_feed():
     wf2 = WeightedFeed(feed=feed2, weight=40)
     # Create a UnionFeed root
     union_feed = UnionFeed(
-        id="union",
         title="A Union",
         description="A union feed",
         last_updated=datetime.now(),

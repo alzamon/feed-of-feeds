@@ -22,10 +22,10 @@ def test_config_not_rewritten_when_no_changes():
         tree_dir = os.path.join(temp_dir, "tree")
         os.makedirs(tree_dir)
 
-        # Create a simple syndication feed config
+        # Create a simple syndication feed config with correct root ID
         now = datetime.now()
         feed_config = {
-            "id": "test_feed",
+            "id": "root",  # Use the correct ID for root feeds
             "title": "Test Feed",
             "description": "A test feed",
             "last_updated": now.isoformat(),
@@ -142,10 +142,10 @@ def test_multiple_saves_without_changes():
         tree_dir = os.path.join(temp_dir, "tree")
         os.makedirs(tree_dir)
 
-        # Create a simple syndication feed config
+        # Create a simple syndication feed config with correct root ID
         now = datetime.now()
         feed_config = {
-            "id": "test_feed",
+            "id": "root",  # Use the correct ID for root feeds
             "title": "Test Feed",
             "description": "A test feed",
             "last_updated": now.isoformat(),
@@ -186,10 +186,10 @@ def test_config_rewritten_after_weight_change():
         tree_dir = os.path.join(temp_dir, "tree")
         os.makedirs(tree_dir)
 
-        # Create union feed structure
+        # Create union feed structure with correct root ID
         now = datetime.now()
         union_config = {
-            "id": "test_union",
+            "id": "root",  # Use correct root ID
             "title": "Test Union",
             "description": "A test union",
             "last_updated": now.isoformat(),

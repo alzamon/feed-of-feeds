@@ -120,7 +120,7 @@ def test_nested_feed_hierarchy_load(patch_fs):
     fm = FeedManager(article_manager, config_manager)
     root = fm.root_feed
     assert isinstance(root, UnionFeed)
-    assert root.id == "root_union"
+    assert root.id == "root"
     assert root.title == "Root Union"
     assert len(root.feeds) == 2
 
@@ -139,4 +139,4 @@ def test_nested_feed_hierarchy_load(patch_fs):
     assert filter_feed.filters[0].pattern == "Python"
     # Its source_feed should be a SyndicationFeed
     assert isinstance(filter_feed.source_feed, SyndicationFeed)
-    assert filter_feed.source_feed.id == "syndication2"
+    assert filter_feed.source_feed.id == "filter1/syndication2"
