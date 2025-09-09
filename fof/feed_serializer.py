@@ -3,9 +3,9 @@ import os
 
 from .models.base_feed import BaseFeed
 from .models.enums import FeedType
-from .models.union_feed import serialize_union_feed_to_directory, serialize_union_feed_to_dict
-from .models.filter_feed import serialize_filter_feed_to_directory, serialize_filter_feed_to_dict
-from .models.syndication_feed import serialize_syndication_feed_to_directory, serialize_syndication_feed_to_dict
+from .models.union_feed.serializer import serialize_union_feed_to_directory, serialize_union_feed_to_dict
+from .models.filter_feed.serializer import serialize_filter_feed_to_directory, serialize_filter_feed_to_dict
+from .models.syndication_feed.serializer import serialize_syndication_feed_to_directory, serialize_syndication_feed_to_dict
 from .time_period import timedelta_to_period_str
 
 

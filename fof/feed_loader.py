@@ -4,9 +4,9 @@ import logging
 from typing import Optional
 
 from .models.base_feed import BaseFeed
-from .models.union_feed import load_union_feed
-from .models.filter_feed import load_filter_feed
-from .models.syndication_feed import load_syndication_feed
+from .models.union_feed.loader import load_union_feed
+from .models.filter_feed.loader import load_filter_feed
+from .models.syndication_feed.loader import load_syndication_feed
 
 logger = logging.getLogger(__name__)
 
@@ -41,4 +41,5 @@ class FeedLoader:
         else:
             logger.error(f"Unknown feed directory structure at {path}")
             return None
+
 

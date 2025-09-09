@@ -1,4 +1,4 @@
-"""Union feed module with backward compatibility."""
+"""Union feed module."""
 
 from .models import UnionFeed, WeightedFeed, WEIGHT_PERCENTAGE_BASE
 from .loader import load_union_feed

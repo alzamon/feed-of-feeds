@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fof.models.filter_feed import FilterFeed, Filter
+from fof.models.filter_feed.models import FilterFeed, Filter
 from fof.models.enums import FilterType, FeedType
 from fof.models.base_feed import BaseFeed
 

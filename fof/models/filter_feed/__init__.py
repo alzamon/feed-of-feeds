@@ -1,4 +1,4 @@
-"""Filter feed module with backward compatibility."""
+"""Filter feed module."""
 
 from .models import FilterFeed, Filter
 from .loader import load_filter_feed

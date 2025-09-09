@@ -1,4 +1,4 @@
-"""Syndication feed module with backward compatibility."""
+"""Syndication feed module."""
 
 from .models import SyndicationFeed
 from .loader import load_syndication_feed

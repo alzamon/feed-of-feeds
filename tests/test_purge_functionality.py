@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 from fof.config_manager import ConfigManager
 from fof.models.article_manager import ArticleManager
-from fof.models.syndication_feed import SyndicationFeed
+from fof.models.syndication_feed.models import SyndicationFeed
 from fof.models.article import Article
 from fof.feed_manager import FeedManager
 
