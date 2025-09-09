@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from fof.config_manager import ConfigManager
 from fof.feed_serializer import FeedSerializer
-from fof.models.syndication_feed import SyndicationFeed
+from fof.models.syndication_feed.models import SyndicationFeed
 
 
 def test_feed_serializer_reduced_repetition():

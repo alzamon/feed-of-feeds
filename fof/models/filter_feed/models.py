@@ -3,9 +3,9 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Pattern, TYPE_CHECKING
 import re
 from datetime import timedelta, datetime
-from .article import Article
-from .enums import FilterType, FeedType
-from .base_feed import BaseFeed
+from ..article import Article
+from ..enums import FilterType, FeedType
+from ..base_feed import BaseFeed
 
 if TYPE_CHECKING:
     pass

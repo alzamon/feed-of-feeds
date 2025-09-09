@@ -250,7 +250,7 @@ def main():
             print(f"Feed with id '{feed_id}' not found.")
             sys.exit(1)
 
-        from .models.syndication_feed import SyndicationFeed
+        from .models.syndication_feed.models import SyndicationFeed
 
         total_deleted = 0
 

@@ -1,9 +1,9 @@
 import pytest
 from datetime import datetime
 from fof.feed_manager import FeedManager
-from fof.models.union_feed import UnionFeed, WeightedFeed
-from fof.models.filter_feed import FilterFeed, Filter
-from fof.models.syndication_feed import SyndicationFeed
+from fof.models.union_feed.models import UnionFeed, WeightedFeed
+from fof.models.filter_feed.models import FilterFeed, Filter
+from fof.models.syndication_feed.models import SyndicationFeed
 from fof.models.enums import FilterType
 
 # Dummy managers for FeedManager

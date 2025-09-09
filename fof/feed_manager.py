@@ -6,8 +6,8 @@ import logging
 
 from .models.article import Article
 from .models.base_feed import BaseFeed
-from .models.union_feed import UnionFeed
-from .models.filter_feed import FilterFeed
+from .models.union_feed.models import UnionFeed
+from .models.filter_feed.models import FilterFeed
 from .models.article_manager import ArticleManager
 from .config_manager import ConfigManager
 from .feed_serializer import FeedSerializer

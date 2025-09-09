@@ -1,0 +1,48 @@
+"""Union feed serialization functionality."""
+import json
+import os
+
+from .models import UnionFeed
+from ...time_period import timedelta_to_period_str
+
+
+def serialize_union_feed_to_directory(feed: UnionFeed, path: str, serializer):
+    """Serialize a union feed and its children to a directory structure."""
+    os.makedirs(path, exist_ok=True)
+    weights = {}
+    for wf in feed.feeds:
+        subfeed_name = serializer.get_feed_folder_or_filename(wf.feed)
+        weights[subfeed_name] = wf.weight
+
+    union_meta = {
+        "id": getattr(
+            feed, "local_id", None), "title": getattr(
+            feed, "title", None), "description": getattr(
+            feed, "description", ""), "last_updated": feed.last_updated.isoformat() if getattr(
+            feed, "last_updated", None) else None, "max_age": timedelta_to_period_str(
+                feed.max_age) if getattr(
+                    feed, "max_age", None) else None, "weights": weights, }
+    # Only include purge_age if it's not None
+    if getattr(feed, "purge_age", None) is not None:
+        union_meta["purge_age"] = timedelta_to_period_str(
+            feed.purge_age)
+    union_meta_path = os.path.join(path, "union.json")
+    with open(union_meta_path, "w", encoding="utf-8") as f:
+        json.dump(union_meta, f, indent=2, ensure_ascii=False)
+    for wf in feed.feeds:
+        subfeed_name = serializer.get_feed_folder_or_filename(wf.feed)
+        child_path = os.path.join(path, subfeed_name)
+        serializer.serialize_to_directory(wf.feed, child_path)
+
+
+def serialize_union_feed_to_dict(feed: UnionFeed, serializer) -> dict:
+    """Serialize a union feed object to a dictionary."""
+    result = serializer._get_base_feed_dict(feed)
+    result["feeds"] = [
+        {
+            "weight": wf.weight,
+            "feed": serializer.serialize_feed(wf.feed)
+        } for wf in feed.feeds
+    ]
+    serializer._add_purge_age_if_present(result, feed)
+    return result

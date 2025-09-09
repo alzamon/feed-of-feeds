@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime, timedelta
-from .base_feed import BaseFeed
-from .article import Article
-from .enums import FeedType
-from .article_manager import ArticleManager
+from ..base_feed import BaseFeed
+from ..article import Article
+from ..enums import FeedType
+from ..article_manager import ArticleManager
 
 if TYPE_CHECKING:
     pass

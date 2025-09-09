@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from fof.models.union_feed import UnionFeed, WeightedFeed
+from fof.models.union_feed.models import UnionFeed, WeightedFeed
 from fof.models.base_feed import BaseFeed
 
 

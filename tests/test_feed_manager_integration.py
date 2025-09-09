@@ -4,9 +4,9 @@ from unittest.mock import patch, mock_open
 import json
 
 from fof.feed_manager import FeedManager
-from fof.models.union_feed import UnionFeed
-from fof.models.filter_feed import FilterFeed
-from fof.models.syndication_feed import SyndicationFeed
+from fof.models.union_feed.models import UnionFeed
+from fof.models.filter_feed.models import FilterFeed
+from fof.models.syndication_feed.models import SyndicationFeed
 from fof.models.enums import FilterType
 
 # Dummy managers to use for FeedManager initialization
