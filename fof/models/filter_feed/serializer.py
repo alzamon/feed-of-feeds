@@ -1,14 +1,26 @@
-"""Filter feed serialization functionality."""
+"""Filter feed serialization functionality.
+
+NOTE: Symlinked directories are treated as static, curated subtrees and are never modified or serialized into by this program.
+"""
 import json
 import os
+import logging
 
 from .models import FilterFeed
 from ...time_period import timedelta_to_period_str
 
+logger = logging.getLogger(__name__)
+
 
 def serialize_filter_feed_to_directory(feed: FilterFeed, path: str, serializer):
-    """Serialize a filter feed and its children to a directory structure."""
+    """Serialize a filter feed and its children to a directory structure.
+
+    Skips serialization for symlinked directories (static, curated subtrees).
+    """
     filter_dir = path
+    if os.path.islink(filter_dir):
+        logger.info(f"Skipping serialization for symlinked filter feed directory: {filter_dir}")
+        return
     os.makedirs(filter_dir, exist_ok=True)
     filter_config_path = os.path.join(filter_dir, "filter.json")
     config = {
@@ -28,9 +40,12 @@ def serialize_filter_feed_to_directory(feed: FilterFeed, path: str, serializer):
         config["purge_age"] = timedelta_to_period_str(feed.purge_age)
     with open(filter_config_path, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
+    source_path = os.path.join(filter_dir, "source")
+    if os.path.islink(source_path):
+        logger.info(f"Skipping serialization for symlinked filter source directory: {source_path}")
+        return
     serializer.serialize_to_directory(
-        feed.source_feed, os.path.join(
-            filter_dir, "source"))
+        feed.source_feed, source_path)
 
 
 def serialize_filter_feed_to_dict(feed: FilterFeed, serializer) -> dict:
