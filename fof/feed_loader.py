@@ -42,10 +42,3 @@ class FeedLoader:
             logger.error(f"Unknown feed directory structure at {path}")
             return None
 
-    def try_load_union_info(self, path: str):
-        """Try to load union info from a path."""
-        union_path = os.path.join(path, "union.json")
-        if os.path.isfile(union_path):
-            with open(union_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        return None
