@@ -20,8 +20,16 @@ def load_syndication_feed(
         is_root=False) -> Optional[BaseFeed]:
     """Load a syndication feed from a directory structure."""
     feed_path = os.path.join(path, "feed.json")
-    with open(feed_path, "r", encoding="utf-8") as f:
-        feed_data = json.load(f)
+    try:
+        with open(feed_path, "r", encoding="utf-8") as f:
+            feed_data = json.load(f)
+    except Exception as e:
+        logger.error(
+            f"Failed to load or parse JSON from {feed_path}.\n"
+            f"Error type: {type(e).__name__}\n"
+            f"Error message: {e}\n"
+        )
+        raise
     feed_id = feed_data.get("id")
     max_age_str = feed_data.get("max_age")
     my_max_age = parse_time_period(max_age_str) if isinstance(

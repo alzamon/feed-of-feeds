@@ -21,8 +21,16 @@ def load_filter_feed(
         is_root=False) -> Optional[BaseFeed]:
     """Load a filter feed from a directory structure."""
     filter_path = os.path.join(path, "filter.json")
-    with open(filter_path, "r", encoding="utf-8") as f:
-        filter_data = json.load(f)
+    try:
+        with open(filter_path, "r", encoding="utf-8") as f:
+            filter_data = json.load(f)
+    except Exception as e:
+        logger.error(
+            f"Failed to load or parse JSON from {filter_path}.\n"
+            f"Error type: {type(e).__name__}\n"
+            f"Error message: {e}\n"
+        )
+        raise
     filter_id = filter_data["id"]
     max_age_str = filter_data.get("max_age")
     my_max_age = parse_time_period(max_age_str) if isinstance(

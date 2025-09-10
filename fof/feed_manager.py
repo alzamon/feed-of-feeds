@@ -58,13 +58,22 @@ class FeedManager:
                 config_dir, feedpath=[], parent_max_age=None, is_root=True)
             if feed is None:
                 logger.error(
-                    f"No valid feed found in config directory {config_dir}. Skipping load.")
+                    f"No valid feed found in config directory {config_dir}. "
+                    "Check that your configuration files exist and are valid JSON. "
+                    "See ~/.config/fof/tree for details."
+                )
                 self.root_feed = None
             else:
                 self.root_feed = feed
         except Exception as e:
+            import traceback
             logger.error(
-                f"Failed to load config from directory at {config_dir}: {e}")
+                f"Failed to load config from directory at {config_dir}.\n"
+                f"Error type: {type(e).__name__}\n"
+                f"Error message: {e}\n"
+                f"Traceback:\n{traceback.format_exc()}\n"
+                "Troubleshooting: Check file permissions, JSON syntax, and required fields in your config files."
+            )
             self.root_feed = None
 
     def get_feed_by_id(self, feed_id: str):
@@ -251,13 +260,13 @@ class FeedManager:
 
         # Build set of allowed qualified IDs
         allowed_ids = set()
-        
+
         # Ancestors: construct qualified IDs for each prefix of the selected feed's path
         selected_feedpath = getattr(selected_feed, 'feedpath', [])
         for i in range(1, len(selected_feedpath) + 1):
             ancestor_id = '/'.join(selected_feedpath[:i])
             allowed_ids.add(ancestor_id)
-        
+
         # Include root feed if it exists
         if not selected_feedpath:
             # Selected feed is root

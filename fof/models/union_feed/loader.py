@@ -20,8 +20,16 @@ def load_union_feed(
         is_root=False) -> Optional[BaseFeed]:
     """Load a union feed from a directory structure."""
     union_path = os.path.join(path, "union.json")
-    with open(union_path, "r", encoding="utf-8") as f:
-        union_info = json.load(f)
+    try:
+        with open(union_path, "r", encoding="utf-8") as f:
+            union_info = json.load(f)
+    except Exception as e:
+        logger.error(
+            f"Failed to load or parse JSON from {union_path}.\n"
+            f"Error type: {type(e).__name__}\n"
+            f"Error message: {e}\n"
+        )
+        raise
     weights = union_info.get("weights", {})
     subfeeds = []
     union_id = union_info.get(
