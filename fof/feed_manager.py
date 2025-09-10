@@ -1,18 +1,18 @@
 """Core FoF feed management functionality."""
-import shutil
-from typing import Optional, List, Callable
-from datetime import datetime
-import logging
-
-from .models.article import Article
-from .models.base_feed import BaseFeed
-from .models.union_feed.models import UnionFeed
-from .models.filter_feed.models import FilterFeed
-from .models.article_manager import ArticleManager
-from .config_manager import ConfigManager
-from .feed_serializer import FeedSerializer
 from .config_comparator import ConfigComparator
+from .config_manager import ConfigManager
+from .feed_flag import restrict_to_feed
 from .feed_loader import FeedLoader
+from .feed_serializer import FeedSerializer
+from .models.article import Article
+from .models.article_manager import ArticleManager
+from .models.base_feed import BaseFeed
+from .models.filter_feed.models import FilterFeed
+from .models.union_feed.models import UnionFeed
+from datetime import datetime
+from typing import Optional, List, Callable
+import logging
+import shutil
 
 
 # Constants for weight calculations
@@ -48,7 +48,7 @@ class FeedManager:
 
         self._load_config()
         if self.feed_id:
-            self._set_disabled_in_session_for_feeds(self.feed_id)
+            restrict_to_feed(self, self.feed_id)
 
     def _load_config(self):
         """Load the configuration from the 'tree' directory and initialize feeds."""
