@@ -119,6 +119,23 @@ Feed configurations are stored as JSON files in a hierarchical directory structu
 }
 ```
 
+### Symlinked Curated Subtrees
+
+FoF supports modular configuration by allowing parts of your feed tree to be symlinks to curated subtrees. This enables you to `git clone` curated configuration trees elsewhere and reference them in your main configuration using symbolic links.
+
+**Symlink Policy:**
+- **Symlinked directories are treated as static, curated subtrees.**
+- FoF will **never modify, overwrite, or delete the contents of symlinked directories** during serialization or configuration updates.
+- If a symlink exists inside your feed tree (e.g., `~/.config/fof/tree/curated_feeds` is a symlink), FoF will skip writing or updating any files inside that subtree.
+- **Top-level symlink caution:** If your entire `tree` directory is a symlink, it may be replaced if you perform a configuration update (see atomic update logic). For curated subtrees, symlink only subdirectories, not the top-level `tree`.
+
+**Use Case Example:**
+- You can maintain curated feed configurations in a separate git repository, clone them to a location of your choice, and symlink them into your main FoF configuration tree.
+- This allows you to share, update, and reuse feed subtrees without risk of accidental modification by FoF.
+
+**Best Practice:**  
+Symlink only subdirectories within your configuration tree for curated content. Avoid making the top-level `tree` directory a symlink if you want to preserve it across updates.
+
 ### Path-Qualified Feed IDs
 
 FoF supports modular configuration through **path-qualified feed IDs** that enable self-contained subtrees without ID conflicts.
