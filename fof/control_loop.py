@@ -86,190 +86,211 @@ class ControlLoop:
             stdscr.addstr(max_y - 1, 0, press_any_key[:max_x])
         stdscr.refresh()
 
-    def _handle_key_input(self, stdscr):
-        curses.curs_set(0)
-        stdscr.nodelay(True)
-        stdscr.timeout(100)
-
-        max_y, max_x = stdscr.getmaxyx()
-
-        self.current_article = self.feed_manager.next_article()
-        self.browsing_read_history = False
-
-        if self.current_article and not self.browsing_read_history:
-            self.article_manager.mark_as_read(self.current_article.id)
+    def _update_display(self, stdscr):
+        """Update the display with current article and prompt."""
         self._display_article(stdscr)
         self._display_prompt(stdscr)
         stdscr.refresh()
 
-        while True:
-            key = stdscr.getch()
-            if key == ord("?"):
-                stdscr.clear()
-                self._display_hotkeys(stdscr)
-                stdscr.nodelay(False)
-                stdscr.getch()  # Wait for any key
-                stdscr.nodelay(True)
-                self._display_article(stdscr)
-                self._display_prompt(stdscr)
-                stdscr.refresh()
-                continue
+    def _show_status_message(self, stdscr, message):
+        """Show a status message and update the display."""
+        max_y, max_x = stdscr.getmaxyx()
+        stdscr.addstr(max_y - 2, 0, message.ljust(max_x))
+        self._display_prompt(stdscr)
 
-            if key == ord("n"):
-                if self.browsing_read_history:
-                    if (self.current_article
-                       and getattr(self.current_article, "read", None)):
-                        next_article = (
-                            self.article_manager.get_next_read_article(
-                                self.current_article.read.isoformat()
-                            )
-                        )
-                        if next_article:
-                            self.current_article = next_article
-                            stdscr.addstr(
-                                max_y - 2, 0,
-                                "Moved to newer read article.".ljust(max_x)
-                            )
-                            self._display_article(stdscr)
-                            self._display_prompt(stdscr)
-                        else:
-                            # At most recent read article. Switch to unread
-                            # mode.
-                            self.browsing_read_history = False
-                            self.current_article = (
-                                self.feed_manager.next_article()
-                            )
-                            if self.current_article:
-                                self.article_manager.mark_as_read(
-                                    self.current_article.id
-                                )
-                                stdscr.addstr(
-                                    max_y - 2, 0,
-                                    ("Switched to unread. Showing next unread "
-                                     "article.").ljust(max_x)
-                                )
-                            else:
-                                stdscr.addstr(
-                                    0, 0,
-                                    "All caught up! No more articles to "
-                                    "display."
-                                )
-                            self._display_article(stdscr)
-                            self._display_prompt(stdscr)
-                    else:
-                        stdscr.addstr(
-                            max_y - 2, 0,
-                            "Not in read history.".ljust(max_x)
-                        )
-                        self._display_prompt(stdscr)
+    def _handle_help_key(self, stdscr):
+        """Handle the ? key to show/hide help."""
+        stdscr.clear()
+        self._display_hotkeys(stdscr)
+        stdscr.nodelay(False)
+        stdscr.getch()  # Wait for any key
+        stdscr.nodelay(True)
+        self._update_display(stdscr)
+        return False  # Continue main loop
+
+    def _handle_next_article_key(self, stdscr):
+        """Handle the 'n' key for next article navigation."""
+        max_y, max_x = stdscr.getmaxyx()
+
+        if self.browsing_read_history:
+            if (self.current_article
+               and getattr(self.current_article, "read", None)):
+                next_article = (
+                    self.article_manager.get_next_read_article(
+                        self.current_article.read.isoformat()
+                    )
+                )
+                if next_article:
+                    self.current_article = next_article
+                    self._show_status_message(
+                        stdscr, "Moved to newer read article.")
+                    self._update_display(stdscr)
                 else:
-                    # Get next unread article
-                    self.current_article = self.feed_manager.next_article()
+                    # At most recent read article. Switch to unread mode.
+                    self.browsing_read_history = False
+                    self.current_article = (
+                        self.feed_manager.next_article()
+                    )
                     if self.current_article:
                         self.article_manager.mark_as_read(
                             self.current_article.id
                         )
+                        message = ("Switched to unread. Showing next unread "
+                                   "article.")
+                        self._show_status_message(stdscr, message)
                     else:
                         stdscr.addstr(
                             0, 0,
                             "All caught up! No more articles to display."
                         )
-                    self._display_article(stdscr)
-                    self._display_prompt(stdscr)
+                    self._update_display(stdscr)
+            else:
+                self._show_status_message(stdscr, "Not in read history.")
+        else:
+            # Get next unread article
+            self.current_article = self.feed_manager.next_article()
+            if self.current_article:
+                self.article_manager.mark_as_read(
+                    self.current_article.id
+                )
+            else:
+                stdscr.addstr(
+                    0, 0,
+                    "All caught up! No more articles to display."
+                )
+            self._update_display(stdscr)
+        return False  # Continue main loop
 
-            elif key == ord("p"):
-                prev_article = None
-                if (self.current_article
-                   and getattr(self.current_article, "read", None)):
-                    prev_article = (
-                        self.article_manager.get_previous_read_article(
-                            self.current_article.read.isoformat()
-                        )
+    def _handle_previous_article_key(self, stdscr):
+        """Handle the 'p' key for previous article navigation."""
+        max_y, max_x = stdscr.getmaxyx()
+
+        prev_article = None
+        if (self.current_article
+                and getattr(self.current_article, "read", None)):
+            prev_article = (
+                self.article_manager.get_previous_read_article(
+                    self.current_article.read.isoformat()
+                )
+            )
+        else:
+            most_recent = self.article_manager.get_previous_read_article()
+            if (most_recent and self.current_article
+                    and most_recent.id == self.current_article.id):
+                prev_article = (
+                    self.article_manager.get_previous_read_article(
+                        most_recent.read.isoformat()
                     )
+                )
+            else:
+                prev_article = most_recent
+
+        if prev_article:
+            self.current_article = prev_article
+            self._show_status_message(
+                stdscr, "Moved to previous read article.")
+        else:
+            self._show_status_message(stdscr, "No read articles yet.")
+
+        self.browsing_read_history = True
+        self._update_display(stdscr)
+        return False  # Continue main loop
+
+    def _handle_open_browser_key(self, stdscr):
+        """Handle the 'o' key to open article in browser."""
+        max_y, max_x = stdscr.getmaxyx()
+
+        try:
+            if self.current_article and self.current_article.link:
+                message = f"Opening URL: {self.current_article.link}..."
+                self._show_status_message(stdscr, message)
+                success = open_url_in_browser(self.current_article.link)
+                if success:
+                    self._show_status_message(
+                        stdscr, "Opened link in browser.")
                 else:
-                    most_recent = self.article_manager.get_previous_read_article()
-                    if most_recent and self.current_article and most_recent.id == self.current_article.id:
-                        prev_article = self.article_manager.get_previous_read_article(
-                            most_recent.read.isoformat())
-                    else:
-                        prev_article = most_recent
-                if prev_article:
-                    self.current_article = prev_article
-                    stdscr.addstr(
-                        max_y - 2, 0, "Moved to previous read article.".ljust(max_x))
-                else:
-                    stdscr.addstr(
-                        max_y - 2, 0, "No read articles yet.".ljust(max_x))
-                self.browsing_read_history = True
-                self._display_article(stdscr)
-                self._display_prompt(stdscr)
+                    self._show_status_message(
+                        stdscr, "Failed to open browser.")
+            else:
+                self._show_status_message(stdscr, "No valid link to open.")
+        except Exception as e:
+            self._show_status_message(stdscr, f"Failed to open browser: {e}")
+        return False  # Continue main loop
 
-            elif key == ord("o"):
-                try:
-                    if self.current_article and self.current_article.link:
-                        stdscr.addstr(
-                            max_y - 2,
-                            0,
-                            f"Opening URL: {
-                                self.current_article.link}...".ljust(max_x))
-                        success = open_url_in_browser(
-                            self.current_article.link)
-                        if success:
-                            stdscr.addstr(
-                                max_y - 2, 0,
-                                "Opened link in browser.".ljust(max_x))
-                        else:
-                            stdscr.addstr(
-                                max_y - 2, 0,
-                                "Failed to open browser.".ljust(max_x))
-                    else:
-                        stdscr.addstr(
-                            max_y - 2, 0, "No valid link to open.".ljust(max_x))
-                except Exception as e:
-                    stdscr.addstr(
-                        max_y - 2, 0, f"Failed to open browser: {e}".ljust(max_x))
-                self._display_prompt(stdscr)
+    def _handle_increase_weight_key(self, stdscr):
+        """Handle the '+' key to increase feed weight."""
+        if self.current_article and self.current_article.feedpath:
+            try:
+                self.feed_manager.update_weights(
+                    self.current_article.feedpath, increment=10)
+                self.feed_manager.save_config()
+                message = ("Increased weights along feedpath and saved "
+                           "configuration.")
+                self._show_status_message(stdscr, message)
+            except ValueError as e:
+                self._show_status_message(stdscr, f"Error: {e}")
+        else:
+            message = "No feed associated with this article."
+            self._show_status_message(stdscr, message)
+        return False  # Continue main loop
 
-            elif key == ord("+"):
-                if self.current_article and self.current_article.feedpath:
-                    try:
-                        self.feed_manager.update_weights(
-                            self.current_article.feedpath, increment=10)
-                        self.feed_manager.save_config()
-                        stdscr.addstr(
-                            max_y - 3,
-                            0,
-                            "Increased weights along feedpath and saved configuration.".ljust(max_x))
-                    except ValueError as e:
-                        stdscr.addstr(max_y - 3, 0, f"Error: {e}".ljust(max_x))
-                else:
-                    stdscr.addstr(
-                        max_y - 3, 0, "No feed associated with this article.".ljust(max_x))
-                self._display_prompt(stdscr)
+    def _handle_decrease_weight_key(self, stdscr):
+        """Handle the '-' key to decrease feed weight."""
+        if self.current_article and self.current_article.feedpath:
+            try:
+                self.feed_manager.update_weights(
+                    self.current_article.feedpath, increment=-10)
+                self.feed_manager.save_config()
+                message = ("Decreased weights along feedpath and saved "
+                           "configuration.")
+                self._show_status_message(stdscr, message)
+            except ValueError as e:
+                self._show_status_message(stdscr, f"Error: {e}")
+        else:
+            message = "No feed associated with this article."
+            self._show_status_message(stdscr, message)
+        return False  # Continue main loop
 
-            elif key == ord("-"):
-                if self.current_article and self.current_article.feedpath:
-                    try:
-                        self.feed_manager.update_weights(
-                            self.current_article.feedpath, increment=-10)
-                        self.feed_manager.save_config()
-                        stdscr.addstr(
-                            max_y - 3,
-                            0,
-                            "Decreased weights along feedpath and saved configuration.".ljust(max_x))
-                    except ValueError as e:
-                        stdscr.addstr(max_y - 3, 0, f"Error: {e}".ljust(max_x))
-                else:
-                    stdscr.addstr(
-                        max_y - 3, 0, "No feed associated with this article.".ljust(max_x))
-                self._display_prompt(stdscr)
+    def _handle_quit_key(self, stdscr):
+        """Handle the 'q' key to quit the application."""
+        max_y, max_x = stdscr.getmaxyx()
+        stdscr.addstr(max_y - 2, 0, "Exiting...".ljust(max_x))
+        stdscr.refresh()
+        curses.napms(1000)
+        return True  # Exit main loop
 
-            elif key == ord("q"):
-                stdscr.addstr(max_y - 2, 0, "Exiting...".ljust(max_x))
-                stdscr.refresh()
-                curses.napms(1000)
-                break
+    def _handle_key_input(self, stdscr):
+        curses.curs_set(0)
+        stdscr.nodelay(True)
+        stdscr.timeout(100)
 
+        # Initialize state
+        self.current_article = self.feed_manager.next_article()
+        self.browsing_read_history = False
+
+        if self.current_article and not self.browsing_read_history:
+            self.article_manager.mark_as_read(self.current_article.id)
+
+        self._update_display(stdscr)
+
+        # Key handler mapping
+        key_handlers = {
+            ord("?"): self._handle_help_key,
+            ord("n"): self._handle_next_article_key,
+            ord("p"): self._handle_previous_article_key,
+            ord("o"): self._handle_open_browser_key,
+            ord("+"): self._handle_increase_weight_key,
+            ord("-"): self._handle_decrease_weight_key,
+            ord("q"): self._handle_quit_key
+        }
+
+        while True:
+            key = stdscr.getch()
+            handler = key_handlers.get(key)
+            if handler:
+                should_exit = handler(stdscr)
+                if should_exit:
+                    break
             stdscr.refresh()
 
     def start(self):
