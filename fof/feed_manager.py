@@ -159,25 +159,32 @@ class FeedManager:
         logger.debug(
             f"Starting feed traversal. Root feed ID: {
                 current_feed.id}")
+
+        # Build expected global IDs as we traverse
+        current_path = []
+
         for feed_id in feedpath:
+            current_path.append(feed_id)
+            expected_global_id = '/'.join(current_path)
+
             logger.debug(
-                f"Looking for feed ID '{feed_id}' in current feed '{
+                f"Looking for feed with global ID '{expected_global_id}' in current feed '{
                     current_feed.id}'")
             wf = None
             if isinstance(current_feed, UnionFeed):
                 wf = next(
-                    (wf for wf in current_feed.feeds if wf.feed.id == feed_id), None)
+                    (wf for wf in current_feed.feeds if wf.feed.id == expected_global_id), None)
                 sub_feed = wf.feed if wf else None
             elif isinstance(current_feed, FilterFeed):
-                sub_feed = current_feed.source_feed if current_feed.source_feed.id == feed_id else None
+                sub_feed = current_feed.source_feed if current_feed.source_feed.id == expected_global_id else None
             else:
                 sub_feed = None
             if not sub_feed:
                 logger.error(
-                    f"Feed with ID '{feed_id}' not found in the feedpath at feed '{
+                    f"Feed with global ID '{expected_global_id}' not found in the feedpath at feed '{
                         current_feed.id}'")
                 raise ValueError(
-                    f"Feed with ID '{feed_id}' not found in the feedpath.")
+                    f"Feed with global ID '{expected_global_id}' not found in the feedpath.")
             if wf is not None:
                 wf.weight += increment
                 logger.info(
