@@ -94,8 +94,11 @@ class FeedManager:
                     getattr(feed, "local_id", None) == feed_id):
                 found_feed = feed
 
-        if getattr(self, "root_feed", None):
-            self.perform_on_feeds(self.root_feed, finder)
+        if not self.root_feed:
+            logger.warning(f"Cannot search for feed '{feed_id}': root_feed is not loaded")
+            return None
+
+        self.perform_on_feeds(self.root_feed, finder)
         return found_feed
 
     def save_config(self):
@@ -107,6 +110,10 @@ class FeedManager:
         Only saves if there are actual changes to avoid unnecessary config rewrites.
         Updates last_updated timestamp for feeds that have changes.
         """
+        if not self.root_feed:
+            logger.warning("Cannot save config: root_feed is not loaded")
+            return
+
         update_dir = self.config_manager.get_update_dir
         tree_dir = self.config_manager.get_tree_dir
 
@@ -152,7 +159,6 @@ class FeedManager:
         logger.debug(
             f"Starting feed traversal. Root feed ID: {
                 current_feed.id}")
-        parent_weighted_feed = None
         for feed_id in feedpath:
             logger.debug(
                 f"Looking for feed ID '{feed_id}' in current feed '{

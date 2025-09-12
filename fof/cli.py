@@ -245,6 +245,9 @@ def main():
             getattr(args, "cache_command", None) == "clear"):
         # Find the feed by id (any type)
         feed_id = getattr(args, "feed", None)
+        if feed_id is None:
+            print("Error: --feed argument is required for cache clear command.")
+            sys.exit(1)
         selected_feed = feed_manager.get_feed_by_id(feed_id)
         if selected_feed is None:
             print(f"Feed with id '{feed_id}' not found.")
