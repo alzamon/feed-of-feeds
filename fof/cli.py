@@ -7,6 +7,7 @@ from .models.article_manager import ArticleManager
 from .feed_manager import FeedManager
 from .control_loop import ControlLoop
 from .config_manager import ConfigManager
+from .app_config import AppConfig
 
 try:
     import argcomplete
@@ -172,6 +173,12 @@ def main():
         default=None,
         help="Scope down to the selected feed and its descendants"
     )
+    parser.add_argument(
+        "--session-timeout",
+        type=int,
+        default=None,
+        help="Session timeout in minutes (0 to disable, default: 5 minutes)"
+    )
 
     # Enable tab-completion if argcomplete is installed
     if argcomplete:
@@ -219,14 +226,27 @@ def main():
     )
     logging.info("Logging started.")
 
-    # Initialize article manager and feed manager
+    # Initialize managers
     config_manager = ConfigManager(config_path=config_path)
+    app_config = AppConfig(config_path=config_path)
     article_manager = ArticleManager(config_manager=config_manager)
     feed_manager = FeedManager(
         article_manager=article_manager,
         config_manager=config_manager,
         feed_id=getattr(args, "feed", None)
     )
+
+    # Handle session timeout configuration
+    session_timeout_minutes = getattr(args, "session_timeout", None)
+    if session_timeout_minutes is not None:
+        if session_timeout_minutes < 0:
+            print("Error: session timeout cannot be negative")
+            sys.exit(1)
+        session_timeout_seconds = session_timeout_minutes * 60
+        app_config.session_timeout = session_timeout_seconds
+        app_config.save_config()
+    else:
+        session_timeout_seconds = app_config.session_timeout
 
     # Handle subcommands
     if (args.command == "feeds" and
@@ -272,7 +292,7 @@ def main():
         sys.exit(0)
 
     # Initialize control loop to handle interactions
-    ControlLoop(feed_manager, article_manager).start()
+    ControlLoop(feed_manager, article_manager, session_timeout=session_timeout_seconds).start()
 
     # Purge old articles before saving config and exiting
     feed_manager.purge_old_articles()
