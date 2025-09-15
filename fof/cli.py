@@ -292,7 +292,10 @@ def main():
         sys.exit(0)
 
     # Initialize control loop to handle interactions
-    ControlLoop(feed_manager, article_manager, session_timeout=session_timeout_seconds).start()
+    control_loop = ControlLoop(
+        feed_manager, article_manager, session_timeout=session_timeout_seconds
+    )
+    control_loop.start()
 
     # Purge old articles before saving config and exiting
     feed_manager.purge_old_articles()

@@ -97,14 +97,16 @@ class ControlLoop:
         """Check if session has timed out due to inactivity."""
         if self.session_timeout <= 0:
             return False  # Timeout disabled
-        
+
         current_time = time.time()
         return (current_time - self.last_activity_time) >= self.session_timeout
 
     def _handle_session_timeout(self, stdscr):
         """Handle session timeout by showing message and exiting."""
         max_y, max_x = stdscr.getmaxyx()
-        timeout_msg = f"Session timed out after {self.session_timeout // 60} minutes of inactivity. Exiting..."
+        timeout_mins = self.session_timeout // 60
+        timeout_msg = f"Session timed out after {timeout_mins} minutes of " \
+                      f"inactivity. Exiting..."
         stdscr.addstr(max_y - 2, 0, timeout_msg[:max_x])
         stdscr.refresh()
         curses.napms(2000)  # Show message for 2 seconds
@@ -313,7 +315,7 @@ class ControlLoop:
                 should_exit = self._handle_session_timeout(stdscr)
                 if should_exit:
                     break
-            
+
             key = stdscr.getch()
             handler = key_handlers.get(key)
             if handler:

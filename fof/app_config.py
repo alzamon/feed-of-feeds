@@ -2,7 +2,6 @@
 import json
 import os
 import logging
-from typing import Optional
 
 
 logger = logging.getLogger(__name__)
@@ -15,7 +14,7 @@ class AppConfig:
 
     def __init__(self, config_path: str):
         """Initialize application config manager.
-        
+
         Args:
             config_path: Base configuration directory path
         """
