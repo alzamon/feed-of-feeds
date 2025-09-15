@@ -5,6 +5,7 @@ import json
 import pytest
 
 from fof.config_manager import ConfigManager, DEFAULT_SESSION_TIMEOUT
+from fof.cli import parse_session_timeout
 
 
 def test_config_manager_session_timeout_defaults():
@@ -15,70 +16,64 @@ def test_config_manager_session_timeout_defaults():
 
 
 def test_config_manager_session_timeout_time_period_parsing():
-    """Test that config manager correctly parses time period strings."""
+    """Test that config manager correctly parses time period strings from config file."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        config_manager = ConfigManager(temp_dir)
+        config_file = os.path.join(temp_dir, "app.json")
         
-        # Test setting different time periods
-        config_manager.set_session_timeout("10m")
+        # Test loading different time periods from config file
+        test_config = {"session_timeout": "10m"}
+        with open(config_file, 'w') as f:
+            json.dump(test_config, f)
+        
+        config_manager = ConfigManager(temp_dir)
         assert config_manager.get_session_timeout_seconds() == 600
         
-        config_manager.set_session_timeout("1h")
+        # Test loading hour format
+        test_config = {"session_timeout": "1h"}
+        with open(config_file, 'w') as f:
+            json.dump(test_config, f)
+            
+        config_manager = ConfigManager(temp_dir)
         assert config_manager.get_session_timeout_seconds() == 3600
-        
-        config_manager.set_session_timeout("30s")
-        assert config_manager.get_session_timeout_seconds() == 30
-        
-        config_manager.set_session_timeout("1h30m")
-        assert config_manager.get_session_timeout_seconds() == 5400
 
 
 def test_config_manager_session_timeout_integer_minutes():
-    """Test that config manager handles integer minutes for backward compatibility."""
+    """Test that config manager handles integer minutes from config file."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        config_manager = ConfigManager(temp_dir)
+        config_file = os.path.join(temp_dir, "app.json")
         
-        # Test setting with integer (minutes)
-        config_manager.set_session_timeout(10)
+        # Test loading with integer (minutes) from config file
+        test_config = {"session_timeout": 10}
+        with open(config_file, 'w') as f:
+            json.dump(test_config, f)
+            
+        config_manager = ConfigManager(temp_dir)
         assert config_manager.get_session_timeout_seconds() == 600
 
 
 def test_config_manager_session_timeout_disabled():
-    """Test that setting timeout to 0 disables it."""
+    """Test that setting timeout to 0 in config disables it."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        config_manager = ConfigManager(temp_dir)
+        config_file = os.path.join(temp_dir, "app.json")
         
-        config_manager.set_session_timeout(0)
+        # Test disabled timeout from config file
+        test_config = {"session_timeout": 0}
+        with open(config_file, 'w') as f:
+            json.dump(test_config, f)
+            
+        config_manager = ConfigManager(temp_dir)
         assert config_manager.get_session_timeout_seconds() == 0
         
-        config_manager.set_session_timeout("0")
+        # Test disabled timeout with string
+        test_config = {"session_timeout": "0"}
+        with open(config_file, 'w') as f:
+            json.dump(test_config, f)
+            
+        config_manager = ConfigManager(temp_dir)
         assert config_manager.get_session_timeout_seconds() == 0
 
 
-def test_config_manager_session_timeout_validation():
-    """Test that session timeout validation works."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        config_manager = ConfigManager(temp_dir)
-        
-        # Negative values should raise ValueError
-        with pytest.raises(ValueError):
-            config_manager.set_session_timeout(-1)
-        
-        # Invalid time period strings should raise ValueError
-        with pytest.raises(ValueError):
-            config_manager.set_session_timeout("invalid")
 
-
-def test_config_manager_session_timeout_persistence():
-    """Test that session timeout settings are persisted."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Create a config manager and set timeout
-        config_manager1 = ConfigManager(temp_dir)
-        config_manager1.set_session_timeout("15m")
-        
-        # Create a new config manager and verify it loads the saved value
-        config_manager2 = ConfigManager(temp_dir)
-        assert config_manager2.get_session_timeout_seconds() == 900
 
 
 def test_config_manager_session_timeout_load_existing():
@@ -120,3 +115,27 @@ def test_config_manager_session_timeout_legacy_format():
         
         config_manager = ConfigManager(temp_dir)
         assert config_manager.get_session_timeout_seconds() == 900  # 15 minutes
+
+
+def test_cli_parse_session_timeout():
+    """Test CLI session timeout parsing function."""
+    # Test time period strings
+    assert parse_session_timeout("5m") == 300
+    assert parse_session_timeout("1h") == 3600
+    assert parse_session_timeout("30s") == 30
+    assert parse_session_timeout("1h30m") == 5400
+    
+    # Test plain numbers (minutes)
+    assert parse_session_timeout("10") == 600
+    assert parse_session_timeout(10) == 600
+    
+    # Test disabled
+    assert parse_session_timeout("0") == 0
+    assert parse_session_timeout(0) == 0
+    
+    # Test invalid values
+    with pytest.raises(ValueError):
+        parse_session_timeout("invalid")
+    
+    with pytest.raises(ValueError):
+        parse_session_timeout(-1)

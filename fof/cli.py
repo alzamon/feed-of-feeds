@@ -7,6 +7,7 @@ from .models.article_manager import ArticleManager
 from .feed_manager import FeedManager
 from .control_loop import ControlLoop
 from .config_manager import ConfigManager
+from .time_period import parse_time_period
 
 try:
     import argcomplete
@@ -98,6 +99,26 @@ def print_feed_paths(feed_manager, base_feed=None):
         no_feed_text = "No root feed loaded."
         colored_no_feed = _colorize(no_feed_text, Fore.RED)
         print(colored_no_feed)
+
+
+def parse_session_timeout(timeout_value):
+    """Parse session timeout value. Returns seconds or raises ValueError."""
+    if timeout_value == 0 or timeout_value == "0":
+        return 0  # Disabled
+    
+    try:
+        # Support both time period strings ("5m", "1h") and plain numbers
+        if (isinstance(timeout_value, str) and
+                any(c in timeout_value for c in 'dhms')):
+            return int(parse_time_period(timeout_value).total_seconds())
+        else:
+            # Legacy support: plain number assumed to be minutes
+            minutes = int(timeout_value)
+            if minutes < 0:
+                raise ValueError("Session timeout cannot be negative")
+            return minutes * 60
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Invalid session timeout value: {timeout_value}")
 
 
 def main():
@@ -240,12 +261,13 @@ def main():
     session_timeout_arg = getattr(args, "session_timeout", None)
     if session_timeout_arg is not None:
         try:
-            config_manager.set_session_timeout(session_timeout_arg)
+            session_timeout_seconds = parse_session_timeout(session_timeout_arg)
         except ValueError as e:
             print(f"Error: {e}")
             sys.exit(1)
-
-    session_timeout_seconds = config_manager.get_session_timeout_seconds()
+    else:
+        # Use timeout from config file (defaults to 5m if not set)
+        session_timeout_seconds = config_manager.get_session_timeout_seconds()
 
     # Handle subcommands
     if (args.command == "feeds" and
