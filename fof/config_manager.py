@@ -1,11 +1,14 @@
 import os
 import logging
 import shutil
+import json
+from .time_period import parse_time_period
 
 logger = logging.getLogger(__name__)
 
 # Constants
 BACKUP_SUFFIX = ".backup"
+DEFAULT_SESSION_TIMEOUT = "5m"  # 5 minutes
 
 
 class ConfigManager:
@@ -13,6 +16,88 @@ class ConfigManager:
 
     def __init__(self, config_path: str):
         self.config_path = config_path
+        self.app_config_file = os.path.join(config_path, "app.json")
+        self._app_config = {}
+        self._load_app_config()
+
+    def _load_app_config(self) -> None:
+        """Load application configuration from file or create default."""
+        if os.path.exists(self.app_config_file):
+            try:
+                with open(self.app_config_file, 'r') as f:
+                    self._app_config = json.load(f)
+                logger.info(
+                    f"Loaded app config from {self.app_config_file}"
+                )
+            except (json.JSONDecodeError, IOError) as e:
+                logger.warning(
+                    f"Failed to load app config: {e}. Using defaults."
+                )
+                self._app_config = {}
+        else:
+            logger.info("No app config file found. Using defaults.")
+            self._app_config = {}
+
+        # Ensure default values are set
+        if "session_timeout" not in self._app_config:
+            self._app_config["session_timeout"] = DEFAULT_SESSION_TIMEOUT
+
+    def _save_app_config(self) -> None:
+        """Save current application configuration to file."""
+        try:
+            os.makedirs(self.config_path, exist_ok=True)
+            with open(self.app_config_file, 'w') as f:
+                json.dump(self._app_config, f, indent=2)
+            logger.info(f"Saved app config to {self.app_config_file}")
+        except IOError as e:
+            logger.error(f"Failed to save app config: {e}")
+
+    def get_session_timeout_seconds(self) -> int:
+        """Get session timeout in seconds."""
+        timeout_str = self._app_config.get(
+            "session_timeout", DEFAULT_SESSION_TIMEOUT
+        )
+        if timeout_str == "0" or timeout_str == 0:
+            return 0  # Disabled
+        try:
+            # Support both time period strings ("5m", "1h") and plain numbers
+            if (isinstance(timeout_str, str) and
+                    any(c in timeout_str for c in 'dhms')):
+                return int(parse_time_period(timeout_str).total_seconds())
+            else:
+                # Legacy support: plain number assumed to be minutes
+                return int(timeout_str) * 60
+        except (ValueError, TypeError):
+            logger.warning(
+                f"Invalid session timeout value: {timeout_str}. "
+                f"Using default."
+            )
+            return int(
+                parse_time_period(DEFAULT_SESSION_TIMEOUT).total_seconds()
+            )
+
+    def set_session_timeout(self, timeout_value) -> None:
+        """Set session timeout. Accepts time period strings or minutes."""
+        if timeout_value == 0 or timeout_value == "0":
+            self._app_config["session_timeout"] = "0"
+        elif isinstance(timeout_value, str):
+            # Validate the time period string
+            try:
+                parse_time_period(timeout_value)
+                self._app_config["session_timeout"] = timeout_value
+            except ValueError as e:
+                raise ValueError(f"Invalid time period format: {e}")
+        elif isinstance(timeout_value, int):
+            if timeout_value < 0:
+                raise ValueError("Session timeout cannot be negative")
+            # Convert minutes to time period string for consistency
+            self._app_config["session_timeout"] = f"{timeout_value}m"
+        else:
+            raise ValueError(
+                "Session timeout must be a time period string or "
+                "integer (minutes)"
+            )
+        self._save_app_config()
 
     @property
     def get_tree_dir(self) -> str:

@@ -7,7 +7,6 @@ from .models.article_manager import ArticleManager
 from .feed_manager import FeedManager
 from .control_loop import ControlLoop
 from .config_manager import ConfigManager
-from .app_config import AppConfig
 
 try:
     import argcomplete
@@ -53,10 +52,12 @@ def print_feed_paths(feed_manager, base_feed=None):
     def print_feed(feed, ctx):
         # Only print at leaf feeds (no children)
         is_leaf = not (
-            hasattr(feed, "feeds") or
-            (hasattr(feed, "source_feed") and
-             feed.source_feed is not None) or
-            (hasattr(feed, "feed") and feed.feed is not None)
+            hasattr(feed, "feeds") or (
+                hasattr(feed, "source_feed") and
+                feed.source_feed is not None
+            ) or (
+                hasattr(feed, "feed") and feed.feed is not None
+            )
         )
         feedpath = getattr(feed, "feedpath", [])
         url = getattr(feed, "url", None)
@@ -175,9 +176,9 @@ def main():
     )
     parser.add_argument(
         "--session-timeout",
-        type=int,
         default=None,
-        help="Session timeout in minutes (0 to disable, default: 5 minutes)"
+        help=("Session timeout (e.g., '5m', '1h', '30s', or plain number "
+              "in minutes; 0 to disable, default: 5m)")
     )
 
     # Enable tab-completion if argcomplete is installed
@@ -228,7 +229,6 @@ def main():
 
     # Initialize managers
     config_manager = ConfigManager(config_path=config_path)
-    app_config = AppConfig(config_path=config_path)
     article_manager = ArticleManager(config_manager=config_manager)
     feed_manager = FeedManager(
         article_manager=article_manager,
@@ -237,16 +237,15 @@ def main():
     )
 
     # Handle session timeout configuration
-    session_timeout_minutes = getattr(args, "session_timeout", None)
-    if session_timeout_minutes is not None:
-        if session_timeout_minutes < 0:
-            print("Error: session timeout cannot be negative")
+    session_timeout_arg = getattr(args, "session_timeout", None)
+    if session_timeout_arg is not None:
+        try:
+            config_manager.set_session_timeout(session_timeout_arg)
+        except ValueError as e:
+            print(f"Error: {e}")
             sys.exit(1)
-        session_timeout_seconds = session_timeout_minutes * 60
-        app_config.session_timeout = session_timeout_seconds
-        app_config.save_config()
-    else:
-        session_timeout_seconds = app_config.session_timeout
+
+    session_timeout_seconds = config_manager.get_session_timeout_seconds()
 
     # Handle subcommands
     if (args.command == "feeds" and
@@ -266,7 +265,9 @@ def main():
         # Find the feed by id (any type)
         feed_id = getattr(args, "feed", None)
         if feed_id is None:
-            print("Error: --feed argument is required for cache clear command.")
+            print(
+                "Error: --feed argument is required for cache clear command."
+            )
             sys.exit(1)
         selected_feed = feed_manager.get_feed_by_id(feed_id)
         if selected_feed is None:
