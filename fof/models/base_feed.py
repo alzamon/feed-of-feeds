@@ -55,25 +55,25 @@ class BaseFeed(ABC):
     def get_child_feeds(self) -> List['BaseFeed']:
         """
         Return list of direct child feeds for traversal.
-        
+
         This method supports polymorphic traversal of the feed hierarchy
         without requiring duck typing checks.
-        
+
         Returns:
             List[BaseFeed]: List of direct child feeds. Empty list for leaf nodes.
         """
-        
-    @abstractmethod  
+
+    @abstractmethod
     def apply_context_transform(self, context: dict) -> dict:
         """
         Apply feed-specific transformations to context.
-        
+
         This method allows each feed type to apply its own transformations
         to the context (e.g., weight multiplication for weighted feeds).
-        
+
         Args:
             context: The input context dictionary
-            
+
         Returns:
             dict: A new context dictionary with transformations applied
         """
@@ -81,13 +81,13 @@ class BaseFeed(ABC):
     def find_child_feed_by_id(self, feed_id: str) -> Optional['BaseFeed']:
         """
         Find a direct child feed by its ID.
-        
+
         This is a default implementation that works for most feed types.
         Subclasses can override for special handling (e.g., UnionFeed with weights).
-        
+
         Args:
             feed_id: The ID of the child feed to find
-            
+
         Returns:
             The child feed if found, None otherwise
         """

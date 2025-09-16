@@ -166,15 +166,15 @@ class FeedManager:
             logger.debug(
                 f"Looking for feed with global ID '{expected_global_id}' in current feed '{
                     current_feed.id}'")
-            
+
             # Use polymorphism instead of isinstance checks
             sub_feed = current_feed.find_child_feed_by_id(expected_global_id)
             wf = None
-            
+
             # Special handling for UnionFeed to get the WeightedFeed for weight updates
             if isinstance(current_feed, UnionFeed):
                 wf = current_feed.find_weighted_feed_by_id(expected_global_id)
-                
+
             if not sub_feed:
                 logger.error(
                     f"Feed with global ID '{expected_global_id}' not found in the feedpath at feed '{
@@ -216,7 +216,7 @@ class FeedManager:
 
         # Use polymorphism for feed traversal instead of duck typing
         transformed_context = base_feed.apply_context_transform(context)
-        
+
         # Special handling for UnionFeed to deal with WeightedFeed weights
         if isinstance(base_feed, UnionFeed):
             for weighted_feed in base_feed.get_weighted_child_feeds():
