@@ -7,6 +7,7 @@ from .models.article_manager import ArticleManager
 from .feed_manager import FeedManager
 from .control_loop import ControlLoop
 from .config_manager import ConfigManager
+from .time_period import parse_time_period
 
 try:
     import argcomplete
@@ -52,10 +53,12 @@ def print_feed_paths(feed_manager, base_feed=None):
     def print_feed(feed, ctx):
         # Only print at leaf feeds (no children)
         is_leaf = not (
-            hasattr(feed, "feeds") or
-            (hasattr(feed, "source_feed") and
-             feed.source_feed is not None) or
-            (hasattr(feed, "feed") and feed.feed is not None)
+            hasattr(feed, "feeds") or (
+                hasattr(feed, "source_feed") and
+                feed.source_feed is not None
+            ) or (
+                hasattr(feed, "feed") and feed.feed is not None
+            )
         )
         feedpath = getattr(feed, "feedpath", [])
         url = getattr(feed, "url", None)
@@ -96,6 +99,26 @@ def print_feed_paths(feed_manager, base_feed=None):
         no_feed_text = "No root feed loaded."
         colored_no_feed = _colorize(no_feed_text, Fore.RED)
         print(colored_no_feed)
+
+
+def parse_session_timeout(timeout_value):
+    """Parse session timeout value. Returns seconds or raises ValueError."""
+    if timeout_value == 0 or timeout_value == "0":
+        return 0  # Disabled
+    
+    try:
+        # Support both time period strings ("5m", "1h") and plain numbers
+        if (isinstance(timeout_value, str) and
+                any(c in timeout_value for c in 'dhms')):
+            return int(parse_time_period(timeout_value).total_seconds())
+        else:
+            # Legacy support: plain number assumed to be minutes
+            minutes = int(timeout_value)
+            if minutes < 0:
+                raise ValueError("Session timeout cannot be negative")
+            return minutes * 60
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Invalid session timeout value: {timeout_value}")
 
 
 def main():
@@ -172,6 +195,12 @@ def main():
         default=None,
         help="Scope down to the selected feed and its descendants"
     )
+    parser.add_argument(
+        "--session-timeout",
+        default=None,
+        help=("Session timeout (e.g., '5m', '1h', '30s', or plain number "
+              "in minutes; 0 to disable, default: 5m)")
+    )
 
     # Enable tab-completion if argcomplete is installed
     if argcomplete:
@@ -219,7 +248,7 @@ def main():
     )
     logging.info("Logging started.")
 
-    # Initialize article manager and feed manager
+    # Initialize managers
     config_manager = ConfigManager(config_path=config_path)
     article_manager = ArticleManager(config_manager=config_manager)
     feed_manager = FeedManager(
@@ -227,6 +256,18 @@ def main():
         config_manager=config_manager,
         feed_id=getattr(args, "feed", None)
     )
+
+    # Handle session timeout configuration
+    session_timeout_arg = getattr(args, "session_timeout", None)
+    if session_timeout_arg is not None:
+        try:
+            session_timeout_seconds = parse_session_timeout(session_timeout_arg)
+        except ValueError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+    else:
+        # Use timeout from config file (defaults to 5m if not set)
+        session_timeout_seconds = config_manager.get_session_timeout_seconds()
 
     # Handle subcommands
     if (args.command == "feeds" and
@@ -246,7 +287,9 @@ def main():
         # Find the feed by id (any type)
         feed_id = getattr(args, "feed", None)
         if feed_id is None:
-            print("Error: --feed argument is required for cache clear command.")
+            print(
+                "Error: --feed argument is required for cache clear command."
+            )
             sys.exit(1)
         selected_feed = feed_manager.get_feed_by_id(feed_id)
         if selected_feed is None:
@@ -272,7 +315,10 @@ def main():
         sys.exit(0)
 
     # Initialize control loop to handle interactions
-    ControlLoop(feed_manager, article_manager).start()
+    control_loop = ControlLoop(
+        feed_manager, article_manager, session_timeout=session_timeout_seconds
+    )
+    control_loop.start()
 
     # Purge old articles before saving config and exiting
     feed_manager.purge_old_articles()

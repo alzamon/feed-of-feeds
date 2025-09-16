@@ -1,16 +1,19 @@
 import curses
 import textwrap
+import time
 from .platform_quirks import open_url_in_browser
 
 
 class ControlLoop:
     """Manages display and keyboard interactions for navigating articles."""
 
-    def __init__(self, feed_manager, article_manager):
+    def __init__(self, feed_manager, article_manager, session_timeout=300):
         self.feed_manager = feed_manager
         self.article_manager = article_manager
         self.current_article = None
         self.browsing_read_history = False
+        self.session_timeout = session_timeout
+        self.last_activity_time = time.time()
 
     def _display_article(self, stdscr):
         max_y, max_x = stdscr.getmaxyx()
@@ -86,8 +89,30 @@ class ControlLoop:
             stdscr.addstr(max_y - 1, 0, press_any_key[:max_x])
         stdscr.refresh()
 
+    def _update_activity(self):
+        """Update the last activity timestamp."""
+        self.last_activity_time = time.time()
+
+    def _check_session_timeout(self):
+        """Check if session has timed out due to inactivity."""
+        if self.session_timeout <= 0:
+            return False  # Timeout disabled
+
+        current_time = time.time()
+        return (current_time - self.last_activity_time) >= self.session_timeout
+
+    def _handle_session_timeout(self, stdscr):
+        """Handle session timeout by showing message and exiting."""
+        max_y, max_x = stdscr.getmaxyx()
+        timeout_mins = self.session_timeout // 60
+        timeout_msg = f"Session timed out after {timeout_mins} minutes of " \
+                      f"inactivity. Exiting..."
+        stdscr.addstr(max_y - 2, 0, timeout_msg[:max_x])
+        stdscr.refresh()
+        curses.napms(2000)  # Show message for 2 seconds
+        return True  # Exit main loop
+
     def _update_display(self, stdscr):
-        """Update the display with current article and prompt."""
         self._display_article(stdscr)
         self._display_prompt(stdscr)
         stdscr.refresh()
@@ -285,9 +310,17 @@ class ControlLoop:
         }
 
         while True:
+            # Check for session timeout
+            if self._check_session_timeout():
+                should_exit = self._handle_session_timeout(stdscr)
+                if should_exit:
+                    break
+
             key = stdscr.getch()
             handler = key_handlers.get(key)
             if handler:
+                # Update activity timestamp on any valid key press
+                self._update_activity()
                 should_exit = handler(stdscr)
                 if should_exit:
                     break
