@@ -30,6 +30,14 @@ class DummyFeed(BaseFeed):
     def feed_type(self):
         return FeedType.REGULAR
 
+    def get_child_feeds(self):
+        """Dummy feeds are leaf nodes with no children."""
+        return []
+        
+    def apply_context_transform(self, context):
+        """Dummy feeds don't transform context."""
+        return context.copy()
+
     def fetch(self):
         if self._disabled_in_session:
             return None

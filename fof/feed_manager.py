@@ -7,7 +7,6 @@ from .feed_serializer import FeedSerializer
 from .models.article import Article
 from .models.article_manager import ArticleManager
 from .models.base_feed import BaseFeed
-from .models.filter_feed.models import FilterFeed
 from .models.union_feed.models import UnionFeed
 from datetime import datetime
 from typing import Optional, List, Callable
@@ -86,9 +85,6 @@ class FeedManager:
 
         def finder(feed, ctx):
             nonlocal found_feed
-            # Skip WeightedFeed wrappers - they don't have id
-            if hasattr(feed, "weight") and hasattr(feed, "feed"):
-                return
             # Match by qualified ID or local ID
             if (getattr(feed, "id", None) == feed_id or
                     getattr(feed, "local_id", None) == feed_id):
@@ -170,15 +166,15 @@ class FeedManager:
             logger.debug(
                 f"Looking for feed with global ID '{expected_global_id}' in current feed '{
                     current_feed.id}'")
+            
+            # Use polymorphism instead of isinstance checks
+            sub_feed = current_feed.find_child_feed_by_id(expected_global_id)
             wf = None
+            
+            # Special handling for UnionFeed to get the WeightedFeed for weight updates
             if isinstance(current_feed, UnionFeed):
-                wf = next(
-                    (wf for wf in current_feed.feeds if wf.feed.id == expected_global_id), None)
-                sub_feed = wf.feed if wf else None
-            elif isinstance(current_feed, FilterFeed):
-                sub_feed = current_feed.source_feed if current_feed.source_feed.id == expected_global_id else None
-            else:
-                sub_feed = None
+                wf = current_feed.find_weighted_feed_by_id(expected_global_id)
+                
             if not sub_feed:
                 logger.error(
                     f"Feed with global ID '{expected_global_id}' not found in the feedpath at feed '{
@@ -218,31 +214,25 @@ class FeedManager:
 
         performer(base_feed, context)
 
-        # Navigate the feed hierarchy using duck typing to avoid tight coupling
-        # This approach allows for extensibility but could be improved with
-        # polymorphism
-
-        # WeightedFeed: has .feed (compose likelihood if present)
-        if hasattr(base_feed, "weight") and hasattr(base_feed, "feed"):
-            new_context = context.copy()
-            if "likelihood" in new_context:
-                new_context["likelihood"] *= (base_feed.weight /
-                                              WEIGHT_PERCENTAGE_BASE)
-            else:
-                new_context["likelihood"] = (
-                    base_feed.weight / WEIGHT_PERCENTAGE_BASE)
-            self.perform_on_feeds(base_feed.feed, performer, new_context)
-        # UnionFeed: has .feeds (list of WeightedFeed)
-        elif hasattr(base_feed, "feeds"):
-            for subfeed in getattr(base_feed, "feeds", []):
-                self.perform_on_feeds(subfeed, performer, context.copy())
-        # FilterFeed: has .source_feed
-        elif hasattr(base_feed, "source_feed"):
-            self.perform_on_feeds(
-                base_feed.source_feed,
-                performer,
-                context.copy())
-        # SyndicationFeed: no children, done
+        # Use polymorphism for feed traversal instead of duck typing
+        transformed_context = base_feed.apply_context_transform(context)
+        
+        # Special handling for UnionFeed to deal with WeightedFeed weights
+        if isinstance(base_feed, UnionFeed):
+            for weighted_feed in base_feed.get_weighted_child_feeds():
+                # Apply weight transformation for WeightedFeed
+                new_context = transformed_context.copy()
+                if "likelihood" in new_context:
+                    new_context["likelihood"] *= (weighted_feed.weight /
+                                                  WEIGHT_PERCENTAGE_BASE)
+                else:
+                    new_context["likelihood"] = (
+                        weighted_feed.weight / WEIGHT_PERCENTAGE_BASE)
+                self.perform_on_feeds(weighted_feed.feed, performer, new_context)
+        else:
+            # Standard polymorphic traversal for other feed types
+            for child_feed in base_feed.get_child_feeds():
+                self.perform_on_feeds(child_feed, performer, transformed_context)
 
     def _set_disabled_in_session_for_feeds(self, active_feed_id: str):
         """
@@ -258,9 +248,6 @@ class FeedManager:
 
         def find_feed(feed: BaseFeed, ctx: dict):
             nonlocal selected_feed
-            # Skip WeightedFeed wrappers
-            if hasattr(feed, "weight") and hasattr(feed, "feed"):
-                return
             # Support both local and qualified ID lookup
             if (getattr(feed, 'id', None) == active_feed_id or
                     getattr(feed, 'local_id', None) == active_feed_id):
@@ -293,22 +280,14 @@ class FeedManager:
             feed_id = getattr(feed, 'id', None)
             if feed_id is not None:
                 allowed_ids.add(feed_id)
-            # UnionFeed: has .feeds (list of WeightedFeed)
-            if hasattr(feed, "feeds"):
-                for wf in getattr(feed, "feeds", []):
-                    collect_descendants(wf.feed)
-            # FilterFeed: has .source_feed
-            elif hasattr(feed, "source_feed"):
-                collect_descendants(feed.source_feed)
-            # SyndicationFeed: just itself
+            # Use polymorphism instead of duck typing
+            for child_feed in feed.get_child_feeds():
+                collect_descendants(child_feed)
 
         collect_descendants(selected_feed)
 
         # Now disable all feeds not in allowed_ids
         def disable_unless_allowed(feed: BaseFeed, ctx: dict):
-            # Skip WeightedFeed wrappers
-            if hasattr(feed, "weight") and hasattr(feed, "feed"):
-                return
             feed_id = getattr(feed, 'id', None)
             feed.disabled_in_session = (feed_id not in allowed_ids)
 

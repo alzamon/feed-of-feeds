@@ -26,6 +26,14 @@ class DummyFeed(BaseFeed):
     def feed_type(self):
         return "dummy"
 
+    def get_child_feeds(self):
+        """Dummy feeds are leaf nodes with no children."""
+        return []
+        
+    def apply_context_transform(self, context):
+        """Dummy feeds don't transform context."""
+        return context.copy()
+
     def fetch(self):
         if self._raise_on_fetch:
             raise RuntimeError("Fetch failed")

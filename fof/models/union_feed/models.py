@@ -37,6 +37,46 @@ class UnionFeed(BaseFeed):
     def feed_type(self) -> FeedType:
         return FeedType.UNION
 
+    def get_child_feeds(self) -> List[BaseFeed]:
+        """Union feeds return the actual feeds from weighted feeds."""
+        return [wf.feed for wf in self.feeds]
+    
+    def get_weighted_child_feeds(self) -> List['WeightedFeed']:
+        """Return the WeightedFeed objects for weight-aware traversal."""
+        return self.feeds
+
+    def find_child_feed_by_id(self, feed_id: str) -> Optional[BaseFeed]:
+        """
+        Find a child feed by ID and return the actual feed.
+        
+        For UnionFeed, we need to look inside WeightedFeed objects.
+        Returns the BaseFeed, but also stores the WeightedFeed for weight updates.
+        """
+        for wf in self.feeds:
+            if wf.feed.id == feed_id:
+                return wf.feed
+        return None
+
+    def find_weighted_feed_by_id(self, feed_id: str) -> Optional['WeightedFeed']:
+        """
+        Find a WeightedFeed by the ID of its contained feed.
+        
+        This is used for weight updates.
+        """
+        for wf in self.feeds:
+            if wf.feed.id == feed_id:
+                return wf
+        return None
+        
+    def apply_context_transform(self, context: dict) -> dict:
+        """
+        Union feeds don't transform context themselves.
+        
+        Note: Weight multiplication is handled per WeightedFeed in the 
+        traversal logic, not at the UnionFeed level.
+        """
+        return context.copy()
+
     def __init__(
         self,
         title: Optional[str],

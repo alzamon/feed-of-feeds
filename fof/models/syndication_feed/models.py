@@ -23,6 +23,14 @@ class SyndicationFeed(BaseFeed):
     def feed_type(self) -> FeedType:
         return FeedType.SYNDICATION
 
+    def get_child_feeds(self) -> List[BaseFeed]:
+        """Syndication feeds are leaf nodes with no children."""
+        return []
+        
+    def apply_context_transform(self, context: dict) -> dict:
+        """Syndication feeds don't transform context."""
+        return context.copy()
+
     def fetch(self) -> Optional[Article]:
         """
         Fetch the first unfetched and unread article using the ArticleManager.

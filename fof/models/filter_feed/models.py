@@ -73,6 +73,14 @@ class FilterFeed(BaseFeed):
     def feed_type(self) -> FeedType:
         return FeedType.FILTER
 
+    def get_child_feeds(self) -> List[BaseFeed]:
+        """Filter feeds have one child - the source feed."""
+        return [self.source_feed]
+        
+    def apply_context_transform(self, context: dict) -> dict:
+        """Filter feeds don't transform context."""
+        return context.copy()
+
     def add_filter(
             self,
             filter_type: FilterType,
