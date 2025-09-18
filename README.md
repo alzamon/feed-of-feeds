@@ -133,8 +133,19 @@ FoF supports modular configuration by allowing parts of your feed tree to be sym
 - You can maintain curated feed configurations in a separate git repository, clone them to a location of your choice, and symlink them into your main FoF configuration tree.
 - This allows you to share, update, and reuse feed subtrees without risk of accidental modification by FoF.
 
-**Best Practice:**  
+**Best Practice:**
 Symlink only subdirectories within your configuration tree for curated content. Avoid making the top-level `tree` directory a symlink if you want to preserve it across updates.
+
+**Example Usage:**
+```bash
+# Clone a curated feed repository
+git clone https://github.com/example/curated-feeds.git ~/curated
+
+# Create symlink in your feed tree
+ln -s ~/curated/tech-news ~/.config/fof/tree/tech_news
+```
+
+**Directory Naming:** Feed directories are named using the feed's `local_id` field (not the title). Ensure your feed configurations have appropriate `local_id` values that match your desired directory structure.
 
 ### Path-Qualified Feed IDs
 
@@ -176,7 +187,7 @@ You can reference feeds by either local or qualified ID:
 # Using local ID (finds first match)
 fof --feed cicd
 
-# Using qualified ID (specific match)  
+# Using qualified ID (specific match)
 fof --feed work/da/cicd
 fof --feed personal/cicd
 ```
@@ -307,4 +318,3 @@ Dependencies are automatically installed via `pip install`. See `setup.py` for t
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-

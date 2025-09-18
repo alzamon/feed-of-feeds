@@ -194,7 +194,7 @@ def test_config_rewritten_after_weight_change():
             "description": "A test union",
             "last_updated": now.isoformat(),
             "max_age": "7d",
-            "weights": {"Feed 1": 60, "Feed 2": 40}
+            "weights": {"feed1": 60, "feed2": 40}
         }
 
         # Create the union.json file
@@ -203,7 +203,7 @@ def test_config_rewritten_after_weight_change():
             json.dump(union_config, f, indent=2)
 
         # Create subdirectory and feed configs - use same names as weights
-        feed1_dir = os.path.join(tree_dir, "Feed 1")
+        feed1_dir = os.path.join(tree_dir, "feed1")
         os.makedirs(feed1_dir)
         feed1_config = {
             "id": "feed1",
@@ -216,7 +216,7 @@ def test_config_rewritten_after_weight_change():
         with open(os.path.join(feed1_dir, "feed.json"), "w") as f:
             json.dump(feed1_config, f, indent=2)
 
-        feed2_dir = os.path.join(tree_dir, "Feed 2")
+        feed2_dir = os.path.join(tree_dir, "feed2")
         os.makedirs(feed2_dir)
         feed2_config = {
             "id": "feed2",
@@ -270,7 +270,7 @@ def test_only_changed_feeds_get_timestamp_updates():
             "description": "root union",
             "last_updated": base_time.isoformat(),
             "max_age": "7d",
-            "weights": {"Feed 1": 60, "Feed 2": 40}
+            "weights": {"feed1": 60, "feed2": 40}
         }
 
         root_json_path = os.path.join(tree_dir, "union.json")
@@ -278,7 +278,7 @@ def test_only_changed_feeds_get_timestamp_updates():
             json.dump(root_config, f, indent=2)
 
         # Create Feed 1
-        feed1_dir = os.path.join(tree_dir, "Feed 1")
+        feed1_dir = os.path.join(tree_dir, "feed1")
         os.makedirs(feed1_dir)
         feed1_config = {
             "id": "feed1",
@@ -293,7 +293,7 @@ def test_only_changed_feeds_get_timestamp_updates():
             json.dump(feed1_config, f, indent=2)
 
         # Create Feed 2
-        feed2_dir = os.path.join(tree_dir, "Feed 2")
+        feed2_dir = os.path.join(tree_dir, "feed2")
         os.makedirs(feed2_dir)
         feed2_config = {
             "id": "feed2",
@@ -341,7 +341,7 @@ def test_only_changed_feeds_get_timestamp_updates():
         assert feed2_timestamp == base_time, "Feed2 timestamp should remain unchanged when feed itself is not modified"
 
         # Check that weight was actually updated
-        assert updated_root["weights"]["Feed 1"] == 70, "Feed 1 weight should have increased by 10"
+        assert updated_root["weights"]["feed1"] == 70, "Feed 1 weight should have increased by 10"
 
 
 def test_config_manager_persist_update_atomic():

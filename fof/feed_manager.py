@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Optional, List, Callable
 import logging
 import shutil
+from .symlink_utils import preserve_symlinks_for_update
 
 
 # Constants for weight calculations
@@ -117,12 +118,26 @@ class FeedManager:
         update_dir = self.config_manager.get_update_dir
         tree_dir = self.config_manager.get_tree_dir
 
-        # Serialize to update directory
-        self.feed_serializer.serialize_to_directory(self.root_feed, update_dir)
+        # Phase 1: Preserve symlinks from tree to update directory
+        preserved_symlinks = preserve_symlinks_for_update(tree_dir, update_dir)
+
+        # Phase 2: Serialize content with symlink awareness
+        # Serialize with symlink context if needed
+        if preserved_symlinks:
+            logger.info("Serializing feed content with symlink preservation")
+            self.feed_serializer.set_symlink_context(preserved_symlinks, update_dir)
+        else:
+            logger.info("Serializing feed content")
+
+        try:
+            self.feed_serializer.serialize_to_directory(self.root_feed, update_dir)
+        finally:
+            if preserved_symlinks:
+                self.feed_serializer.clear_symlink_context()
 
         # Check if the new configuration is different from the existing one
-        if self.config_comparator.config_directories_equal(
-                tree_dir, update_dir):
+        directories_equal = self.config_comparator.config_directories_equal(tree_dir, update_dir)
+        if directories_equal:
             # No changes detected, clean up update directory and skip persist
             shutil.rmtree(update_dir)
             logger.info("No configuration changes detected, skipping save.")
@@ -141,7 +156,19 @@ class FeedManager:
 
         # Re-serialize with updated timestamps
         shutil.rmtree(update_dir)
-        self.feed_serializer.serialize_to_directory(self.root_feed, update_dir)
+
+        # Re-preserve symlinks after removing update directory
+        preserved_symlinks = preserve_symlinks_for_update(tree_dir, update_dir)
+
+        # Re-serialize with symlink awareness
+        if preserved_symlinks:
+            self.feed_serializer.set_symlink_context(preserved_symlinks, update_dir)
+            try:
+                self.feed_serializer.serialize_to_directory(self.root_feed, update_dir)
+            finally:
+                self.feed_serializer.clear_symlink_context()
+        else:
+            self.feed_serializer.serialize_to_directory(self.root_feed, update_dir)
 
         # Proceed with persist
         self.config_manager.persist_update(update_dir)

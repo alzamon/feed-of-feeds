@@ -43,6 +43,11 @@ def serialize_union_feed_to_directory(feed: UnionFeed, path: str, serializer):
     for wf in feed.feeds:
         subfeed_name = serializer.get_feed_folder_or_filename(wf.feed)
         child_path = os.path.join(path, subfeed_name)
+        # Check if this path is preserved as a symlink (new symlink-aware check)
+        if serializer.is_path_preserved_symlink(child_path):
+            logger.info(f"Skipping serialization for preserved symlinked subfeed directory: {child_path}")
+            continue
+        # Legacy check for existing symlinks in the target location
         if os.path.islink(child_path):
             logger.info(f"Skipping serialization for symlinked subfeed directory: {child_path}")
             continue

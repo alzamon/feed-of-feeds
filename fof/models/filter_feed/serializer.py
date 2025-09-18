@@ -41,6 +41,11 @@ def serialize_filter_feed_to_directory(feed: FilterFeed, path: str, serializer):
     with open(filter_config_path, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
     source_path = os.path.join(filter_dir, "source")
+    # Check if this path is preserved as a symlink (new symlink-aware check)
+    if serializer.is_path_preserved_symlink(source_path):
+        logger.info(f"Skipping serialization for preserved symlinked filter source directory: {source_path}")
+        return
+    # Legacy check for existing symlinks in the target location
     if os.path.islink(source_path):
         logger.info(f"Skipping serialization for symlinked filter source directory: {source_path}")
         return
