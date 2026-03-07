@@ -1,6 +1,6 @@
 # FoF Vim Plugin
 
-Provides syntax highlighting for **Feed of Feeds** configuration files (`*.fof`).
+Provides syntax highlighting and omni-completion for **Feed of Feeds** configuration files (`*.fof`).
 
 ## What gets highlighted
 
@@ -11,6 +11,17 @@ Provides syntax highlighting for **Feed of Feeds** configuration files (`*.fof`)
 | Time-period values | `"7d"`, `"12h"`, `"30m"`, `"7d12h"` | `Number` |
 
 All other JSON structure (keys, braces, brackets, booleans, nulls) is highlighted by Vim's built-in JSON syntax.
+
+## Omni-completion
+
+Press **`CTRL-X CTRL-O`** (see `:help compl-omni`) while editing a `*.fof` file to trigger context-aware completion.
+
+| Context | What gets completed |
+|---------|---------------------|
+| JSON field name (after `"`) | All FoF field names (`id`, `url`, `filter_type`, `criteria`, …) |
+| `"filter_type": "` value | `title_regex`, `content_regex`, `link_regex`, `author` |
+
+> **Tip:** Set `set completeopt+=menuone,noinsert` in your `vimrc` for the best experience.
 
 ## Installation
 
@@ -37,16 +48,20 @@ use { 'alzamon/feed-of-feeds', rtp = 'contrib/vim' }
 
 ### Manual installation
 
-Copy (or symlink) the two plugin directories into your Vim runtime path:
+Copy (or symlink) the plugin directories into your Vim runtime path:
 
 ```bash
 # Vim
 cp -r contrib/vim/ftdetect ~/.vim/ftdetect
+cp -r contrib/vim/ftplugin ~/.vim/ftplugin
 cp -r contrib/vim/syntax   ~/.vim/syntax
+cp -r contrib/vim/autoload ~/.vim/autoload
 
 # Neovim
 cp -r contrib/vim/ftdetect ~/.config/nvim/ftdetect
+cp -r contrib/vim/ftplugin ~/.config/nvim/ftplugin
 cp -r contrib/vim/syntax   ~/.config/nvim/syntax
+cp -r contrib/vim/autoload ~/.config/nvim/autoload
 ```
 
 Or add the plugin directory to your runtime path in `~/.vimrc` / `init.vim`:
