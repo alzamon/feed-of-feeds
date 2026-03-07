@@ -45,9 +45,11 @@ When you open a **new, empty** `*.fof` file, the plugin automatically inserts a 
 
 | File name | Required fields inserted |
 |-----------|--------------------------|
-| `feed.fof` | `id`, `url` |
-| `union.fof` | `id`, `weights` |
-| `filter.fof` | `id`, `criteria` |
+| `feed.fof` | `$schema`, `id`, `url` |
+| `union.fof` | `$schema`, `id`, `weights` |
+| `filter.fof` | `$schema`, `id`, `criteria` |
+
+The `$schema` field points at the published JSON Schema for that file type. This immediately activates schema-based validation and autocompletion in any JSON-aware editor or language server (VS Code, Neovim `jsonls`, GitHub Copilot, etc.) — no extra editor configuration required.
 
 The cursor is placed inside the empty `"id"` value so you can start typing immediately. Existing files are never modified.
 
@@ -148,7 +150,7 @@ Check that filetype detection is active:
 
 ## JSON Schema (editor-agnostic)
 
-The `schemas/` directory at the root of the repository contains JSON Schema files for each config type. These work with any editor that supports JSON Schema validation and autocompletion (VS Code, Neovim + `nvim-lsp`, etc.).
+The `schemas/` directory at the root of the repository contains JSON Schema files for each config type. They work with any editor that supports JSON Schema validation and autocompletion (VS Code, Neovim + `jsonls`, GitHub Copilot, etc.).
 
 | Schema file | Config file |
 |-------------|-------------|
@@ -158,23 +160,46 @@ The `schemas/` directory at the root of the repository contains JSON Schema file
 
 ### VS Code
 
-Add to your workspace `.vscode/settings.json`:
+A `.vscode/settings.json` is committed to the repository that associates each `*.fof` filename with the appropriate schema. If you open the repository folder in VS Code, schema-based IntelliSense (field completion, validation, hover docs) activates automatically — no manual configuration required.
+
+If you edit `.fof` files outside the repository root, add the `json.schemas` block from that file to your own workspace settings.
+
+### Neovim (`jsonls`)
+
+If you use `nvim-lspconfig` with the `jsonls` language server, add the following to your config:
+
+```lua
+require('lspconfig').jsonls.setup({
+  settings = {
+    json = {
+      schemas = {
+        {
+          fileMatch = { '**/feed.fof' },
+          url = 'https://raw.githubusercontent.com/alzamon/feed-of-feeds/main/schemas/syndication-feed.schema.json',
+        },
+        {
+          fileMatch = { '**/union.fof' },
+          url = 'https://raw.githubusercontent.com/alzamon/feed-of-feeds/main/schemas/union-feed.schema.json',
+        },
+        {
+          fileMatch = { '**/filter.fof' },
+          url = 'https://raw.githubusercontent.com/alzamon/feed-of-feeds/main/schemas/filter-feed.schema.json',
+        },
+      },
+      validate = { enable = true },
+    },
+  },
+})
+```
+
+### Inline `$schema` (any editor)
+
+Every skeleton the plugin inserts includes a `"$schema"` field pointing at the published schema URL. This means any JSON-aware editor or language server that respects `$schema` — including **GitHub Copilot** — receives full schema context without any extra configuration:
 
 ```json
 {
-  "json.schemas": [
-    {
-      "fileMatch": ["**/feed.fof"],
-      "url": "./schemas/syndication-feed.schema.json"
-    },
-    {
-      "fileMatch": ["**/union.fof"],
-      "url": "./schemas/union-feed.schema.json"
-    },
-    {
-      "fileMatch": ["**/filter.fof"],
-      "url": "./schemas/filter-feed.schema.json"
-    }
-  ]
+  "$schema": "https://raw.githubusercontent.com/alzamon/feed-of-feeds/main/schemas/filter-feed.schema.json",
+  "id": "",
+  "criteria": []
 }
 ```

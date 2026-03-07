@@ -114,13 +114,19 @@ endfunction
 "   union.fof  → id + weights
 "   filter.fof → id + criteria
 "
+" A "$schema" key is included so that JSON-aware editors and language servers
+" (VS Code, neovim jsonls, GitHub Copilot) automatically validate and complete
+" the file using the published schema.
+"
 " The cursor is left inside the empty "id" value so the user can start typing.
 function! fof#insert_skeleton()
   let fname = expand('%:t')
+  let base_url = 'https://raw.githubusercontent.com/alzamon/feed-of-feeds/main/schemas/'
 
   if fname ==# 'feed.fof'
     let lines = [
           \ '{',
+          \ '  "$schema": "' . base_url . 'syndication-feed.schema.json",',
           \ '  "id": "",',
           \ '  "url": ""',
           \ '}',
@@ -128,6 +134,7 @@ function! fof#insert_skeleton()
   elseif fname ==# 'union.fof'
     let lines = [
           \ '{',
+          \ '  "$schema": "' . base_url . 'union-feed.schema.json",',
           \ '  "id": "",',
           \ '  "weights": {}',
           \ '}',
@@ -135,6 +142,7 @@ function! fof#insert_skeleton()
   elseif fname ==# 'filter.fof'
     let lines = [
           \ '{',
+          \ '  "$schema": "' . base_url . 'filter-feed.schema.json",',
           \ '  "id": "",',
           \ '  "criteria": []',
           \ '}',
@@ -147,9 +155,10 @@ function! fof#insert_skeleton()
   call append(1, lines[1:])
   " Place cursor on the closing quote of the empty "id" value so that pressing
   " 'i' in normal mode inserts text between the two quotes.
-  " Line 2 is:  '  "id": "",'
+  " With the $schema line added, "id" is now on line 3.
+  " Line 3 is:  '  "id": "",'
   "              col:     910  → col 10 = closing quote of the empty id string.
-  call cursor(2, 10)
+  call cursor(3, 10)
 endfunction
 
 " fof#complete({findstart}, {base})
