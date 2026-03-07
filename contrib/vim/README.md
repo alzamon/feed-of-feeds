@@ -18,8 +18,23 @@ Press **`CTRL-X CTRL-O`** (see `:help compl-omni`) while editing a `*.fof` file 
 
 | Context | What gets completed |
 |---------|---------------------|
-| JSON field name (after `"`) | All FoF field names (`id`, `url`, `filter_type`, `criteria`, …) |
+| Top-level JSON field name (after `"`) | All top-level FoF field names (`id`, `url`, `criteria`, `weights`, …) |
+| Inside a `criteria` array item | Sub-object fields: `filter_type`, `pattern`, `is_inclusion` |
 | `"filter_type": "` value | `title_regex`, `content_regex`, `link_regex`, `author` |
+
+The completion menu shows a tag indicating the context — `[fof]` for top-level fields and `[fof/criteria]` for fields inside a `criteria` item:
+
+```vim
+" Top-level keys — triggered anywhere in the outer object
+{ "<C-X><C-O>           → id, url, criteria, weights, max_age, …  [fof]
+
+" Inside a criteria item — triggered inside a { } nested under "criteria": [
+{ "criteria": [
+    { "<C-X><C-O>        → filter_type, pattern, is_inclusion      [fof/criteria]
+
+" Value completion for filter_type
+    { "filter_type": "<C-X><C-O>  → title_regex, content_regex, …  [fof]
+```
 
 > **Tip:** Set `set completeopt+=menuone,noinsert` in your `vimrc` for the best experience.
 

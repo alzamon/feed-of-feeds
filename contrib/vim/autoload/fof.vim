@@ -3,11 +3,12 @@
 " Triggered by CTRL-X CTRL-O (see :help compl-omni).
 "
 " What gets completed:
-"   - JSON field names valid in any *.fof file
+"   - Top-level JSON field names valid in any *.fof file
+"   - Sub-object field names when inside a known array (e.g. criteria items)
 "   - Quoted string values for fields whose value is an enum:
 "       filter_type → title_regex / content_regex / link_regex / author
 
-" All field names that may appear in a *.fof file.
+" Top-level field names (common to all *.fof types).
 let s:keys = [
       \ 'id',
       \ 'title',
@@ -18,15 +19,90 @@ let s:keys = [
       \ 'last_updated',
       \ 'weights',
       \ 'criteria',
-      \ 'filter_type',
-      \ 'pattern',
-      \ 'is_inclusion',
       \ ]
+
+" Field names valid inside sub-objects of a named array key.
+" Each entry maps an array key to the list of fields its items may contain.
+let s:subkeys = {
+      \ 'criteria': ['filter_type', 'pattern', 'is_inclusion'],
+      \ }
 
 " Enumerated string values for fields that have a fixed set of options.
 let s:values = {
       \ 'filter_type': ['title_regex', 'content_regex', 'link_regex', 'author'],
       \ }
+
+" s:find_parent_context()
+"
+" Scans from the top of the file down to (but not including) the current line,
+" tracking JSON brace/bracket depth.  Returns the key name of the nearest
+" enclosing array if the cursor is currently inside a sub-object of that
+" array, or '' when the cursor is at the top-level object.
+"
+" Example: inside a criteria item the function returns 'criteria'.
+"
+" The parser tracks whether it is inside a JSON string so that braces and
+" brackets that appear in string values do not corrupt the depth counters.
+" Backslash-escaped characters (including \") are skipped correctly.
+function! s:find_parent_context()
+  let brace_depth   = 0
+  let bracket_depth = 0
+  let last_array_key = ''
+
+  for lnum in range(1, line('.') - 1)
+    let l = getline(lnum)
+    let in_string = 0
+    let col_idx   = 0
+    let line_len  = len(l)
+
+    while col_idx < line_len
+      let ch = l[col_idx]
+
+      if in_string
+        if ch ==# '\'
+          " Skip the next character (escaped, e.g. \" or \\).
+          let col_idx += 1
+        elseif ch ==# '"'
+          let in_string = 0
+        endif
+      else
+        if ch ==# '"'
+          let in_string = 1
+        elseif ch ==# '{'
+          let brace_depth += 1
+        elseif ch ==# '}'
+          let brace_depth -= 1
+        elseif ch ==# '['
+          let bracket_depth += 1
+          if bracket_depth == 1
+            " Look for "key": [ on the portion of the line ending at this [.
+            " Using the sub-string rather than the full line avoids picking
+            " up an earlier key when multiple arrays appear on one line.
+            let portion = strpart(l, 0, col_idx + 1)
+            let key = matchstr(portion, '"\zs\w\+\ze"\s*:\s*\[$')
+            if !empty(key)
+              let last_array_key = key
+            endif
+          endif
+        elseif ch ==# ']'
+          let bracket_depth -= 1
+          if bracket_depth == 0
+            let last_array_key = ''
+          endif
+        endif
+      endif
+
+      let col_idx += 1
+    endwhile
+  endfor
+
+  " brace_depth > 1 means we are inside a nested object (depth 1 = top-level
+  " object; depth 2+ = a sub-object such as a criteria item).
+  if brace_depth > 1 && bracket_depth > 0
+    return last_array_key
+  endif
+  return ''
+endfunction
 
 " fof#insert_skeleton()
 "
@@ -87,10 +163,13 @@ endfunction
 "
 " Phase 2 (findstart == 0):
 "   Return a List of completion candidates filtered by {base}.
-"   Context detection:
+"   Context detection (in priority order):
 "     value context  – the line before the cursor ends with
 "                      "<key>": "<partial  →  offer enum values for <key>
-"     key context    – everything else  →  offer all FoF field names
+"     sub-object     – cursor is inside a known array's item object
+"                      (e.g. inside a criteria entry)  →  offer that
+"                      sub-object's field names
+"     key context    – everything else  →  offer top-level FoF field names
 function! fof#complete(findstart, base)
   if a:findstart
     " Scan left past word characters (letters, digits, underscore).
@@ -119,7 +198,16 @@ function! fof#complete(findstart, base)
           \ {_, e -> e.word =~# '^' . a:base})
   endif
 
-  " Default: complete JSON field names.
+  " Sub-object context: inside a known array's item (e.g. criteria entries).
+  let parent_key = s:find_parent_context()
+  if !empty(parent_key) && has_key(s:subkeys, parent_key)
+    let candidates = s:subkeys[parent_key]
+    return filter(
+          \ map(copy(candidates), {_, k -> {'word': k, 'menu': '[fof/' . parent_key . ']'}}),
+          \ {_, e -> e.word =~# '^' . a:base})
+  endif
+
+  " Default: complete top-level JSON field names.
   return filter(
         \ map(copy(s:keys), {_, k -> {'word': k, 'menu': '[fof]'}}),
         \ {_, e -> e.word =~# '^' . a:base})
