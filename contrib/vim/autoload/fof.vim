@@ -28,6 +28,54 @@ let s:values = {
       \ 'filter_type': ['title_regex', 'content_regex', 'link_regex', 'author'],
       \ }
 
+" fof#insert_skeleton()
+"
+" Called automatically when a new empty *.fof buffer is opened.
+" Detects the feed type from the file name and inserts a minimal JSON skeleton
+" containing only the fields that are required by that feed's schema:
+"
+"   feed.fof   → id + url
+"   union.fof  → id + weights
+"   filter.fof → id + criteria
+"
+" The cursor is left inside the empty "id" value so the user can start typing.
+function! fof#insert_skeleton()
+  let fname = expand('%:t')
+
+  if fname ==# 'feed.fof'
+    let lines = [
+          \ '{',
+          \ '  "id": "",',
+          \ '  "url": ""',
+          \ '}',
+          \ ]
+  elseif fname ==# 'union.fof'
+    let lines = [
+          \ '{',
+          \ '  "id": "",',
+          \ '  "weights": {}',
+          \ '}',
+          \ ]
+  elseif fname ==# 'filter.fof'
+    let lines = [
+          \ '{',
+          \ '  "id": "",',
+          \ '  "criteria": []',
+          \ '}',
+          \ ]
+  else
+    return
+  endif
+
+  call setline(1, lines[0])
+  call append(1, lines[1:])
+  " Place cursor on the closing quote of the empty "id" value so that pressing
+  " 'i' in normal mode inserts text between the two quotes.
+  " Line 2 is:  '  "id": "",'
+  "              col:     910  → col 10 = closing quote of the empty id string.
+  call cursor(2, 10)
+endfunction
+
 " fof#complete({findstart}, {base})
 "
 " Standard two-phase Vim omni-completion function.

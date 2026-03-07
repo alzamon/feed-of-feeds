@@ -1,6 +1,6 @@
 # FoF Vim Plugin
 
-Provides syntax highlighting and omni-completion for **Feed of Feeds** configuration files (`*.fof`).
+Provides syntax highlighting, omni-completion, and new-file skeleton insertion for **Feed of Feeds** configuration files (`*.fof`).
 
 ## What gets highlighted
 
@@ -22,6 +22,18 @@ Press **`CTRL-X CTRL-O`** (see `:help compl-omni`) while editing a `*.fof` file 
 | `"filter_type": "` value | `title_regex`, `content_regex`, `link_regex`, `author` |
 
 > **Tip:** Set `set completeopt+=menuone,noinsert` in your `vimrc` for the best experience.
+
+## New-file skeleton
+
+When you open a **new, empty** `*.fof` file, the plugin automatically inserts a minimal JSON skeleton containing only the required fields for that feed type:
+
+| File name | Required fields inserted |
+|-----------|--------------------------|
+| `feed.fof` | `id`, `url` |
+| `union.fof` | `id`, `weights` |
+| `filter.fof` | `id`, `criteria` |
+
+The cursor is placed inside the empty `"id"` value so you can start typing immediately. Existing files are never modified.
 
 ## Installation
 
