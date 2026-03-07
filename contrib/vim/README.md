@@ -37,23 +37,42 @@ The cursor is placed inside the empty `"id"` value so you can start typing immed
 
 ## Installation
 
+> **Important:** The Vim plugin lives inside `contrib/vim/`, not at the repository root.
+> Every installation method must point at that subdirectory — otherwise Vim cannot find
+> the filetype detection, ftplugin, syntax, or autoload files and nothing will work.
+
 ### Using a plugin manager (recommended)
 
 **vim-plug**
+
 ```vim
+" Default branch (main):
 Plug 'alzamon/feed-of-feeds', {'rtp': 'contrib/vim'}
+
+" Pin to a specific branch — include BOTH 'branch' AND 'rtp':
+Plug 'alzamon/feed-of-feeds', {'branch': 'my-branch', 'rtp': 'contrib/vim'}
 ```
 
+> If you omit `'rtp': 'contrib/vim'`, vim-plug adds the repo root to Vim's
+> runtimepath and the plugin will not be loaded at all (no filetype detection,
+> no skeleton, no completion).
+
 **lazy.nvim**
+
 ```lua
 {
   'alzamon/feed-of-feeds',
   config = false,
-  vim.opt.runtimepath:append(vim.fn.stdpath('data') .. '/lazy/feed-of-feeds/contrib/vim'),
+  init = function()
+    vim.opt.runtimepath:append(
+      vim.fn.stdpath('data') .. '/lazy/feed-of-feeds/contrib/vim'
+    )
+  end,
 }
 ```
 
 **Packer**
+
 ```lua
 use { 'alzamon/feed-of-feeds', rtp = 'contrib/vim' }
 ```
@@ -81,6 +100,35 @@ Or add the plugin directory to your runtime path in `~/.vimrc` / `init.vim`:
 ```vim
 set runtimepath+=/path/to/feed-of-feeds/contrib/vim
 ```
+
+After any install, run `:PlugInstall` (vim-plug) or the equivalent for your manager,
+then restart Vim.
+
+### Verifying the installation
+
+Open Vim and run:
+
+```vim
+:echo &runtimepath
+```
+
+You should see a path ending in `feed-of-feeds/contrib/vim` in the list.
+
+Check that filetype detection is active:
+
+```vim
+:set filetype?          " inside a *.fof file → should print  filetype=fof
+:echo &omnifunc         " should print  fof#complete
+```
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| No skeleton on new `*.fof` file | Plugin not loaded — `rtp` not set | Add `'rtp': 'contrib/vim'` to your plugin manager entry |
+| `E117: Unknown function: fof#complete` | `autoload/fof.vim` not on runtimepath | Same as above |
+| Filetype not detected (`fof`) | `ftdetect/fof.vim` not on runtimepath | Same as above |
+| Skeleton appears on existing files | Should never happen — file a bug | — |
 
 ## JSON Schema (editor-agnostic)
 
