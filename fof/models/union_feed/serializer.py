@@ -37,7 +37,7 @@ def serialize_union_feed_to_directory(feed: UnionFeed, path: str, serializer):
     # Only include purge_age if it's not None
     if getattr(feed, "purge_age", None) is not None:
         union_meta["purge_age"] = timedelta_to_period_str(feed.purge_age)
-    union_meta_path = os.path.join(path, "union.json")
+    union_meta_path = os.path.join(path, "union.fof")
     with open(union_meta_path, "w", encoding="utf-8") as f:
         json.dump(union_meta, f, indent=2, ensure_ascii=False)
     for wf in feed.feeds:

@@ -19,7 +19,7 @@ def load_union_feed(
         parent_max_age=None,
         is_root=False) -> Optional[BaseFeed]:
     """Load a union feed from a directory structure."""
-    union_path = os.path.join(path, "union.json")
+    union_path = os.path.join(path, "union.fof")
     try:
         with open(union_path, "r", encoding="utf-8") as f:
             union_info = json.load(f)

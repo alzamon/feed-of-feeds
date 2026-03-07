@@ -20,7 +20,7 @@ def load_filter_feed(
         parent_max_age=None,
         is_root=False) -> Optional[BaseFeed]:
     """Load a filter feed from a directory structure."""
-    filter_path = os.path.join(path, "filter.json")
+    filter_path = os.path.join(path, "filter.fof")
     try:
         with open(filter_path, "r", encoding="utf-8") as f:
             filter_data = json.load(f)

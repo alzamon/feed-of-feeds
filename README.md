@@ -75,9 +75,11 @@ FoF uses directory-based configuration stored in `~/.config/fof/` by default. Yo
 Feed configurations are stored as JSON files in a hierarchical directory structure under `~/.config/fof/tree/`. Each feed type has its own format:
 
 #### Syndication Feed (RSS/Atom)
+
+Save as **`feed.fof`** in the feed's directory:
+
 ```json
 {
-  "feed_type": "syndication",
   "id": "example_blog",
   "title": "Example Blog",
   "description": "A tech blog",
@@ -87,23 +89,27 @@ Feed configurations are stored as JSON files in a hierarchical directory structu
 ```
 
 #### Union Feed (Weighted Aggregation)
+
+Save as **`union.fof`** in the feed's directory:
+
 ```json
 {
-  "feed_type": "union",
   "id": "tech_news",
   "title": "Tech News Aggregate",
   "description": "Collection of tech news sources",
-  "feeds": [
-    {"feed_id": "blog1", "weight": 60},
-    {"feed_id": "blog2", "weight": 40}
-  ]
+  "weights": {
+    "blog1": 60,
+    "blog2": 40
+  }
 }
 ```
 
 #### Filter Feed (Content Filtering)
+
+Save as **`filter.fof`** in the feed's directory. The source feed lives in a `source/` subdirectory:
+
 ```json
 {
-  "feed_type": "filter",
   "id": "python_only",
   "title": "Python Articles Only",
   "description": "Filters for Python-related content",
@@ -118,6 +124,17 @@ Feed configurations are stored as JSON files in a hierarchical directory structu
   ]
 }
 ```
+
+Available `filter_type` values:
+
+| Value | Description |
+|-------|-------------|
+| `title_regex` | Match article title against a regex pattern |
+| `content_regex` | Match article body against a regex pattern |
+| `link_regex` | Match article URL against a regex pattern |
+| `author` | Match article author name |
+
+Set `"is_inclusion": false` to *exclude* articles that match the pattern (default is `true`, meaning only matching articles pass through).
 
 ### Symlinked Curated Subtrees
 
@@ -254,6 +271,50 @@ fof --config /path/to/config logs
 Enable debug logging to console:
 ```bash
 fof --verbose
+```
+
+## Editor Support
+
+FoF configuration files use the `.fof` extension, which allows editors to provide syntax highlighting and schema-based validation out of the box.
+
+### Vim / Neovim
+
+The repository ships a Vim plugin under `contrib/vim/` that highlights:
+- Feed type values (`"syndication"`, `"union"`, `"filter"`) in your colour scheme's **Type** colour
+- Filter type values (`"title_regex"`, `"content_regex"`, `"link_regex"`, `"author"`) in the **Identifier** colour
+- Time-period values (`"7d"`, `"12h"`, `"30m"`, …) in the **Number** colour
+
+**Quick install (vim-plug):**
+```vim
+Plug 'alzamon/feed-of-feeds', {'rtp': 'contrib/vim'}
+```
+
+**Manual install:**
+```bash
+# Vim
+cp -r contrib/vim/ftdetect ~/.vim/ftdetect
+cp -r contrib/vim/syntax   ~/.vim/syntax
+
+# Neovim
+cp -r contrib/vim/ftdetect ~/.config/nvim/ftdetect
+cp -r contrib/vim/syntax   ~/.config/nvim/syntax
+```
+
+See [`contrib/vim/README.md`](contrib/vim/README.md) for all installation methods.
+
+### VS Code and other schema-aware editors
+
+The `schemas/` directory contains JSON Schema files for each config type.
+Add the following to your workspace `.vscode/settings.json` to get autocompletion and validation:
+
+```json
+{
+  "json.schemas": [
+    { "fileMatch": ["**/feed.fof"],   "url": "./schemas/syndication-feed.schema.json" },
+    { "fileMatch": ["**/union.fof"],  "url": "./schemas/union-feed.schema.json" },
+    { "fileMatch": ["**/filter.fof"], "url": "./schemas/filter-feed.schema.json" }
+  ]
+}
 ```
 
 ## Architecture

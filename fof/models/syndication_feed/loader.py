@@ -19,7 +19,7 @@ def load_syndication_feed(
         parent_max_age=None,
         is_root=False) -> Optional[BaseFeed]:
     """Load a syndication feed from a directory structure."""
-    feed_path = os.path.join(path, "feed.json")
+    feed_path = os.path.join(path, "feed.fof")
     try:
         with open(feed_path, "r", encoding="utf-8") as f:
             feed_data = json.load(f)

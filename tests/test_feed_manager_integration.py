@@ -40,15 +40,15 @@ def mock_files_structure():
     """
     Sets up a fake nested feed config, as described:
     tree_dir/
-      union.json  (union of "syndication1" and "filter1")
-      syndication1/feed.json
-      filter1/filter.json
-      filter1/source/feed.json
+      union.fof  (union of "syndication1" and "filter1")
+      syndication1/feed.fof
+      filter1/filter.fof
+      filter1/source/feed.fof
     """
     now = datetime.now()
     # All the config file contents, keyed by their full paths
     files = {
-        "tree_dir/union.json": {
+        "tree_dir/union.fof": {
             "id": "root_union",
             "title": "Root Union",
             "description": "A union of feeds",
@@ -56,7 +56,7 @@ def mock_files_structure():
             "max_age": "7d",
             "weights": {"syndication1": 60, "filter1": 40}
         },
-        "tree_dir/syndication1/feed.json": {
+        "tree_dir/syndication1/feed.fof": {
             "id": "syndication1",
             "title": "Syndication Feed 1",
             "description": "Syndication feed description",
@@ -64,7 +64,7 @@ def mock_files_structure():
             "url": "http://example.com/feed1",
             "max_age": "7d"
         },
-        "tree_dir/filter1/filter.json": {
+        "tree_dir/filter1/filter.fof": {
             "id": "filter1",
             "title": "Filter Feed 1",
             "description": "Filters by title",
@@ -76,7 +76,7 @@ def mock_files_structure():
                 "is_inclusion": True
             }]
         },
-        "tree_dir/filter1/source/feed.json": {
+        "tree_dir/filter1/source/feed.fof": {
             "id": "syndication2",
             "title": "Syndication Feed 2",
             "description": "Another syndication feed",

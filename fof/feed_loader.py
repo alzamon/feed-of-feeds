@@ -25,9 +25,9 @@ class FeedLoader:
             parent_max_age=None,
             is_root=False) -> Optional[BaseFeed]:
         """Load a feed from a directory structure."""
-        union_path = os.path.join(path, "union.json")
-        filter_path = os.path.join(path, "filter.json")
-        feed_path = os.path.join(path, "feed.json")
+        union_path = os.path.join(path, "union.fof")
+        filter_path = os.path.join(path, "filter.fof")
+        feed_path = os.path.join(path, "feed.fof")
 
         if os.path.isfile(union_path):
             return load_union_feed(

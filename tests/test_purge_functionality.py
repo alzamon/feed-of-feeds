@@ -188,7 +188,7 @@ def test_feed_manager_purge_old_articles():
             "purge_age": "14d"
         }
 
-        feed_json_path = os.path.join(tree_dir, "feed.json")
+        feed_json_path = os.path.join(tree_dir, "feed.fof")
         with open(feed_json_path, "w") as f:
             json.dump(feed_config, f, indent=2)
 
