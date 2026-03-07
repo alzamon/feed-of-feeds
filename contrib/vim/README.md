@@ -16,25 +16,26 @@ All other JSON structure (keys, braces, brackets, booleans, nulls) is highlighte
 
 Press **`CTRL-X CTRL-O`** (see `:help compl-omni`) while editing a `*.fof` file to trigger context-aware completion.
 
-| Context | What gets completed |
-|---------|---------------------|
-| Top-level JSON field name (after `"`) | All top-level FoF field names (`id`, `url`, `criteria`, `weights`, …) |
-| Inside a `criteria` array item | Sub-object fields: `filter_type`, `pattern`, `is_inclusion` |
-| `"filter_type": "` value | `title_regex`, `content_regex`, `link_regex`, `author` |
+**Workflow:** type the opening `"` for a field name or value, then press `CTRL-X CTRL-O`. The plugin inserts the rest including the closing `"` and `: ` separator (for field names) or closing `"` (for values).
 
-The completion menu shows a tag indicating the context — `[fof]` for top-level fields and `[fof/criteria]` for fields inside a `criteria` item:
+| Context | Trigger | What gets inserted |
+|---------|---------|-------------------|
+| Top-level JSON field name | `"` + `C-X C-O` | `fieldname": ` (leading `"` already typed) |
+| Inside a `criteria` array item | `"` + `C-X C-O` | `filter_type": ` / `pattern": ` / `is_inclusion": ` |
+| `"filter_type": "` value | `"` + `C-X C-O` | `title_regex"` / `content_regex"` / … (closing `"` included) |
 
-```vim
-" Top-level keys — triggered anywhere in the outer object
-{ "<C-X><C-O>           → id, url, criteria, weights, max_age, …  [fof]
+Example session inside a new `filter.fof`:
 
-" Inside a criteria item — triggered inside a { } nested under "criteria": [
-{ "criteria": [
-    { "<C-X><C-O>        → filter_type, pattern, is_inclusion      [fof/criteria]
-
-" Value completion for filter_type
-    { "filter_type": "<C-X><C-O>  → title_regex, content_regex, …  [fof]
 ```
+  "criteria": [
+    {
+      "fi<C-X><C-O>         →  selects "filter_type"   →  "filter_type": 
+      "<C-X><C-O>           →  selects title_regex"    →  "filter_type": "title_regex"
+    }
+  ]
+```
+
+The completion menu tag shows the context: `[fof]` for top-level fields, `[fof/criteria]` for fields inside a `criteria` item.
 
 > **Tip:** Set `set completeopt+=menuone,noinsert` in your `vimrc` for the best experience.
 

@@ -163,6 +163,12 @@ endfunction
 "
 " Phase 2 (findstart == 0):
 "   Return a List of completion candidates filtered by {base}.
+"   Completion words follow JSON conventions so the result is always valid
+"   JSON when the user has already typed the opening '"':
+"
+"     Field names:  word = key":   →  with user's "  →  "key": 
+"     Enum values:  word = val"    →  with user's "  →  "val"
+"
 "   Context detection (in priority order):
 "     value context  – the line before the cursor ends with
 "                      "<key>": "<partial  →  offer enum values for <key>
@@ -192,23 +198,29 @@ function! fof#complete(findstart, base)
 
   if !empty(current_key) && has_key(s:values, current_key)
     " Offer enum values for this key.
+    " The word includes the closing quote so the final result is:
+    "   "filter_type": "title_regex"
+    " (the user's opening " before the value is already in the buffer).
     let candidates = s:values[current_key]
     return filter(
-          \ map(copy(candidates), {_, v -> {'word': v, 'menu': '[fof]'}}),
-          \ {_, e -> e.word =~# '^' . a:base})
+          \ map(copy(candidates), {_, v -> {'word': v . '"', 'abbr': v, 'menu': '[fof]'}}),
+          \ {_, e -> e.abbr =~# '^' . a:base})
   endif
 
   " Sub-object context: inside a known array's item (e.g. criteria entries).
   let parent_key = s:find_parent_context()
   if !empty(parent_key) && has_key(s:subkeys, parent_key)
-    let candidates = s:subkeys[parent_key]
-    return filter(
-          \ map(copy(candidates), {_, k -> {'word': k, 'menu': '[fof/' . parent_key . ']'}}),
-          \ {_, e -> e.word =~# '^' . a:base})
+    " Filter the raw key list by prefix, then build completion dicts.
+    " word = key":  so the user's leading " plus the inserted text gives
+    " "filter_type": — ready for the user to type the value.
+    let candidates = filter(copy(s:subkeys[parent_key]), {_, k -> k =~# '^' . a:base})
+    return map(candidates, {_, k -> {'word': k . '": ', 'abbr': '"' . k . '"', 'menu': '[fof/' . parent_key . ']'}})
   endif
 
   " Default: complete top-level JSON field names.
-  return filter(
-        \ map(copy(s:keys), {_, k -> {'word': k, 'menu': '[fof]'}}),
-        \ {_, e -> e.word =~# '^' . a:base})
+  " Filter the raw key list by prefix, then build completion dicts.
+  " Same convention: word = key":  so that with the user's leading " the
+  " result is "id": , "url": , etc.
+  let candidates = filter(copy(s:keys), {_, k -> k =~# '^' . a:base})
+  return map(candidates, {_, k -> {'word': k . '": ', 'abbr': '"' . k . '"', 'menu': '[fof]'}})
 endfunction
