@@ -26,7 +26,7 @@ def create_demo_config():
     os.makedirs(tree_dir)
 
     # Root union feed
-    with open(os.path.join(tree_dir, 'union.json'), 'w') as f:
+    with open(os.path.join(tree_dir, 'union.fof'), 'w') as f:
         json.dump({
             'id': 'root',
             'title': 'Root Feed',
@@ -37,7 +37,7 @@ def create_demo_config():
     # Work subtree
     work_dir = os.path.join(tree_dir, 'work')
     os.makedirs(work_dir)
-    with open(os.path.join(work_dir, 'union.json'), 'w') as f:
+    with open(os.path.join(work_dir, 'union.fof'), 'w') as f:
         json.dump({
             'id': 'work',
             'title': 'Work Projects',
@@ -48,7 +48,7 @@ def create_demo_config():
     # Work CI/CD feed (local ID: cicd)
     work_cicd_dir = os.path.join(work_dir, 'cicd')
     os.makedirs(work_cicd_dir)
-    with open(os.path.join(work_cicd_dir, 'feed.json'), 'w') as f:
+    with open(os.path.join(work_cicd_dir, 'feed.fof'), 'w') as f:
         json.dump({
             'id': 'cicd',  # Local ID - simple!
             'title': 'Work CI/CD',
@@ -59,7 +59,7 @@ def create_demo_config():
     # Personal subtree  
     personal_dir = os.path.join(tree_dir, 'personal')
     os.makedirs(personal_dir)
-    with open(os.path.join(personal_dir, 'union.json'), 'w') as f:
+    with open(os.path.join(personal_dir, 'union.fof'), 'w') as f:
         json.dump({
             'id': 'personal',
             'title': 'Personal Projects',
@@ -70,7 +70,7 @@ def create_demo_config():
     # Personal CI/CD feed (local ID: cicd - same as work!)
     personal_cicd_dir = os.path.join(personal_dir, 'cicd')
     os.makedirs(personal_cicd_dir)
-    with open(os.path.join(personal_cicd_dir, 'feed.json'), 'w') as f:
+    with open(os.path.join(personal_cicd_dir, 'feed.fof'), 'w') as f:
         json.dump({
             'id': 'cicd',  # Same local ID - no conflict!
             'title': 'Personal CI/CD',
@@ -130,7 +130,7 @@ def demo_path_qualified_ids():
         tree_dir = config_manager.get_tree_dir
         for root, dirs, files in os.walk(tree_dir):
             for file in files:
-                if file.endswith('.json'):
+                if file.endswith('.fof'):
                     filepath = os.path.join(root, file)
                     with open(filepath, 'r') as f:
                         config = json.load(f)

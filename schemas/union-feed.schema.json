@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/alzamon/feed-of-feeds/schemas/union-feed.schema.json",
+  "title": "FoF Union Feed",
+  "description": "Configuration for a weighted-aggregation union feed (union.fof). Child feeds live in subdirectories named by their keys in the 'weights' map.",
+  "type": "object",
+  "required": ["id", "weights"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Local identifier for this feed (used as directory name)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description."
+    },
+    "weights": {
+      "type": "object",
+      "description": "Map of child feed directory names to their sampling weights. Higher weight means higher selection probability.",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Sampling weight for this child feed."
+      }
+    },
+    "max_age": {
+      "type": "string",
+      "pattern": "^(\\d+d)?(\\d+h)?(\\d+m)?(\\d+s)?$",
+      "minLength": 2,
+      "description": "Maximum article age inherited by child feeds that don't set their own. Examples: \"7d\", \"12h\", \"30m\"."
+    },
+    "purge_age": {
+      "type": "string",
+      "pattern": "^(\\d+d)?(\\d+h)?(\\d+m)?(\\d+s)?$",
+      "minLength": 2,
+      "description": "Age after which articles are purged from the local cache. Same format as max_age."
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the last configuration update. Managed automatically by FoF."
+    }
+  }
+}

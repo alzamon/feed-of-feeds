@@ -47,8 +47,8 @@ class ConfigComparator:
                 file1_path = os.path.join(dcmp.left, file_name)
                 file2_path = os.path.join(dcmp.right, file_name)
 
-                # Special handling for JSON files
-                if file_name.endswith('.json'):
+                # Special handling for FoF config files (JSON-formatted)
+                if file_name.endswith('.fof') or file_name.endswith('.json'):
                     if not json_files_equal(file1_path, file2_path):
                         return False
                 else:
@@ -86,7 +86,7 @@ class ConfigComparator:
             feeds_with_paths = []
 
             if feed.feed_type == FeedType.UNION:
-                config_path = os.path.join(current_path, "union.json")
+                config_path = os.path.join(current_path, "union.fof")
                 feeds_with_paths.append((feed, config_path))
 
                 for wf in feed.feeds:
@@ -101,7 +101,7 @@ class ConfigComparator:
                     )
 
             elif feed.feed_type == FeedType.FILTER:
-                config_path = os.path.join(current_path, "filter.json")
+                config_path = os.path.join(current_path, "filter.fof")
                 feeds_with_paths.append((feed, config_path))
 
                 if feed.source_feed:
@@ -111,7 +111,7 @@ class ConfigComparator:
                     )
 
             elif feed.feed_type == FeedType.SYNDICATION:
-                config_path = os.path.join(current_path, "feed.json")
+                config_path = os.path.join(current_path, "feed.fof")
                 feeds_with_paths.append((feed, config_path))
 
             return feeds_with_paths

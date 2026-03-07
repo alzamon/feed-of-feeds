@@ -19,7 +19,7 @@ def serialize_syndication_feed_to_directory(feed: SyndicationFeed, path: str, se
         logger.info(f"Skipping serialization for symlinked syndication feed directory: {path}")
         return
     os.makedirs(path, exist_ok=True)
-    feed_path = os.path.join(path, "feed.json")
+    feed_path = os.path.join(path, "feed.fof")
     with open(feed_path, "w", encoding="utf-8") as f:
         json.dump(serializer.serialize_feed(feed), f,
                   indent=2, ensure_ascii=False)

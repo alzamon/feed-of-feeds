@@ -23,7 +23,7 @@ def test_config_dir():
     tree_dir = os.path.join(test_dir, 'tree')
     os.makedirs(tree_dir)
 
-    # Create root union.json
+    # Create root union.fof
     union_config = {
         "feed_type": "union",
         "id": "root",
@@ -33,7 +33,7 @@ def test_config_dir():
         "weights": {"news": 50, "tech": 50}
     }
 
-    with open(os.path.join(tree_dir, 'union.json'), 'w') as f:
+    with open(os.path.join(tree_dir, 'union.fof'), 'w') as f:
         json.dump(union_config, f, indent=2)
 
     # Create news subdirectory
@@ -48,7 +48,7 @@ def test_config_dir():
         "max_age": "7d"
     }
 
-    with open(os.path.join(news_dir, 'feed.json'), 'w') as f:
+    with open(os.path.join(news_dir, 'feed.fof'), 'w') as f:
         json.dump(news_config, f, indent=2)
 
     # Create tech subdirectory
@@ -63,7 +63,7 @@ def test_config_dir():
         "max_age": "7d"
     }
 
-    with open(os.path.join(tech_dir, 'feed.json'), 'w') as f:
+    with open(os.path.join(tech_dir, 'feed.fof'), 'w') as f:
         json.dump(tech_config, f, indent=2)
 
     yield test_dir

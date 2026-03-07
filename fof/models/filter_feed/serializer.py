@@ -22,7 +22,7 @@ def serialize_filter_feed_to_directory(feed: FilterFeed, path: str, serializer):
         logger.info(f"Skipping serialization for symlinked filter feed directory: {filter_dir}")
         return
     os.makedirs(filter_dir, exist_ok=True)
-    filter_config_path = os.path.join(filter_dir, "filter.json")
+    filter_config_path = os.path.join(filter_dir, "filter.fof")
     config = {
         "id": feed.local_id,
         "title": feed.title,

@@ -33,7 +33,7 @@ def test_config_not_rewritten_when_no_changes():
             "max_age": "7d"
         }
 
-        feed_json_path = os.path.join(tree_dir, "feed.json")
+        feed_json_path = os.path.join(tree_dir, "feed.fof")
         with open(feed_json_path, "w") as f:
             json.dump(feed_config, f, indent=2)
 
@@ -79,8 +79,8 @@ def test_config_rewritten_when_changes_made():
             "weights": {"feed1": 60, "feed2": 40}
         }
 
-        # Create the union.json file
-        union_json_path = os.path.join(tree_dir, "union.json")
+        # Create the union.fof file
+        union_json_path = os.path.join(tree_dir, "union.fof")
         with open(union_json_path, "w") as f:
             json.dump(union_config, f, indent=2)
 
@@ -94,7 +94,7 @@ def test_config_rewritten_when_changes_made():
             "url": "http://example.com/feed1.xml",
             "max_age": "7d"
         }
-        with open(os.path.join(feed1_dir, "feed.json"), "w") as f:
+        with open(os.path.join(feed1_dir, "feed.fof"), "w") as f:
             json.dump(feed1_config, f, indent=2)
 
         feed2_dir = os.path.join(tree_dir, "feed2")
@@ -106,7 +106,7 @@ def test_config_rewritten_when_changes_made():
             "url": "http://example.com/feed2.xml",
             "max_age": "7d"
         }
-        with open(os.path.join(feed2_dir, "feed.json"), "w") as f:
+        with open(os.path.join(feed2_dir, "feed.fof"), "w") as f:
             json.dump(feed2_config, f, indent=2)
 
         # Create config and feed managers
@@ -153,7 +153,7 @@ def test_multiple_saves_without_changes():
             "max_age": "7d"
         }
 
-        feed_json_path = os.path.join(tree_dir, "feed.json")
+        feed_json_path = os.path.join(tree_dir, "feed.fof")
         with open(feed_json_path, "w") as f:
             json.dump(feed_config, f, indent=2)
 
@@ -197,8 +197,8 @@ def test_config_rewritten_after_weight_change():
             "weights": {"feed1": 60, "feed2": 40}
         }
 
-        # Create the union.json file
-        union_json_path = os.path.join(tree_dir, "union.json")
+        # Create the union.fof file
+        union_json_path = os.path.join(tree_dir, "union.fof")
         with open(union_json_path, "w") as f:
             json.dump(union_config, f, indent=2)
 
@@ -213,7 +213,7 @@ def test_config_rewritten_after_weight_change():
             "url": "http://example.com/feed1.xml",
             "max_age": "7d"
         }
-        with open(os.path.join(feed1_dir, "feed.json"), "w") as f:
+        with open(os.path.join(feed1_dir, "feed.fof"), "w") as f:
             json.dump(feed1_config, f, indent=2)
 
         feed2_dir = os.path.join(tree_dir, "feed2")
@@ -226,7 +226,7 @@ def test_config_rewritten_after_weight_change():
             "url": "http://example.com/feed2.xml",
             "max_age": "7d"
         }
-        with open(os.path.join(feed2_dir, "feed.json"), "w") as f:
+        with open(os.path.join(feed2_dir, "feed.fof"), "w") as f:
             json.dump(feed2_config, f, indent=2)
 
         # Create config and feed managers
@@ -273,7 +273,7 @@ def test_only_changed_feeds_get_timestamp_updates():
             "weights": {"feed1": 60, "feed2": 40}
         }
 
-        root_json_path = os.path.join(tree_dir, "union.json")
+        root_json_path = os.path.join(tree_dir, "union.fof")
         with open(root_json_path, "w") as f:
             json.dump(root_config, f, indent=2)
 
@@ -288,7 +288,7 @@ def test_only_changed_feeds_get_timestamp_updates():
             "url": "http://example.com/feed1.xml",
             "max_age": "7d"
         }
-        feed1_json_path = os.path.join(feed1_dir, "feed.json")
+        feed1_json_path = os.path.join(feed1_dir, "feed.fof")
         with open(feed1_json_path, "w") as f:
             json.dump(feed1_config, f, indent=2)
 
@@ -303,7 +303,7 @@ def test_only_changed_feeds_get_timestamp_updates():
             "url": "http://example.com/feed2.xml",
             "max_age": "7d"
         }
-        feed2_json_path = os.path.join(feed2_dir, "feed.json")
+        feed2_json_path = os.path.join(feed2_dir, "feed.fof")
         with open(feed2_json_path, "w") as f:
             json.dump(feed2_config, f, indent=2)
 

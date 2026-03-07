@@ -18,7 +18,7 @@ def subtree_config_dir():
     tree_dir = os.path.join(test_dir, 'tree')
     os.makedirs(tree_dir)
 
-    # Create root union.json
+    # Create root union.fof
     union_config = {
         "feed_type": "union",
         "id": "root",
@@ -28,7 +28,7 @@ def subtree_config_dir():
         "weights": {"work": 50, "personal": 50}
     }
 
-    with open(os.path.join(tree_dir, 'union.json'), 'w') as f:
+    with open(os.path.join(tree_dir, 'union.fof'), 'w') as f:
         json.dump(union_config, f, indent=2)
 
     # Create work subtree
@@ -43,7 +43,7 @@ def subtree_config_dir():
         "weights": {"da": 100}
     }
 
-    with open(os.path.join(work_dir, 'union.json'), 'w') as f:
+    with open(os.path.join(work_dir, 'union.fof'), 'w') as f:
         json.dump(work_config, f, indent=2)
 
     # Create work/da subtree
@@ -58,7 +58,7 @@ def subtree_config_dir():
         "weights": {"cicd": 80, "monitoring": 20}
     }
 
-    with open(os.path.join(da_dir, 'union.json'), 'w') as f:
+    with open(os.path.join(da_dir, 'union.fof'), 'w') as f:
         json.dump(da_config, f, indent=2)
 
     # Create work/da/cicd feed
@@ -73,7 +73,7 @@ def subtree_config_dir():
         "max_age": "7d"
     }
 
-    with open(os.path.join(cicd_dir, 'feed.json'), 'w') as f:
+    with open(os.path.join(cicd_dir, 'feed.fof'), 'w') as f:
         json.dump(cicd_config, f, indent=2)
 
     # Create work/da/monitoring feed
@@ -88,7 +88,7 @@ def subtree_config_dir():
         "max_age": "7d"
     }
 
-    with open(os.path.join(monitoring_dir, 'feed.json'), 'w') as f:
+    with open(os.path.join(monitoring_dir, 'feed.fof'), 'w') as f:
         json.dump(monitoring_config, f, indent=2)
 
     # Create personal subtree with conflicting ID
@@ -103,7 +103,7 @@ def subtree_config_dir():
         "weights": {"cicd": 100}  # Same local ID as in work/da/cicd
     }
 
-    with open(os.path.join(personal_dir, 'union.json'), 'w') as f:
+    with open(os.path.join(personal_dir, 'union.fof'), 'w') as f:
         json.dump(personal_config, f, indent=2)
 
     # Create personal/cicd feed (conflicting local ID)
@@ -118,7 +118,7 @@ def subtree_config_dir():
         "max_age": "7d"
     }
 
-    with open(os.path.join(personal_cicd_dir, 'feed.json'), 'w') as f:
+    with open(os.path.join(personal_cicd_dir, 'feed.fof'), 'w') as f:
         json.dump(personal_cicd_config, f, indent=2)
 
     yield test_dir
@@ -224,7 +224,7 @@ def test_local_id_preservation_in_config(subtree_config_dir):
         # Find any feed.json files and verify they have local IDs
         for root, dirs, files in os.walk(tree_dir):
             for file in files:
-                if file in ['feed.json', 'union.json', 'filter.json']:
+                if file in ['feed.fof', 'union.fof', 'filter.fof']:
                     filepath = os.path.join(root, file)
                     with open(filepath, 'r') as f:
                         config = json.load(f)
@@ -234,7 +234,7 @@ def test_local_id_preservation_in_config(subtree_config_dir):
                     
         # Ensure we found at least some config files to test
         config_files_found = sum(1 for root, dirs, files in os.walk(tree_dir) 
-                                for file in files if file in ['feed.json', 'union.json', 'filter.json'])
+                                for file in files if file in ['feed.fof', 'union.fof', 'filter.fof'])
         assert config_files_found > 0, "No config files found to test"
 
 

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/alzamon/feed-of-feeds/schemas/syndication-feed.schema.json",
+  "title": "FoF Syndication Feed",
+  "description": "Configuration for an RSS/Atom syndication feed (feed.fof).",
+  "type": "object",
+  "required": ["id", "url"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Local identifier for this feed (used as directory name)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description."
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL of the RSS or Atom feed."
+    },
+    "max_age": {
+      "type": "string",
+      "pattern": "^(\\d+d)?(\\d+h)?(\\d+m)?(\\d+s)?$",
+      "minLength": 2,
+      "description": "Maximum article age. Supports days (d), hours (h), minutes (m), seconds (s). Examples: \"7d\", \"12h\", \"30m\", \"7d12h\"."
+    },
+    "purge_age": {
+      "type": "string",
+      "pattern": "^(\\d+d)?(\\d+h)?(\\d+m)?(\\d+s)?$",
+      "minLength": 2,
+      "description": "Age after which articles are purged from the local cache. Same format as max_age."
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the last configuration update. Managed automatically by FoF."
+    }
+  }
+}

@@ -60,7 +60,7 @@ class TestSymlinkIntegration(unittest.TestCase):
             "max_age": "7d"
         }
 
-        with open(os.path.join(curated_dir, "feed.json"), "w") as f:
+        with open(os.path.join(curated_dir, "feed.fof"), "w") as f:
             json.dump(feed_config, f, indent=2)
 
     def create_main_tree_with_symlink(self):
@@ -78,7 +78,7 @@ class TestSymlinkIntegration(unittest.TestCase):
             }
         }
 
-        with open(os.path.join(self.tree_dir, "union.json"), "w") as f:
+        with open(os.path.join(self.tree_dir, "union.fof"), "w") as f:
             json.dump(union_config, f, indent=2)
 
         # Create personal feed directory
@@ -94,7 +94,7 @@ class TestSymlinkIntegration(unittest.TestCase):
             "max_age": "7d"
         }
 
-        with open(os.path.join(personal_dir, "feed.json"), "w") as f:
+        with open(os.path.join(personal_dir, "feed.fof"), "w") as f:
             json.dump(personal_config, f, indent=2)
 
         # Create symlink to external curated feed
@@ -188,7 +188,7 @@ class TestSymlinkIntegration(unittest.TestCase):
             "max_age": "7d"
         }
 
-        with open(os.path.join(external_tech, "feed.json"), "w") as f:
+        with open(os.path.join(external_tech, "feed.fof"), "w") as f:
             json.dump(tech_config, f, indent=2)
 
         # Create symlink in nested location
@@ -208,7 +208,7 @@ class TestSymlinkIntegration(unittest.TestCase):
             }
         }
 
-        with open(os.path.join(categories_dir, "union.json"), "w") as f:
+        with open(os.path.join(categories_dir, "union.fof"), "w") as f:
             json.dump(categories_union_config, f, indent=2)
 
         tech_union_config = {
@@ -222,7 +222,7 @@ class TestSymlinkIntegration(unittest.TestCase):
             }
         }
 
-        with open(os.path.join(nested_dir, "union.json"), "w") as f:
+        with open(os.path.join(nested_dir, "union.fof"), "w") as f:
             json.dump(tech_union_config, f, indent=2)
 
         # Update root union to include categories
@@ -239,7 +239,7 @@ class TestSymlinkIntegration(unittest.TestCase):
             }
         }
 
-        with open(os.path.join(self.tree_dir, "union.json"), "w") as f:
+        with open(os.path.join(self.tree_dir, "union.fof"), "w") as f:
             json.dump(root_union_config, f, indent=2)
 
         # Test that nested symlinks are preserved
