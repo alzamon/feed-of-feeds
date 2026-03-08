@@ -80,3 +80,46 @@ class TestPlatformQuirks:
             result = open_url_in_browser("https://example.com")
 
             assert result is False
+
+    @patch('subprocess.Popen')
+    def test_open_url_in_browser_strips_whitespace(self, mock_popen):
+        """Test that leading/trailing whitespace is stripped from the URL."""
+        with patch('platform.system', return_value='Linux'):
+            result = open_url_in_browser(
+                "  https://example.com/path\n"
+            )
+
+            assert result is True
+            mock_popen.assert_called_once_with(
+                ["xdg-open", "https://example.com/path"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+
+    @patch('subprocess.Popen')
+    def test_open_url_in_browser_strips_newlines(self, mock_popen):
+        """Test that newline characters are stripped from the URL."""
+        with patch('platform.system', return_value='Linux'):
+            result = open_url_in_browser(
+                "https://example.com/path\r\n"
+            )
+
+            assert result is True
+            mock_popen.assert_called_once_with(
+                ["xdg-open", "https://example.com/path"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+
+    @patch('subprocess.Popen')
+    def test_open_url_in_browser_strips_whitespace_macos(self, mock_popen):
+        """Test that whitespace is stripped from the URL on macOS."""
+        with patch('platform.system', return_value='Darwin'):
+            result = open_url_in_browser(
+                "  https://example.com/path\n"
+            )
+
+            assert result is True
+            mock_popen.assert_called_once_with(
+                ["open", "https://example.com/path"]
+            )

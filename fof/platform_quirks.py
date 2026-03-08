@@ -42,6 +42,7 @@ def open_url_in_browser(url):
         bool: True if the command was executed successfully, False otherwise
     """
     try:
+        url = url.strip()
         command = get_browser_open_command(url)
 
         # For Linux, redirect output to avoid cluttering the terminal
