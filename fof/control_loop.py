@@ -120,7 +120,9 @@ class ControlLoop:
     def _show_status_message(self, stdscr, message):
         """Show a status message and update the display."""
         max_y, max_x = stdscr.getmaxyx()
-        stdscr.addstr(max_y - 2, 0, message.ljust(max_x))
+        # Truncate to max_x before ljust: addstr raises an error if the string
+        # extends past the last column, and ljust only pads — it never truncates.
+        stdscr.addstr(max_y - 2, 0, message[:max_x].ljust(max_x))
         self._display_prompt(stdscr)
 
     def _handle_help_key(self, stdscr):
