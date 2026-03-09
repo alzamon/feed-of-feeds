@@ -244,7 +244,8 @@ def main():
             logging.DEBUG if getattr(args, "verbose", False)
             else logging.INFO
         ),
-        handlers=handlers
+        handlers=handlers,
+        force=True
     )
     logging.info("Logging started.")
 
@@ -318,12 +319,16 @@ def main():
     control_loop = ControlLoop(
         feed_manager, article_manager, session_timeout=session_timeout_seconds
     )
-    control_loop.start()
+    try:
+        control_loop.start()
 
-    # Purge old articles before saving config and exiting
-    feed_manager.purge_old_articles()
+        # Purge old articles before saving config and exiting
+        feed_manager.purge_old_articles()
 
-    feed_manager.save_config()
+        feed_manager.save_config()
+    except Exception:
+        logging.exception("Fatal error in main control loop.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
