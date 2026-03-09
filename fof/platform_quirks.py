@@ -1,6 +1,22 @@
 """Platform-specific quirks and functionality for cross-platform support."""
+import os
 import platform
 import subprocess
+
+
+def is_termux():
+    """
+    Detect whether we are running inside a Termux environment.
+
+    Termux sets the PREFIX environment variable to a path under
+    /data/data/com.termux, which is a reliable indicator that is present
+    regardless of whether termux-open-url is on PATH.
+
+    Returns:
+        bool: True if running inside Termux, False otherwise
+    """
+    prefix = os.environ.get("PREFIX", "")
+    return "com.termux" in prefix
 
 
 def get_browser_open_command(url):
@@ -25,7 +41,14 @@ def get_browser_open_command(url):
         # For macOS, use 'open' command
         return ["open", url]
     elif system == "linux":
-        # For Linux/Ubuntu, use 'xdg-open' command
+        if is_termux():
+            # On Termux there is no display server ($DISPLAY/$WAYLAND_DISPLAY
+            # are unset), so xdg-open exhausts all its handlers and exits with
+            # a failure code that the caller never sees (stderr is redirected).
+            # termux-open-url talks directly to Android's activity manager and
+            # works without a display server.
+            return ["termux-open-url", url]
+        # For standard Linux/Ubuntu, use 'xdg-open' command
         return ["xdg-open", url]
     else:
         raise RuntimeError(f"Unsupported platform: {system}")
