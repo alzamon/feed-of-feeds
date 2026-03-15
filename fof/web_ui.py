@@ -37,15 +37,16 @@ body{
 #main{
   flex:1;display:flex;flex-direction:column;
   min-height:0;position:relative;
-  cursor:grab;
 }
-#main.dragging{cursor:grabbing}
-/* Transparent capture layer over iframe during drag */
+/* Capture layer sits on top of iframe and intercepts all
+   pointer/touch events — prevents iframe from swallowing gestures
+   on Android and other touch-based platforms */
 #drag-overlay{
   position:absolute;inset:0;z-index:10;
-  pointer-events:none;
+  cursor:grab;
+  touch-action:pan-y;
 }
-#main.dragging #drag-overlay{pointer-events:all}
+#drag-overlay.dragging{cursor:grabbing}
 /* Draggable card */
 #card{
   flex:1;display:flex;flex-direction:column;
@@ -143,8 +144,8 @@ body{
 <script>
 'use strict';
 var THRESHOLD=80;
-var main=document.getElementById('main');
 var card=document.getElementById('card');
+var overlay=document.getElementById('drag-overlay');
 var hintL=document.getElementById('hint-like');
 var hintD=document.getElementById('hint-dis');
 var wL=document.getElementById('wash-like');
@@ -196,12 +197,14 @@ function flyOut(toRight,action){
   },300);
 }
 
-/* Mouse drag */
-main.addEventListener('mousedown',function(e){
+/* Mouse drag — overlay always intercepts, so mousedown goes here.
+   mousemove/mouseup stay on window so releasing outside the card
+   is handled correctly. */
+overlay.addEventListener('mousedown',function(e){
   if(e.button!==0)return;
   startX=e.clientX;startY=e.clientY;
   dragging=true;
-  main.classList.add('dragging');
+  overlay.classList.add('dragging');
   card.classList.remove('snap-back','fly-out');
 });
 window.addEventListener('mousemove',function(e){
@@ -211,7 +214,7 @@ window.addEventListener('mousemove',function(e){
 window.addEventListener('mouseup',function(e){
   if(!dragging)return;
   dragging=false;
-  main.classList.remove('dragging');
+  overlay.classList.remove('dragging');
   var dx=e.clientX-startX;
   var dy=e.clientY-startY;
   if(Math.abs(dx)>=THRESHOLD&&Math.abs(dx)>Math.abs(dy)){
@@ -221,21 +224,31 @@ window.addEventListener('mouseup',function(e){
   }
 });
 
-/* Touch drag */
-var tx=0,ty=0,touching=false;
-document.addEventListener('touchstart',function(e){
+/* Touch drag — registered on the overlay (not document) so that
+   touch events from inside the iframe are intercepted on Android.
+   touchmove is non-passive so we can call preventDefault() to
+   suppress the browser's native scroll during a horizontal swipe. */
+var tx=0,ty=0,touching=false,horizLocked=false;
+overlay.addEventListener('touchstart',function(e){
   tx=e.touches[0].clientX;
   ty=e.touches[0].clientY;
   touching=true;
+  horizLocked=false;
   card.classList.remove('snap-back','fly-out');
 },{passive:true});
-document.addEventListener('touchmove',function(e){
+overlay.addEventListener('touchmove',function(e){
   if(!touching)return;
   var dx=e.touches[0].clientX-tx;
   var dy=e.touches[0].clientY-ty;
-  if(Math.abs(dx)>Math.abs(dy))applyDrag(dx);
-},{passive:true});
-document.addEventListener('touchend',function(e){
+  if(!horizLocked){
+    if(Math.abs(dx)<5&&Math.abs(dy)<5)return;
+    if(Math.abs(dx)>Math.abs(dy))horizLocked=true;
+    else return;
+  }
+  e.preventDefault();
+  applyDrag(dx);
+},{passive:false});
+overlay.addEventListener('touchend',function(e){
   if(!touching)return;
   touching=false;
   var dx=e.changedTouches[0].clientX-tx;
