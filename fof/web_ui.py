@@ -38,20 +38,16 @@ body{
   flex:1;display:flex;flex-direction:column;
   min-height:0;position:relative;
 }
-/* Capture layer sits on top of iframe and intercepts all
-   pointer/touch events — prevents iframe from swallowing gestures
-   on Android and other touch-based platforms */
-#drag-overlay{
-  position:absolute;inset:0;z-index:10;
-  cursor:grab;
-  touch-action:pan-y;
-}
-#drag-overlay.dragging{cursor:grabbing}
-/* Draggable card */
+/* Draggable card — pan-y lets the browser know vertical scroll is
+   intentional; horizontal swipes are captured in JS via document
+   capture-phase listeners so the iframe never swallows them */
 #card{
   flex:1;display:flex;flex-direction:column;
   min-height:0;position:relative;
+  touch-action:pan-y;
+  cursor:grab;
 }
+#card.dragging{cursor:grabbing}
 #card.snap-back{
   transition:transform 0.3s cubic-bezier(.25,.46,.45,.94),
              opacity 0.3s;
@@ -67,15 +63,22 @@ body{
 #wash-like{background:rgba(0,200,0,0.18)}
 #wash-dis{background:rgba(200,0,0,0.18)}
 /* Emoji hint badges */
-#hint-like,#hint-dis{
-  position:absolute;top:50%;
-  transform:translateY(-50%);
+#hint-like,#hint-dis,#hint-prev{
+  position:absolute;
   font-size:3.5em;opacity:0;
   pointer-events:none;z-index:20;
   text-shadow:0 2px 10px rgba(0,0,0,0.6);
 }
+#hint-like,#hint-dis{
+  top:50%;
+  transform:translateY(-50%);
+}
 #hint-like{right:20px}
 #hint-dis{left:20px}
+#hint-prev{
+  top:20px;left:50%;
+  transform:translateX(-50%);
+}
 #iframe-wrap{flex:1;min-height:0}
 #frm{
   width:100%;height:100%;
@@ -106,6 +109,7 @@ body{
   left:0;right:0;text-align:center;
   font-size:0.72em;color:#555;
   pointer-events:none;z-index:15;
+  line-height:1.6;
 }
 #status{
   flex-shrink:0;padding:3px 12px;
@@ -120,12 +124,12 @@ body{
   <div id="art-meta"></div>
 </div>
 <div id="main">
-  <div id="drag-overlay"></div>
   <div id="card">
     <div id="wash-dis"></div>
     <div id="wash-like"></div>
     <div id="hint-dis">\U0001f44e</div>
     <div id="hint-like">\U0001f44d</div>
+    <div id="hint-prev">\U0001f519</div>
     <div id="iframe-wrap">
       <iframe id="frm"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
@@ -137,7 +141,7 @@ body{
         rel="noopener">Open article in new tab \u2197</a>
     </div>
     <div id="no-art">All caught up! No more articles.</div>
-    <div id="drag-hint">\u2190 drag to skip \u00b7 drag to like \u2192</div>
+    <div id="drag-hint">\u2190 drag to skip \u00b7 drag to like \u2192<br>\u2191 flick up for previous</div>
   </div>
 </div>
 <div id="status"></div>
@@ -145,9 +149,9 @@ body{
 'use strict';
 var THRESHOLD=80;
 var card=document.getElementById('card');
-var overlay=document.getElementById('drag-overlay');
 var hintL=document.getElementById('hint-like');
 var hintD=document.getElementById('hint-dis');
+var hintP=document.getElementById('hint-prev');
 var wL=document.getElementById('wash-like');
 var wD=document.getElementById('wash-dis');
 var dragging=false,startX=0,startY=0;
@@ -157,19 +161,29 @@ function applyDrag(dx){
     'translateX('+dx+'px) rotate('+(dx*0.04)+'deg)';
   var r=Math.min(Math.abs(dx)/THRESHOLD,1);
   if(dx>0){
-    hintL.style.opacity=r;hintD.style.opacity=0;
+    hintL.style.opacity=r;hintD.style.opacity=0;hintP.style.opacity=0;
     wL.style.opacity=r*0.9;wD.style.opacity=0;
   }else if(dx<0){
-    hintD.style.opacity=r;hintL.style.opacity=0;
+    hintD.style.opacity=r;hintL.style.opacity=0;hintP.style.opacity=0;
     wD.style.opacity=r*0.9;wL.style.opacity=0;
   }else{
-    hintL.style.opacity=0;hintD.style.opacity=0;
+    hintL.style.opacity=0;hintD.style.opacity=0;hintP.style.opacity=0;
     wL.style.opacity=0;wD.style.opacity=0;
   }
 }
 
-function clearHints(){
+function applyLift(dy){
+  /* dy is negative when dragging up */
+  var up=Math.max(-dy,0);
+  var r=Math.min(up/THRESHOLD,1);
+  card.style.transform='translateY('+dy+'px)';
+  hintP.style.opacity=r;
   hintL.style.opacity=0;hintD.style.opacity=0;
+  wL.style.opacity=0;wD.style.opacity=0;
+}
+
+function clearHints(){
+  hintL.style.opacity=0;hintD.style.opacity=0;hintP.style.opacity=0;
   wL.style.opacity=0;wD.style.opacity=0;
 }
 
@@ -197,68 +211,120 @@ function flyOut(toRight,action){
   },300);
 }
 
-/* Mouse drag — overlay always intercepts, so mousedown goes here.
-   mousemove/mouseup stay on window so releasing outside the card
-   is handled correctly. */
-overlay.addEventListener('mousedown',function(e){
+function flyUp(){
+  card.classList.remove('snap-back');
+  card.classList.add('fly-out');
+  var h=window.innerHeight||600;
+  card.style.transform='translateY('+(-h)+'px)';
+  card.style.opacity='0';
+  setTimeout(function(){
+    card.classList.remove('fly-out');
+    card.style.transform='';
+    card.style.opacity='';
+    clearHints();
+    act('previous');
+  },300);
+}
+
+/* Mouse drag — listen on window so releasing outside the card works.
+   We check that the mousedown target is inside #main so we don't
+   accidentally steal clicks on the header or status bar.
+   Upward mouse drag beyond THRESHOLD triggers previous. */
+window.addEventListener('mousedown',function(e){
   if(e.button!==0)return;
+  var main=document.getElementById('main');
+  if(!main.contains(e.target))return;
   startX=e.clientX;startY=e.clientY;
   dragging=true;
-  overlay.classList.add('dragging');
+  card.classList.add('dragging');
   card.classList.remove('snap-back','fly-out');
 });
 window.addEventListener('mousemove',function(e){
   if(!dragging)return;
-  applyDrag(e.clientX-startX);
+  var dx=e.clientX-startX;
+  var dy=e.clientY-startY;
+  if(dy<0&&Math.abs(dy)>Math.abs(dx)){
+    applyLift(dy);
+  }else{
+    applyDrag(dx);
+  }
 });
 window.addEventListener('mouseup',function(e){
   if(!dragging)return;
   dragging=false;
-  overlay.classList.remove('dragging');
+  card.classList.remove('dragging');
   var dx=e.clientX-startX;
   var dy=e.clientY-startY;
-  if(Math.abs(dx)>=THRESHOLD&&Math.abs(dx)>Math.abs(dy)){
+  if(dy<0&&Math.abs(dy)>=THRESHOLD&&Math.abs(dy)>Math.abs(dx)){
+    flyUp();
+  }else if(Math.abs(dx)>=THRESHOLD&&Math.abs(dx)>Math.abs(dy)){
     flyOut(dx>0,dx>0?'like':'dislike');
   }else{
     snapBack();
   }
 });
 
-/* Touch drag — registered on the overlay (not document) so that
-   touch events from inside the iframe are intercepted on Android.
-   touchmove is non-passive so we can call preventDefault() to
-   suppress the browser's native scroll during a horizontal swipe. */
-var tx=0,ty=0,touching=false,horizLocked=false;
-overlay.addEventListener('touchstart',function(e){
+/* Touch drag — capture-phase listeners on document fire before the
+   iframe's own handlers, letting us intercept horizontal swipes.
+   We only call preventDefault() once a horizontal gesture is
+   confirmed (horizLocked), so vertical scrolls inside the iframe
+   are never interrupted.
+   A fast upward flick (velocity-based) triggers previous regardless
+   of how the gesture was classified — we check this in touchend. */
+var tx=0,ty=0,tt=0,touching=false,horizLocked=false,upLocked=false;
+document.addEventListener('touchstart',function(e){
   tx=e.touches[0].clientX;
   ty=e.touches[0].clientY;
+  tt=Date.now();
   touching=true;
   horizLocked=false;
+  upLocked=false;
   card.classList.remove('snap-back','fly-out');
-},{passive:true});
-overlay.addEventListener('touchmove',function(e){
+},{passive:true,capture:true});
+document.addEventListener('touchmove',function(e){
   if(!touching)return;
   var dx=e.touches[0].clientX-tx;
   var dy=e.touches[0].clientY-ty;
-  if(!horizLocked){
-    if(Math.abs(dx)<5&&Math.abs(dy)<5)return;
-    if(Math.abs(dx)>Math.abs(dy))horizLocked=true;
-    else return;
+  if(!horizLocked&&!upLocked){
+    if(Math.abs(dx)<8&&Math.abs(dy)<8)return;
+    if(Math.abs(dx)>Math.abs(dy)){
+      horizLocked=true;
+    }else if(dy<0){
+      /* Upward movement — track it for velocity check but don't
+         lock yet; let the iframe scroll if it turns out to be slow */
+      upLocked=true;
+    }else{
+      /* Clearly downward — let the iframe scroll naturally */
+      touching=false;
+      return;
+    }
   }
-  e.preventDefault();
-  applyDrag(dx);
-},{passive:false});
-overlay.addEventListener('touchend',function(e){
+  if(horizLocked){
+    e.preventDefault();
+    applyDrag(dx);
+  }else if(upLocked){
+    /* Show visual feedback for upward drag but don't preventDefault
+       so the iframe can still scroll; the gesture is resolved by
+       velocity in touchend */
+    applyLift(dy);
+  }
+},{passive:false,capture:true});
+document.addEventListener('touchend',function(e){
   if(!touching)return;
   touching=false;
   var dx=e.changedTouches[0].clientX-tx;
   var dy=e.changedTouches[0].clientY-ty;
-  if(Math.abs(dx)>=THRESHOLD&&Math.abs(dx)>Math.abs(dy)){
+  var dt=Math.max(Date.now()-tt,1);
+  var vy=dy/dt; /* px/ms — negative means upward */
+  /* Fast upward flick: velocity < -0.4 px/ms and primarily vertical */
+  if(vy<-0.4&&Math.abs(dy)>Math.abs(dx)){
+    flyUp();
+  }else if(horizLocked&&Math.abs(dx)>=THRESHOLD&&Math.abs(dx)>Math.abs(dy)){
     flyOut(dx>0,dx>0?'like':'dislike');
   }else{
     snapBack();
   }
-},{passive:true});
+},{passive:true,capture:true});
 
 /* Keyboard */
 document.addEventListener('keydown',function(e){
@@ -266,7 +332,7 @@ document.addEventListener('keydown',function(e){
   if(t==='INPUT'||t==='TEXTAREA')return;
   if(e.key==='ArrowRight'||e.key==='l')flyOut(true,'like');
   else if(e.key==='ArrowLeft'||e.key==='d')flyOut(false,'dislike');
-  else if(e.key==='p')act('previous');
+  else if(e.key==='ArrowUp'||e.key==='p')flyUp();
   else if(e.key==='q')act('quit');
 });
 
