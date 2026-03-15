@@ -19,6 +19,7 @@ body{
   font-family:system-ui,-apple-system,sans-serif;
   background:#1a1a1a;color:#e0e0e0;
   display:flex;flex-direction:column;
+  user-select:none;
 }
 #hdr{
   padding:8px 12px;background:#252525;
@@ -33,27 +34,47 @@ body{
   font-size:0.72em;color:#999;
   display:flex;flex-wrap:wrap;gap:6px;
 }
-#ctrl{
-  display:flex;gap:6px;padding:6px 12px;
-  background:#252525;
-  border-bottom:1px solid #333;flex-shrink:0;
-}
-.btn{
-  flex:1;padding:9px 2px;border:none;
-  border-radius:6px;font-size:0.85em;
-  cursor:pointer;color:#e0e0e0;background:#333;
-}
-.btn:active{opacity:.7}
-#btn-like{background:#1a3d1a}
-#btn-like:hover{background:#225522}
-#btn-dis{background:#3d1a1a}
-#btn-dis:hover{background:#552222}
-#btn-quit{background:#2a2a10}
-#btn-quit:hover{background:#3a3a18}
 #main{
-  flex:1;display:flex;
-  flex-direction:column;min-height:0;
+  flex:1;display:flex;flex-direction:column;
+  min-height:0;position:relative;
+  cursor:grab;
 }
+#main.dragging{cursor:grabbing}
+/* Transparent capture layer over iframe during drag */
+#drag-overlay{
+  position:absolute;inset:0;z-index:10;
+  pointer-events:none;
+}
+#main.dragging #drag-overlay{pointer-events:all}
+/* Draggable card */
+#card{
+  flex:1;display:flex;flex-direction:column;
+  min-height:0;position:relative;
+}
+#card.snap-back{
+  transition:transform 0.3s cubic-bezier(.25,.46,.45,.94),
+             opacity 0.3s;
+}
+#card.fly-out{
+  transition:transform 0.3s ease-in,opacity 0.3s;
+}
+/* Colour-wash overlays */
+#wash-like,#wash-dis{
+  position:absolute;inset:0;
+  opacity:0;pointer-events:none;z-index:5;
+}
+#wash-like{background:rgba(0,200,0,0.18)}
+#wash-dis{background:rgba(200,0,0,0.18)}
+/* Emoji hint badges */
+#hint-like,#hint-dis{
+  position:absolute;top:50%;
+  transform:translateY(-50%);
+  font-size:3.5em;opacity:0;
+  pointer-events:none;z-index:20;
+  text-shadow:0 2px 10px rgba(0,0,0,0.6);
+}
+#hint-like{right:20px}
+#hint-dis{left:20px}
 #iframe-wrap{flex:1;min-height:0}
 #frm{
   width:100%;height:100%;
@@ -78,6 +99,13 @@ body{
   color:#666;font-size:1.1em;
 }
 #no-art.show{display:flex}
+/* Drag hint label */
+#drag-hint{
+  position:absolute;bottom:26px;
+  left:0;right:0;text-align:center;
+  font-size:0.72em;color:#555;
+  pointer-events:none;z-index:15;
+}
 #status{
   flex-shrink:0;padding:3px 12px;
   font-size:0.75em;color:#777;
@@ -90,55 +118,143 @@ body{
   <div id="art-title">Loading\u2026</div>
   <div id="art-meta"></div>
 </div>
-<div id="ctrl">
-  <button id="btn-dis" class="btn"
-    onclick="act('dislike')">\U0001f44e Dislike</button>
-  <button id="btn-prev" class="btn"
-    onclick="act('previous')">\u2b05 Prev</button>
-  <button id="btn-like" class="btn"
-    onclick="act('like')">\U0001f44d Like</button>
-  <button id="btn-quit" class="btn"
-    onclick="act('quit')">\u2715 Quit</button>
-</div>
 <div id="main">
-  <div id="iframe-wrap">
-    <iframe id="frm"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-      src="about:blank" title="Article"></iframe>
+  <div id="drag-overlay"></div>
+  <div id="card">
+    <div id="wash-dis"></div>
+    <div id="wash-like"></div>
+    <div id="hint-dis">\U0001f44e</div>
+    <div id="hint-like">\U0001f44d</div>
+    <div id="iframe-wrap">
+      <iframe id="frm"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        src="about:blank" title="Article"></iframe>
+    </div>
+    <div id="fallback">
+      <div id="content-preview"></div>
+      <a id="open-link" href="#" target="_blank"
+        rel="noopener">Open article in new tab \u2197</a>
+    </div>
+    <div id="no-art">All caught up! No more articles.</div>
+    <div id="drag-hint">\u2190 drag to skip \u00b7 drag to like \u2192</div>
   </div>
-  <div id="fallback">
-    <div id="content-preview"></div>
-    <a id="open-link" href="#" target="_blank"
-      rel="noopener">Open article in new tab \u2197</a>
-  </div>
-  <div id="no-art">All caught up! No more articles.</div>
 </div>
 <div id="status"></div>
 <script>
 'use strict';
-var sx=0,sy=0;
-document.addEventListener('touchstart',function(e){
-  sx=e.touches[0].clientX;
-  sy=e.touches[0].clientY;
-},{passive:true});
+var THRESHOLD=80;
+var main=document.getElementById('main');
+var card=document.getElementById('card');
+var hintL=document.getElementById('hint-like');
+var hintD=document.getElementById('hint-dis');
+var wL=document.getElementById('wash-like');
+var wD=document.getElementById('wash-dis');
+var dragging=false,startX=0,startY=0;
 
+function applyDrag(dx){
+  card.style.transform=
+    'translateX('+dx+'px) rotate('+(dx*0.04)+'deg)';
+  var r=Math.min(Math.abs(dx)/THRESHOLD,1);
+  if(dx>0){
+    hintL.style.opacity=r;hintD.style.opacity=0;
+    wL.style.opacity=r*0.9;wD.style.opacity=0;
+  }else if(dx<0){
+    hintD.style.opacity=r;hintL.style.opacity=0;
+    wD.style.opacity=r*0.9;wL.style.opacity=0;
+  }else{
+    hintL.style.opacity=0;hintD.style.opacity=0;
+    wL.style.opacity=0;wD.style.opacity=0;
+  }
+}
+
+function clearHints(){
+  hintL.style.opacity=0;hintD.style.opacity=0;
+  wL.style.opacity=0;wD.style.opacity=0;
+}
+
+function snapBack(){
+  card.classList.add('snap-back');
+  card.style.transform='';card.style.opacity='';
+  clearHints();
+  setTimeout(function(){card.classList.remove('snap-back');},320);
+}
+
+function flyOut(toRight,action){
+  card.classList.remove('snap-back');
+  card.classList.add('fly-out');
+  var w=window.innerWidth||400;
+  card.style.transform=
+    'translateX('+(toRight?w:-w)+'px)'
+    +' rotate('+(toRight?25:-25)+'deg)';
+  card.style.opacity='0';
+  setTimeout(function(){
+    card.classList.remove('fly-out');
+    card.style.transform='';
+    card.style.opacity='';
+    clearHints();
+    act(action);
+  },300);
+}
+
+/* Mouse drag */
+main.addEventListener('mousedown',function(e){
+  if(e.button!==0)return;
+  startX=e.clientX;startY=e.clientY;
+  dragging=true;
+  main.classList.add('dragging');
+  card.classList.remove('snap-back','fly-out');
+});
+window.addEventListener('mousemove',function(e){
+  if(!dragging)return;
+  applyDrag(e.clientX-startX);
+});
+window.addEventListener('mouseup',function(e){
+  if(!dragging)return;
+  dragging=false;
+  main.classList.remove('dragging');
+  var dx=e.clientX-startX;
+  var dy=e.clientY-startY;
+  if(Math.abs(dx)>=THRESHOLD&&Math.abs(dx)>Math.abs(dy)){
+    flyOut(dx>0,dx>0?'like':'dislike');
+  }else{
+    snapBack();
+  }
+});
+
+/* Touch drag */
+var tx=0,ty=0,touching=false;
+document.addEventListener('touchstart',function(e){
+  tx=e.touches[0].clientX;
+  ty=e.touches[0].clientY;
+  touching=true;
+  card.classList.remove('snap-back','fly-out');
+},{passive:true});
+document.addEventListener('touchmove',function(e){
+  if(!touching)return;
+  var dx=e.touches[0].clientX-tx;
+  var dy=e.touches[0].clientY-ty;
+  if(Math.abs(dx)>Math.abs(dy))applyDrag(dx);
+},{passive:true});
 document.addEventListener('touchend',function(e){
-  var dx=e.changedTouches[0].clientX-sx;
-  var dy=e.changedTouches[0].clientY-sy;
-  if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)){
-    act(dx<0?'dislike':'like');
+  if(!touching)return;
+  touching=false;
+  var dx=e.changedTouches[0].clientX-tx;
+  var dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)>=THRESHOLD&&Math.abs(dx)>Math.abs(dy)){
+    flyOut(dx>0,dx>0?'like':'dislike');
+  }else{
+    snapBack();
   }
 },{passive:true});
 
+/* Keyboard */
 document.addEventListener('keydown',function(e){
   var t=e.target.tagName;
   if(t==='INPUT'||t==='TEXTAREA')return;
-  var m={
-    'ArrowRight':'like','l':'like',
-    'ArrowLeft':'dislike','d':'dislike',
-    'p':'previous','q':'quit'
-  };
-  if(m[e.key])act(m[e.key]);
+  if(e.key==='ArrowRight'||e.key==='l')flyOut(true,'like');
+  else if(e.key==='ArrowLeft'||e.key==='d')flyOut(false,'dislike');
+  else if(e.key==='p')act('previous');
+  else if(e.key==='q')act('quit');
 });
 
 function esc(s){
@@ -231,8 +347,8 @@ function act(action){
     return;
   }
   var labels={
-    'like':'Liked \u2713 Loading next\u2026',
-    'dislike':'Disliked. Loading next\u2026',
+    'like':'Loading next\u2026',
+    'dislike':'Loading next\u2026',
     'previous':'Loading previous\u2026'
   };
   setStatus(labels[action]||'');
