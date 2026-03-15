@@ -375,15 +375,6 @@ class WebUI:
             def _handle_like(self):
                 web_ui._update_activity()
                 with web_ui._lock:
-                    art = web_ui.current_article
-                    if art and art.feedpath:
-                        try:
-                            web_ui.feed_manager.update_weights(
-                                art.feedpath, increment=10
-                            )
-                            web_ui.feed_manager.save_config()
-                        except ValueError:
-                            pass
                     web_ui._advance_to_next()
                     data = web_ui._get_article_json(
                         web_ui.current_article
@@ -393,15 +384,6 @@ class WebUI:
             def _handle_dislike(self):
                 web_ui._update_activity()
                 with web_ui._lock:
-                    art = web_ui.current_article
-                    if art and art.feedpath:
-                        try:
-                            web_ui.feed_manager.update_weights(
-                                art.feedpath, increment=-10
-                            )
-                            web_ui.feed_manager.save_config()
-                        except ValueError:
-                            pass
                     web_ui._advance_to_next()
                     data = web_ui._get_article_json(
                         web_ui.current_article
