@@ -498,7 +498,13 @@ class WebUI:
         }
 
     def _advance_to_next(self, mark_read=True):
-        """Advance to next unread article (call with lock held)."""
+        """Advance to next unread article (call with lock held).
+
+        Args:
+            mark_read: If True (default), mark the new article as read.
+                       Retained for potential future callers that need to
+                       advance without marking as read.
+        """
         self.browsing_read_history = False
         self.current_article = self.feed_manager.next_article()
         if self.current_article and mark_read:

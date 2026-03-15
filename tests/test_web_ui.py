@@ -284,7 +284,7 @@ class TestWebUIStart(unittest.TestCase):
         called_url = mock_browser.call_args[0][0]
         self.assertTrue(called_url.startswith("http://localhost:"))
 
-    def test_start_prints_url(self, capsys=None):
+    def test_start_prints_url(self):
         """WebUI.start() prints the server URL."""
         import io
         web_ui = WebUI(
