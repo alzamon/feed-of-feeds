@@ -244,12 +244,11 @@ class TestWebUIHtmlTemplate(unittest.TestCase):
         self.assertIn("previous", HTML_TEMPLATE)
         self.assertIn("quit", HTML_TEMPLATE)
 
-    def test_template_has_sandbox_attribute(self):
+    def test_template_has_content_div(self):
         from fof.web_ui import HTML_TEMPLATE
-        self.assertIn("allow-scripts", HTML_TEMPLATE)
-        self.assertIn("allow-same-origin", HTML_TEMPLATE)
-        self.assertIn("allow-forms", HTML_TEMPLATE)
-        self.assertIn("allow-popups", HTML_TEMPLATE)
+        self.assertIn('id="content-wrap"', HTML_TEMPLATE)
+        self.assertIn('id="content"', HTML_TEMPLATE)
+        self.assertIn('id="open-link"', HTML_TEMPLATE)
 
 
 class TestWebUIStart(unittest.TestCase):

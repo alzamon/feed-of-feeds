@@ -19,7 +19,7 @@ body{
   font-family:system-ui,-apple-system,sans-serif;
   background:#1a1a1a;color:#e0e0e0;
   display:flex;flex-direction:column;
-  user-select:none;
+  user-select:none;touch-action:none;
 }
 #hdr{
   padding:8px 12px;background:#252525;
@@ -38,16 +38,22 @@ body{
   flex:1;display:flex;flex-direction:column;
   min-height:0;position:relative;
 }
-/* Draggable card — pan-y lets the browser know vertical scroll is
-   intentional; horizontal swipes are captured in JS via document
-   capture-phase listeners so the iframe never swallows them */
+/* Always-on overlay intercepts all touch/pointer events.
+   touch-action:pan-y tells the browser that vertical panning is
+   allowed, so Android will pass pan-y gestures through to the
+   scrollable #content div underneath while our JS handles
+   horizontal swipes. */
+#drag-overlay{
+  position:absolute;inset:0;z-index:10;
+  cursor:grab;
+  touch-action:pan-y;
+}
+#drag-overlay.dragging{cursor:grabbing}
+/* Draggable card */
 #card{
   flex:1;display:flex;flex-direction:column;
   min-height:0;position:relative;
-  touch-action:pan-y;
-  cursor:grab;
 }
-#card.dragging{cursor:grabbing}
 #card.snap-back{
   transition:transform 0.3s cubic-bezier(.25,.46,.45,.94),
              opacity 0.3s;
@@ -79,23 +85,33 @@ body{
   top:20px;left:50%;
   transform:translateX(-50%);
 }
-#iframe-wrap{flex:1;min-height:0}
-#frm{
-  width:100%;height:100%;
-  border:none;background:#fff;display:block;
+/* Article content rendered directly in-page so the overlay can
+   intercept touches — no cross-origin iframe needed */
+#content-wrap{
+  flex:1;overflow-y:auto;min-height:0;
+  background:#fff;color:#111;
+  overscroll-behavior:contain;
 }
-#fallback{
-  flex:1;overflow-y:auto;padding:12px;
-  display:none;flex-direction:column;gap:8px;
+#content{
+  padding:14px 16px;
+  font-size:0.92em;line-height:1.65;
+  word-break:break-word;
 }
-#fallback.show{display:flex}
-#content-preview{
-  font-size:0.88em;line-height:1.6;
-  white-space:pre-wrap;word-break:break-word;
-  color:#ccc;background:#222;
-  padding:10px;border-radius:4px;
+/* Basic article HTML reset */
+#content img{max-width:100%;height:auto;display:block}
+#content a{color:#0060df}
+#content pre,#content code{
+  overflow-x:auto;white-space:pre-wrap;
+  background:#f4f4f4;padding:2px 4px;border-radius:3px;
+  font-size:0.9em;
 }
-#open-link{font-size:0.9em;color:#6af}
+#content h1,#content h2,#content h3{margin:.6em 0 .3em}
+#content p{margin:.4em 0}
+#open-link{
+  display:block;padding:8px 16px 14px;
+  font-size:0.85em;color:#0060df;
+  background:#fff;border-top:1px solid #ddd;
+}
 #open-link:hover{text-decoration:underline}
 #no-art{
   flex:1;display:none;align-items:center;
@@ -124,24 +140,20 @@ body{
   <div id="art-meta"></div>
 </div>
 <div id="main">
+  <div id="drag-overlay"></div>
   <div id="card">
     <div id="wash-dis"></div>
     <div id="wash-like"></div>
     <div id="hint-dis">\U0001f44e</div>
     <div id="hint-like">\U0001f44d</div>
     <div id="hint-prev">\U0001f519</div>
-    <div id="iframe-wrap">
-      <iframe id="frm"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-        src="about:blank" title="Article"></iframe>
-    </div>
-    <div id="fallback">
-      <div id="content-preview"></div>
+    <div id="content-wrap">
+      <div id="content"></div>
       <a id="open-link" href="#" target="_blank"
         rel="noopener">Open article in new tab \u2197</a>
     </div>
     <div id="no-art">All caught up! No more articles.</div>
-    <div id="drag-hint">\u2190 drag to skip \u00b7 drag to like \u2192<br>\u2191 flick up for previous</div>
+    <div id="drag-hint">\u2190 drag to skip \u00b7 drag to like \u2192<br>\u2191 swipe up for previous</div>
   </div>
 </div>
 <div id="status"></div>
@@ -154,6 +166,7 @@ var hintD=document.getElementById('hint-dis');
 var hintP=document.getElementById('hint-prev');
 var wL=document.getElementById('wash-like');
 var wD=document.getElementById('wash-dis');
+var overlay=document.getElementById('drag-overlay');
 var dragging=false,startX=0,startY=0;
 
 function applyDrag(dx){
@@ -226,17 +239,13 @@ function flyUp(){
   },300);
 }
 
-/* Mouse drag — listen on window so releasing outside the card works.
-   We check that the mousedown target is inside #main so we don't
-   accidentally steal clicks on the header or status bar.
-   Upward mouse drag beyond THRESHOLD triggers previous. */
-window.addEventListener('mousedown',function(e){
+/* Mouse drag — overlay always receives mousedown.
+   mousemove/mouseup on window so releasing outside works. */
+overlay.addEventListener('mousedown',function(e){
   if(e.button!==0)return;
-  var main=document.getElementById('main');
-  if(!main.contains(e.target))return;
   startX=e.clientX;startY=e.clientY;
   dragging=true;
-  card.classList.add('dragging');
+  overlay.classList.add('dragging');
   card.classList.remove('snap-back','fly-out');
 });
 window.addEventListener('mousemove',function(e){
@@ -252,7 +261,7 @@ window.addEventListener('mousemove',function(e){
 window.addEventListener('mouseup',function(e){
   if(!dragging)return;
   dragging=false;
-  card.classList.remove('dragging');
+  overlay.classList.remove('dragging');
   var dx=e.clientX-startX;
   var dy=e.clientY-startY;
   if(dy<0&&Math.abs(dy)>=THRESHOLD&&Math.abs(dy)>Math.abs(dx)){
@@ -264,24 +273,21 @@ window.addEventListener('mouseup',function(e){
   }
 });
 
-/* Touch drag — capture-phase listeners on document fire before the
-   iframe's own handlers, letting us intercept horizontal swipes.
-   We only call preventDefault() once a horizontal gesture is
-   confirmed (horizLocked), so vertical scrolls inside the iframe
-   are never interrupted.
-   A fast upward flick (velocity-based) triggers previous regardless
-   of how the gesture was classified — we check this in touchend. */
-var tx=0,ty=0,tt=0,touching=false,horizLocked=false,upLocked=false;
-document.addEventListener('touchstart',function(e){
+/* Touch drag — overlay is always the touch target, so Android cannot
+   swallow events inside a cross-origin iframe.
+   touch-action:pan-y on the overlay lets the browser pass vertical
+   panning natively to the scrollable #content-wrap underneath, while
+   our JS handles horizontal swipes and upward swipes. */
+var tx=0,ty=0,touching=false,horizLocked=false,upLocked=false;
+overlay.addEventListener('touchstart',function(e){
   tx=e.touches[0].clientX;
   ty=e.touches[0].clientY;
-  tt=Date.now();
   touching=true;
   horizLocked=false;
   upLocked=false;
   card.classList.remove('snap-back','fly-out');
-},{passive:true,capture:true});
-document.addEventListener('touchmove',function(e){
+},{passive:true});
+overlay.addEventListener('touchmove',function(e){
   if(!touching)return;
   var dx=e.touches[0].clientX-tx;
   var dy=e.touches[0].clientY-ty;
@@ -290,11 +296,9 @@ document.addEventListener('touchmove',function(e){
     if(Math.abs(dx)>Math.abs(dy)){
       horizLocked=true;
     }else if(dy<0){
-      /* Upward movement — track it for velocity check but don't
-         lock yet; let the iframe scroll if it turns out to be slow */
       upLocked=true;
     }else{
-      /* Clearly downward — let the iframe scroll naturally */
+      /* Downward — let touch-action:pan-y scroll #content-wrap */
       touching=false;
       return;
     }
@@ -303,28 +307,23 @@ document.addEventListener('touchmove',function(e){
     e.preventDefault();
     applyDrag(dx);
   }else if(upLocked){
-    /* Show visual feedback for upward drag but don't preventDefault
-       so the iframe can still scroll; the gesture is resolved by
-       velocity in touchend */
+    e.preventDefault();
     applyLift(dy);
   }
-},{passive:false,capture:true});
-document.addEventListener('touchend',function(e){
+},{passive:false});
+overlay.addEventListener('touchend',function(e){
   if(!touching)return;
   touching=false;
   var dx=e.changedTouches[0].clientX-tx;
   var dy=e.changedTouches[0].clientY-ty;
-  var dt=Math.max(Date.now()-tt,1);
-  var vy=dy/dt; /* px/ms — negative means upward */
-  /* Fast upward flick: velocity < -0.4 px/ms and primarily vertical */
-  if(vy<-0.4&&Math.abs(dy)>Math.abs(dx)){
+  if(upLocked&&dy<0&&Math.abs(dy)>=THRESHOLD&&Math.abs(dy)>Math.abs(dx)){
     flyUp();
   }else if(horizLocked&&Math.abs(dx)>=THRESHOLD&&Math.abs(dx)>Math.abs(dy)){
     flyOut(dx>0,dx>0?'like':'dislike');
   }else{
     snapBack();
   }
-},{passive:true,capture:true});
+},{passive:true});
 
 /* Keyboard */
 document.addEventListener('keydown',function(e){
@@ -347,25 +346,22 @@ function setStatus(m){
   document.getElementById('status').textContent=m;
 }
 
-function showFallback(){
-  document.getElementById('iframe-wrap').style.display='none';
-  document.getElementById('fallback').classList.add('show');
-}
+
 
 function render(a){
-  var iw=document.getElementById('iframe-wrap');
-  var fb=document.getElementById('fallback');
+  var cw=document.getElementById('content-wrap');
+  var ct=document.getElementById('content');
   var na=document.getElementById('no-art');
-  var frm=document.getElementById('frm');
   var ttl=document.getElementById('art-title');
   var meta=document.getElementById('art-meta');
-  var prev=document.getElementById('content-preview');
   var lnk=document.getElementById('open-link');
+
+  /* Scroll back to top for new article */
+  cw.scrollTop=0;
 
   if(!a){
     na.classList.add('show');
-    iw.style.display='none';
-    fb.classList.remove('show');
+    cw.style.display='none';
     ttl.textContent='All caught up!';
     meta.innerHTML='';
     setStatus('No more articles.');
@@ -373,8 +369,7 @@ function render(a){
   }
 
   na.classList.remove('show');
-  iw.style.display='';
-  fb.classList.remove('show');
+  cw.style.display='';
 
   ttl.textContent=a.title||'(no title)';
   var parts=[];
@@ -388,29 +383,10 @@ function render(a){
     function(p){return '<span>'+p+'</span>';}
   ).join('');
 
-  prev.textContent=a.content_preview||'';
+  ct.innerHTML=a.content||esc(a.content_preview)||'(no content)';
   if(lnk)lnk.href=a.link||'#';
+  if(lnk)lnk.style.display=a.link?'':'none';
 
-  frm.onload=null;
-  frm.onerror=null;
-  frm.src='about:blank';
-  if(a.link){
-    frm.onload=function(){
-      if(frm.src==='about:blank')return;
-      try{
-        var d=frm.contentDocument;
-        if(d&&d.body&&d.body.innerHTML.trim()===''){
-          showFallback();
-        }
-      }catch(ignore){
-        /* Cross-origin: iframe may be showing content normally */
-      }
-    };
-    frm.onerror=showFallback;
-    setTimeout(function(){frm.src=a.link;},50);
-  }else{
-    showFallback();
-  }
   setStatus('');
 }
 
@@ -670,6 +646,7 @@ class WebUI:
             "author": article.author or "",
             "published_date": pub_date,
             "feedpath": feedpath,
+            "content": content,
             "content_preview": preview,
             "tags": tags,
         }
