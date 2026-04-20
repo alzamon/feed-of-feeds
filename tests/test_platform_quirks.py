@@ -60,6 +60,13 @@ class TestGetBrowserOpenCommand:
             command = get_browser_open_command("https://example.com")
             assert command == ["termux-open-url", "https://example.com"]
 
+    def test_get_browser_open_command_termux_android_system(self):
+        """Test Termux command selection even when platform reports Android."""
+        with patch('platform.system', return_value='Android'), \
+             patch('fof.platform_quirks.is_termux', return_value=True):
+            command = get_browser_open_command("https://example.com")
+            assert command == ["termux-open-url", "https://example.com"]
+
     def test_get_browser_open_command_termux_long_url(self):
         """Test that long URLs are passed through intact on Termux."""
         long_url = (
