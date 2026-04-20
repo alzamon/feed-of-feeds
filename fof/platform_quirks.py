@@ -23,6 +23,9 @@ def get_browser_open_command(url):
     """
     Get the platform-specific command to open a URL in the default browser.
 
+    Termux is detected first via :func:`is_termux` (using the ``PREFIX``
+    environment variable), regardless of what ``platform.system()`` returns.
+
     Args:
         url (str): The URL to open
 
@@ -32,6 +35,14 @@ def get_browser_open_command(url):
     Raises:
         RuntimeError: If the platform is not supported
     """
+    if is_termux():
+        # On Termux there is no display server ($DISPLAY/$WAYLAND_DISPLAY
+        # are unset), so xdg-open exhausts all its handlers and exits with
+        # a failure code that the caller never sees (stderr is redirected).
+        # termux-open-url talks directly to Android's activity manager and
+        # works without a display server.
+        return ["termux-open-url", url]
+
     system = platform.system().lower()
 
     if system == "windows":
@@ -41,13 +52,6 @@ def get_browser_open_command(url):
         # For macOS, use 'open' command
         return ["open", url]
     elif system == "linux":
-        if is_termux():
-            # On Termux there is no display server ($DISPLAY/$WAYLAND_DISPLAY
-            # are unset), so xdg-open exhausts all its handlers and exits with
-            # a failure code that the caller never sees (stderr is redirected).
-            # termux-open-url talks directly to Android's activity manager and
-            # works without a display server.
-            return ["termux-open-url", url]
         # For standard Linux/Ubuntu, use 'xdg-open' command
         return ["xdg-open", url]
     else:
