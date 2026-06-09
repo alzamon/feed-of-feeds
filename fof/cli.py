@@ -370,7 +370,7 @@ def main():
         )
 
         print(
-            f"Good morning! In your feed {total_recent} unread "
+            f"Good morning! Your feed has {total_recent} unread "
             "articles from the last 24h."
         )
         print(

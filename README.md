@@ -274,7 +274,7 @@ fof digest --feed tech_news
 
 Example output:
 ```text
-Good morning! In your feed 112 unread articles from the last 24h.
+Good morning! Your feed has 112 unread articles from the last 24h.
 Fetched 154 articles from 6 source feeds into cache.
 Here is the breakdown:
 12 about sports

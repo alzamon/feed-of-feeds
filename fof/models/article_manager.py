@@ -1,6 +1,6 @@
 import sqlite3
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Tuple
 from datetime import datetime, timedelta
 import requests
 import feedparser
@@ -170,35 +170,36 @@ class ArticleManager:
         if article:
             self.mark_as_fetched(article.id)
             return article
-
-    def fetch_and_cache_all_articles(
-                self,
-                feedpath: List[str],
-                url: str,
-                feed_id: str,
-                max_age: Optional[timedelta]) -> int:
-            """
-            Fetch all available articles from a feed and cache them.
-            Returns number of fetched articles.
-            """
-            try:
-                articles = self._fetch_articles_from_web(
-                    url, feed_id, feedpath, max_age
-                )
-                self.cache_articles(articles)
-                return len(articles)
-            except Exception as e:
-                logger.error(
-                    f"Error fetching all articles for feed '{feed_id}': {e}"
-                )
-                return 0
         articles = self._fetch_articles_from_web(
-            url, feed_id, feedpath, max_age)
+            url, feed_id, feedpath, max_age
+        )
         self.cache_articles(articles)
         article = self._fetch_unfetched_article_from_cache(feedpath, max_age)
         if article:
             self.mark_as_fetched(article.id)
         return article
+
+    def fetch_and_cache_all_articles(
+            self,
+            feedpath: List[str],
+            url: str,
+            feed_id: str,
+            max_age: Optional[timedelta]) -> int:
+        """
+        Fetch all available articles from a feed and cache them.
+        Returns number of fetched articles.
+        """
+        try:
+            articles = self._fetch_articles_from_web(
+                url, feed_id, feedpath, max_age
+            )
+            self.cache_articles(articles)
+            return len(articles)
+        except Exception as e:
+            logger.error(
+                f"Error fetching all articles for feed '{feed_id}': {e}"
+            )
+            return 0
 
     def _fetch_unfetched_article_from_cache(
             self,
@@ -413,7 +414,7 @@ class ArticleManager:
     def get_recent_unread_category_counts(
             self,
             feedpaths: List[List[str]],
-            hours: int = 24) -> tuple[int, dict]:
+            hours: int = 24) -> Tuple[int, Dict[str, int]]:
         """
         Return total unread article count and category breakdown for articles
         published in the last `hours` under the given feedpaths.
