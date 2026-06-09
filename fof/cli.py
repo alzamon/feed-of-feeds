@@ -211,6 +211,11 @@ def main():
         help="Scope down to the selected feed and its descendants"
     )
     parser.add_argument(
+        "--category",
+        action="store_true",
+        help="Show category for each sampled article"
+    )
+    parser.add_argument(
         "--session-timeout",
         default=None,
         help=("Session timeout (e.g., '5m', '1h', '30s', or plain number "
@@ -387,7 +392,10 @@ def main():
 
     # Initialize control loop to handle interactions
     control_loop = ControlLoop(
-        feed_manager, article_manager, session_timeout=session_timeout_seconds
+        feed_manager,
+        article_manager,
+        session_timeout=session_timeout_seconds,
+        show_category=getattr(args, "category", False)
     )
     control_loop.start()
 

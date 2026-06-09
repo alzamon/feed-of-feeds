@@ -411,6 +411,14 @@ class ArticleManager:
                 return category
         return "Other"
 
+    def categorize_article(self, article: Article) -> str:
+        """Categorize a single article using title/content/tags."""
+        return self._categorize_article(
+            article.title,
+            article.content,
+            article.tags
+        )
+
     def get_recent_unread_category_counts(
             self,
             feedpaths: List[List[str]],
