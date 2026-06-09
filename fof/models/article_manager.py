@@ -170,6 +170,28 @@ class ArticleManager:
         if article:
             self.mark_as_fetched(article.id)
             return article
+
+    def fetch_and_cache_all_articles(
+                self,
+                feedpath: List[str],
+                url: str,
+                feed_id: str,
+                max_age: Optional[timedelta]) -> int:
+            """
+            Fetch all available articles from a feed and cache them.
+            Returns number of fetched articles.
+            """
+            try:
+                articles = self._fetch_articles_from_web(
+                    url, feed_id, feedpath, max_age
+                )
+                self.cache_articles(articles)
+                return len(articles)
+            except Exception as e:
+                logger.error(
+                    f"Error fetching all articles for feed '{feed_id}': {e}"
+                )
+                return 0
         articles = self._fetch_articles_from_web(
             url, feed_id, feedpath, max_age)
         self.cache_articles(articles)
@@ -337,6 +359,94 @@ class ArticleManager:
         except sqlite3.Error as e:
             logger.error(f"Error clearing cache: {e}")
             return 0
+
+    def _categorize_article(
+            self,
+            title: Optional[str],
+            content: Optional[str],
+            tags: Optional[List[str]]) -> str:
+        text_parts = []
+        if title:
+            text_parts.append(title)
+        if content:
+            text_parts.append(content)
+        if tags:
+            text_parts.extend(tags)
+        haystack = " ".join(text_parts).lower()
+
+        category_keywords = [
+            ("Sports", [
+                "sport", "football", "soccer", "basketball",
+                "baseball", "tennis", "olympic", "nfl", "nba"
+            ]),
+            ("Technology", [
+                "tech", "software", "ai", "machine learning", "programming",
+                "developer", "cloud", "security", "opensource"
+            ]),
+            ("Politics", [
+                "politic", "election", "government", "policy", "senate",
+                "congress", "president", "minister"
+            ]),
+            ("Science", [
+                "science", "research", "study", "space", "nasa",
+                "biology", "physics", "chemistry", "climate"
+            ]),
+            ("Business", [
+                "business", "market", "economy", "finance", "startup",
+                "stock", "earnings", "investment"
+            ]),
+            ("Health", [
+                "health", "medicine", "medical", "disease", "hospital",
+                "wellness", "mental health"
+            ]),
+            ("Entertainment", [
+                "movie", "music", "tv", "film", "celebrity", "gaming",
+                "game", "show"
+            ]),
+        ]
+
+        for category, keywords in category_keywords:
+            if any(keyword in haystack for keyword in keywords):
+                return category
+        return "Other"
+
+    def get_recent_unread_category_counts(
+            self,
+            feedpaths: List[List[str]],
+            hours: int = 24) -> tuple[int, dict]:
+        """
+        Return total unread article count and category breakdown for articles
+        published in the last `hours` under the given feedpaths.
+        """
+        if not feedpaths:
+            return 0, {}
+
+        feedpath_jsons = [json.dumps(feedpath) for feedpath in feedpaths]
+        placeholders = ",".join("?" for _ in feedpath_jsons)
+        cutoff = (datetime.now() - timedelta(hours=hours)).isoformat()
+
+        sql = f"""
+            SELECT title, content, tags
+            FROM cache
+            WHERE read IS NULL
+              AND published_date IS NOT NULL
+              AND published_date >= ?
+              AND feedpath IN ({placeholders})
+        """
+        params = [cutoff, *feedpath_jsons]
+
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, params)
+            rows = cursor.fetchall()
+
+        breakdown = {}
+        for title, content, tags_json in rows:
+            tags = json.loads(tags_json) if tags_json else []
+            category = self._categorize_article(title, content, tags)
+            breakdown[category] = breakdown.get(category, 0) + 1
+
+        return len(rows), breakdown
 
     def purge_old_articles(self, feed) -> int:
         """
