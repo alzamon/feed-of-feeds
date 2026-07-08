@@ -3,6 +3,11 @@ import textwrap
 import time
 from .platform_quirks import open_url_in_browser
 
+# Number of rows to leave blank at the top of the screen.
+# Increase this value to push all UI content further down, which is useful
+# on phone displays where the top rows may have dead pixels.
+TOP_OFFSET = 2
+
 
 class ControlLoop:
     """Manages display and keyboard interactions for navigating articles."""
@@ -15,9 +20,15 @@ class ControlLoop:
         self.session_timeout = session_timeout
         self.last_activity_time = time.time()
 
-    def _display_article(self, stdscr):
-        max_y, max_x = stdscr.getmaxyx()
-        stdscr.clear()
+    def _make_content_win(self, stdscr):
+        """Create a subwindow that starts below TOP_OFFSET blank rows."""
+        screen_h, screen_w = stdscr.getmaxyx()
+        content_h = max(1, screen_h - TOP_OFFSET)
+        return stdscr.subwin(content_h, screen_w, TOP_OFFSET, 0)
+
+    def _display_article(self, win):
+        max_y, max_x = win.getmaxyx()
+        win.clear()
         if self.current_article:
             lines = [
                 f"Title: {
@@ -52,20 +63,21 @@ class ControlLoop:
                 wrapped_lines = textwrap.wrap(line, width=max_x)
                 for wrapped_line in wrapped_lines:
                     if row < max_y - 3:
-                        stdscr.addstr(row, 0, wrapped_line)
+                        win.addnstr(row, 0, wrapped_line, max_x - 1)
                         row += 1
                     else:
                         break
         else:
-            stdscr.addstr(0, 0, "All caught up! No more articles to display.")
+            win.addnstr(0, 0, "All caught up! No more articles to display.",
+                        max_x - 1)
 
-    def _display_prompt(self, stdscr):
-        max_y, max_x = stdscr.getmaxyx()
+    def _display_prompt(self, win):
+        max_y, max_x = win.getmaxyx()
         prompt = "[?] Show hotkeys"
-        stdscr.addstr(max_y - 1, 0, prompt[:max_x])
+        win.addnstr(max_y - 1, 0, prompt, max_x - 1)
 
-    def _display_hotkeys(self, stdscr):
-        max_y, max_x = stdscr.getmaxyx()
+    def _display_hotkeys(self, win):
+        max_y, max_x = win.getmaxyx()
         hotkey_help = (
             "[n] Next article\n"
             "[p] Previous (read) article\n"
@@ -81,13 +93,13 @@ class ControlLoop:
             wrapped = textwrap.wrap(line, width=max_x)
             for wline in wrapped:
                 if row < max_y - 1:
-                    stdscr.addstr(row, 0, wline)
+                    win.addnstr(row, 0, wline, max_x - 1)
                     row += 1
         # Add "Press any key to return..." at the bottom
         press_any_key = "-- press any key to return --"
         if row < max_y:
-            stdscr.addstr(max_y - 1, 0, press_any_key[:max_x])
-        stdscr.refresh()
+            win.addnstr(max_y - 1, 0, press_any_key, max_x - 1)
+        win.refresh()
 
     def _update_activity(self):
         """Update the last activity timestamp."""
@@ -101,44 +113,42 @@ class ControlLoop:
         current_time = time.time()
         return (current_time - self.last_activity_time) >= self.session_timeout
 
-    def _handle_session_timeout(self, stdscr):
+    def _handle_session_timeout(self, win):
         """Handle session timeout by showing message and exiting."""
-        max_y, max_x = stdscr.getmaxyx()
+        max_y, max_x = win.getmaxyx()
         timeout_mins = self.session_timeout // 60
         timeout_msg = f"Session timed out after {timeout_mins} minutes of " \
                       f"inactivity. Exiting..."
-        stdscr.addstr(max_y - 2, 0, timeout_msg[:max_x])
-        stdscr.refresh()
+        win.addnstr(max_y - 2, 0, timeout_msg, max_x - 1)
+        win.refresh()
         curses.napms(2000)  # Show message for 2 seconds
         return True  # Exit main loop
 
-    def _update_display(self, stdscr):
-        self._display_article(stdscr)
-        self._display_prompt(stdscr)
-        stdscr.refresh()
+    def _update_display(self, win):
+        self._display_article(win)
+        self._display_prompt(win)
+        win.refresh()
 
-    def _show_status_message(self, stdscr, message):
+    def _show_status_message(self, win, message):
         """Show a status message and update the display."""
-        max_y, max_x = stdscr.getmaxyx()
+        max_y, max_x = win.getmaxyx()
         # Truncate to max_x before ljust: addstr raises an error if the string
         # extends past the last column, and ljust only pads — it never truncates.
-        stdscr.addstr(max_y - 2, 0, message[:max_x].ljust(max_x))
-        self._display_prompt(stdscr)
+        win.addnstr(max_y - 2, 0, message[:max_x - 1].ljust(max_x - 1), max_x - 1)
+        self._display_prompt(win)
 
-    def _handle_help_key(self, stdscr):
+    def _handle_help_key(self, win):
         """Handle the ? key to show/hide help."""
-        stdscr.clear()
-        self._display_hotkeys(stdscr)
-        stdscr.nodelay(False)
-        stdscr.getch()  # Wait for any key
-        stdscr.nodelay(True)
-        self._update_display(stdscr)
+        win.clear()
+        self._display_hotkeys(win)
+        win.nodelay(False)
+        win.getch()  # Wait for any key
+        win.nodelay(True)
+        self._update_display(win)
         return False  # Continue main loop
 
-    def _handle_next_article_key(self, stdscr):
+    def _handle_next_article_key(self, win):
         """Handle the 'n' key for next article navigation."""
-        max_y, max_x = stdscr.getmaxyx()
-
         if self.browsing_read_history:
             if (self.current_article
                and getattr(self.current_article, "read", None)):
@@ -150,8 +160,8 @@ class ControlLoop:
                 if next_article:
                     self.current_article = next_article
                     self._show_status_message(
-                        stdscr, "Moved to newer read article.")
-                    self._update_display(stdscr)
+                        win, "Moved to newer read article.")
+                    self._update_display(win)
                 else:
                     # At most recent read article. Switch to unread mode.
                     self.browsing_read_history = False
@@ -164,15 +174,10 @@ class ControlLoop:
                         )
                         message = ("Switched to unread. Showing next unread "
                                    "article.")
-                        self._show_status_message(stdscr, message)
-                    else:
-                        stdscr.addstr(
-                            0, 0,
-                            "All caught up! No more articles to display."
-                        )
-                    self._update_display(stdscr)
+                        self._show_status_message(win, message)
+                    self._update_display(win)
             else:
-                self._show_status_message(stdscr, "Not in read history.")
+                self._show_status_message(win, "Not in read history.")
         else:
             # Get next unread article
             self.current_article = self.feed_manager.next_article()
@@ -180,18 +185,11 @@ class ControlLoop:
                 self.article_manager.mark_as_read(
                     self.current_article.id
                 )
-            else:
-                stdscr.addstr(
-                    0, 0,
-                    "All caught up! No more articles to display."
-                )
-            self._update_display(stdscr)
+            self._update_display(win)
         return False  # Continue main loop
 
-    def _handle_previous_article_key(self, stdscr):
+    def _handle_previous_article_key(self, win):
         """Handle the 'p' key for previous article navigation."""
-        max_y, max_x = stdscr.getmaxyx()
-
         prev_article = None
         if (self.current_article
                 and getattr(self.current_article, "read", None)):
@@ -215,36 +213,34 @@ class ControlLoop:
         if prev_article:
             self.current_article = prev_article
             self._show_status_message(
-                stdscr, "Moved to previous read article.")
+                win, "Moved to previous read article.")
         else:
-            self._show_status_message(stdscr, "No read articles yet.")
+            self._show_status_message(win, "No read articles yet.")
 
         self.browsing_read_history = True
-        self._update_display(stdscr)
+        self._update_display(win)
         return False  # Continue main loop
 
-    def _handle_open_browser_key(self, stdscr):
+    def _handle_open_browser_key(self, win):
         """Handle the 'o' key to open article in browser."""
-        max_y, max_x = stdscr.getmaxyx()
-
         try:
             if self.current_article and self.current_article.link:
                 message = f"Opening URL: {self.current_article.link}..."
-                self._show_status_message(stdscr, message)
+                self._show_status_message(win, message)
                 success = open_url_in_browser(self.current_article.link)
                 if success:
                     self._show_status_message(
-                        stdscr, "Opened link in browser.")
+                        win, "Opened link in browser.")
                 else:
                     self._show_status_message(
-                        stdscr, "Failed to open browser.")
+                        win, "Failed to open browser.")
             else:
-                self._show_status_message(stdscr, "No valid link to open.")
+                self._show_status_message(win, "No valid link to open.")
         except Exception as e:
-            self._show_status_message(stdscr, f"Failed to open browser: {e}")
+            self._show_status_message(win, f"Failed to open browser: {e}")
         return False  # Continue main loop
 
-    def _handle_increase_weight_key(self, stdscr):
+    def _handle_increase_weight_key(self, win):
         """Handle the '+' key to increase feed weight."""
         if self.current_article and self.current_article.feedpath:
             try:
@@ -253,15 +249,15 @@ class ControlLoop:
                 self.feed_manager.save_config()
                 message = ("Increased weights along feedpath and saved "
                            "configuration.")
-                self._show_status_message(stdscr, message)
+                self._show_status_message(win, message)
             except ValueError as e:
-                self._show_status_message(stdscr, f"Error: {e}")
+                self._show_status_message(win, f"Error: {e}")
         else:
             message = "No feed associated with this article."
-            self._show_status_message(stdscr, message)
+            self._show_status_message(win, message)
         return False  # Continue main loop
 
-    def _handle_decrease_weight_key(self, stdscr):
+    def _handle_decrease_weight_key(self, win):
         """Handle the '-' key to decrease feed weight."""
         if self.current_article and self.current_article.feedpath:
             try:
@@ -270,26 +266,30 @@ class ControlLoop:
                 self.feed_manager.save_config()
                 message = ("Decreased weights along feedpath and saved "
                            "configuration.")
-                self._show_status_message(stdscr, message)
+                self._show_status_message(win, message)
             except ValueError as e:
-                self._show_status_message(stdscr, f"Error: {e}")
+                self._show_status_message(win, f"Error: {e}")
         else:
             message = "No feed associated with this article."
-            self._show_status_message(stdscr, message)
+            self._show_status_message(win, message)
         return False  # Continue main loop
 
-    def _handle_quit_key(self, stdscr):
+    def _handle_quit_key(self, win):
         """Handle the 'q' key to quit the application."""
-        max_y, max_x = stdscr.getmaxyx()
-        stdscr.addstr(max_y - 2, 0, "Exiting...".ljust(max_x))
-        stdscr.refresh()
+        max_y, max_x = win.getmaxyx()
+        win.addnstr(max_y - 2, 0, "Exiting...".ljust(max_x - 1), max_x - 1)
+        win.refresh()
         curses.napms(1000)
         return True  # Exit main loop
 
     def _handle_key_input(self, stdscr):
         curses.curs_set(0)
-        stdscr.nodelay(True)
-        stdscr.timeout(100)
+        # Keep the top TOP_OFFSET rows blank and draw all content below them.
+        stdscr.clear()
+        stdscr.refresh()
+        win = self._make_content_win(stdscr)
+        win.nodelay(True)
+        win.timeout(100)
 
         # Initialize state
         self.current_article = self.feed_manager.next_article()
@@ -298,7 +298,7 @@ class ControlLoop:
         if self.current_article and not self.browsing_read_history:
             self.article_manager.mark_as_read(self.current_article.id)
 
-        self._update_display(stdscr)
+        self._update_display(win)
 
         # Key handler mapping
         key_handlers = {
@@ -314,19 +314,29 @@ class ControlLoop:
         while True:
             # Check for session timeout
             if self._check_session_timeout():
-                should_exit = self._handle_session_timeout(stdscr)
+                should_exit = self._handle_session_timeout(win)
                 if should_exit:
                     break
 
-            key = stdscr.getch()
+            key = win.getch()
+            if key == curses.KEY_RESIZE:
+                # Rebuild the content window to match the new terminal size.
+                stdscr.clear()
+                stdscr.refresh()
+                win = self._make_content_win(stdscr)
+                win.nodelay(True)
+                win.timeout(100)
+                self._update_display(win)
+                continue
+
             handler = key_handlers.get(key)
             if handler:
                 # Update activity timestamp on any valid key press
                 self._update_activity()
-                should_exit = handler(stdscr)
+                should_exit = handler(win)
                 if should_exit:
                     break
-            stdscr.refresh()
+            win.refresh()
 
     def start(self):
         curses.wrapper(self._handle_key_input)

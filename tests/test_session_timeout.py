@@ -97,8 +97,8 @@ def test_control_loop_timeout_message(mock_curses):
     assert result is True
     
     # Should display timeout message
-    mock_stdscr.addstr.assert_called()
-    call_args = mock_stdscr.addstr.call_args[0]
+    mock_stdscr.addnstr.assert_called()
+    call_args = mock_stdscr.addnstr.call_args[0]
     assert "Session timed out after 5 minutes" in call_args[2]
     
     # Should refresh and wait
