@@ -36,9 +36,9 @@ class TestControlLoop(unittest.TestCase):
             message = "Test status message"
             self.control_loop._show_status_message(self.mock_stdscr, message)
             
-            # Check that addstr was called with the message
-            self.mock_stdscr.addstr.assert_called_once()
-            call_args = self.mock_stdscr.addstr.call_args[0]
+            # Check that addnstr was called with the message
+            self.mock_stdscr.addnstr.assert_called_once()
+            call_args = self.mock_stdscr.addnstr.call_args[0]
             self.assertEqual(call_args[0], 22)  # max_y - 2 = 24 - 2 = 22
             self.assertEqual(call_args[1], 0)
             self.assertTrue(message in call_args[2])
@@ -119,17 +119,24 @@ class TestControlLoop(unittest.TestCase):
 
     def test_key_handler_mapping_complete(self):
         """Test that all expected keys have handlers in _handle_key_input."""
-        # This test verifies the key mapping dictionary is correctly set up
+        # This test verifies the key mapping dictionary is correctly set up.
+        # _handle_key_input creates a subwindow; mock subwin to return a
+        # controlled mock so we can drive getch() on the content window.
+        mock_win = MagicMock()
+        mock_win.getmaxyx.return_value = (22, 80)  # content_h = 24 - 2
+        mock_win.getch.side_effect = [ord('q')]
+        self.mock_stdscr.subwin.return_value = mock_win
+
         with patch('fof.control_loop.curses.curs_set'), \
              patch.object(self.control_loop, '_update_display'), \
-             patch.object(self.mock_feed_manager, 'next_article', return_value=None):
-            
-            # Mock the while loop to exit immediately
-            with patch.object(self.mock_stdscr, 'getch', side_effect=[ord('q')]):
-                with patch.object(self.control_loop, '_handle_quit_key', return_value=True):
-                    self.control_loop._handle_key_input(self.mock_stdscr)
-            
-            # If we get here without error, the key mapping is working
+             patch.object(
+                 self.mock_feed_manager, 'next_article', return_value=None):
+
+            with patch.object(
+                    self.control_loop, '_handle_quit_key', return_value=True):
+                self.control_loop._handle_key_input(self.mock_stdscr)
+
+        # If we get here without error, the key mapping is working
 
 
 if __name__ == '__main__':
