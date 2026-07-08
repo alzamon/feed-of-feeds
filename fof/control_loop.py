@@ -63,13 +63,13 @@ class ControlLoop:
                 wrapped_lines = textwrap.wrap(line, width=max_x)
                 for wrapped_line in wrapped_lines:
                     if row < max_y - 3:
-                        win.addnstr(row, 0, wrapped_line, max_x)
+                        win.addnstr(row, 0, wrapped_line, max_x - 1)
                         row += 1
                     else:
                         break
         else:
             win.addnstr(0, 0, "All caught up! No more articles to display.",
-                        max_x)
+                        max_x - 1)
 
     def _display_prompt(self, win):
         max_y, max_x = win.getmaxyx()
@@ -93,7 +93,7 @@ class ControlLoop:
             wrapped = textwrap.wrap(line, width=max_x)
             for wline in wrapped:
                 if row < max_y - 1:
-                    win.addnstr(row, 0, wline, max_x)
+                    win.addnstr(row, 0, wline, max_x - 1)
                     row += 1
         # Add "Press any key to return..." at the bottom
         press_any_key = "-- press any key to return --"
