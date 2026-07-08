@@ -74,7 +74,7 @@ class ControlLoop:
     def _display_prompt(self, win):
         max_y, max_x = win.getmaxyx()
         prompt = "[?] Show hotkeys"
-        win.addnstr(max_y - 1, 0, prompt, max_x)
+        win.addnstr(max_y - 1, 0, prompt, max_x - 1)
 
     def _display_hotkeys(self, win):
         max_y, max_x = win.getmaxyx()
@@ -98,7 +98,7 @@ class ControlLoop:
         # Add "Press any key to return..." at the bottom
         press_any_key = "-- press any key to return --"
         if row < max_y:
-            win.addnstr(max_y - 1, 0, press_any_key, max_x)
+            win.addnstr(max_y - 1, 0, press_any_key, max_x - 1)
         win.refresh()
 
     def _update_activity(self):
@@ -119,7 +119,7 @@ class ControlLoop:
         timeout_mins = self.session_timeout // 60
         timeout_msg = f"Session timed out after {timeout_mins} minutes of " \
                       f"inactivity. Exiting..."
-        win.addnstr(max_y - 2, 0, timeout_msg, max_x)
+        win.addnstr(max_y - 2, 0, timeout_msg, max_x - 1)
         win.refresh()
         curses.napms(2000)  # Show message for 2 seconds
         return True  # Exit main loop
@@ -134,7 +134,7 @@ class ControlLoop:
         max_y, max_x = win.getmaxyx()
         # Truncate to max_x before ljust: addstr raises an error if the string
         # extends past the last column, and ljust only pads — it never truncates.
-        win.addnstr(max_y - 2, 0, message[:max_x].ljust(max_x), max_x)
+        win.addnstr(max_y - 2, 0, message[:max_x - 1].ljust(max_x - 1), max_x - 1)
         self._display_prompt(win)
 
     def _handle_help_key(self, win):
@@ -277,7 +277,7 @@ class ControlLoop:
     def _handle_quit_key(self, win):
         """Handle the 'q' key to quit the application."""
         max_y, max_x = win.getmaxyx()
-        win.addnstr(max_y - 2, 0, "Exiting...".ljust(max_x), max_x)
+        win.addnstr(max_y - 2, 0, "Exiting...".ljust(max_x - 1), max_x - 1)
         win.refresh()
         curses.napms(1000)
         return True  # Exit main loop
