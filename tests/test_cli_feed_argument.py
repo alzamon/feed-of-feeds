@@ -130,8 +130,11 @@ def test_cli_feed_argument_functionality(test_config_dir):
         mock_instance = mock_control_loop.return_value
         mock_instance.start.return_value = None
 
-        # Test the main command with --feed argument
-        with patch('sys.argv', ['fof', '--config', test_config_dir, '--feed', 'news']):
+        # Test the main command with --feed argument and --tui
+        with patch('sys.argv', [
+            'fof', '--config', test_config_dir,
+            '--feed', 'news', '--tui'
+        ]):
             try:
                 main()
             except SystemExit:
@@ -161,8 +164,10 @@ def test_cli_without_feed_argument(test_config_dir):
         mock_instance = mock_control_loop.return_value
         mock_instance.start.return_value = None
 
-        # Test the main command without --feed argument
-        with patch('sys.argv', ['fof', '--config', test_config_dir]):
+        # Test the main command without --feed argument, using --tui
+        with patch('sys.argv', [
+            'fof', '--config', test_config_dir, '--tui'
+        ]):
             try:
                 main()
             except SystemExit:

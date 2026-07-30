@@ -201,6 +201,14 @@ def main():
         help=("Session timeout (e.g., '5m', '1h', '30s', or plain number "
               "in minutes; 0 to disable, default: 5m)")
     )
+    parser.add_argument(
+        "--tui",
+        action="store_true",
+        help=(
+            "Use the classic terminal (curses) UI "
+            "instead of the web UI"
+        )
+    )
 
     # Enable tab-completion if argcomplete is installed
     if argcomplete:
@@ -314,16 +322,27 @@ def main():
         print(f"Total articles cleared: {total_deleted}")
         sys.exit(0)
 
-    # Initialize control loop to handle interactions
-    control_loop = ControlLoop(
-        feed_manager, article_manager, session_timeout=session_timeout_seconds
-    )
-    control_loop.start()
+    # Initialize UI to handle interactions
+    if getattr(args, "tui", False):
+        control_loop = ControlLoop(
+            feed_manager, article_manager,
+            session_timeout=session_timeout_seconds
+        )
+        control_loop.start()
 
-    # Purge old articles before saving config and exiting
-    feed_manager.purge_old_articles()
+        # Purge old articles before saving config and exiting
+        feed_manager.purge_old_articles()
 
-    feed_manager.save_config()
+        feed_manager.save_config()
+    else:
+        from .web_ui import WebUI
+        web_ui = WebUI(
+            feed_manager, article_manager,
+            session_timeout=session_timeout_seconds
+        )
+        web_ui.start()
+        # purge_old_articles and save_config are called
+        # inside WebUI._shutdown()
 
 
 if __name__ == "__main__":
