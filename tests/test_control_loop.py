@@ -138,6 +138,25 @@ class TestControlLoop(unittest.TestCase):
 
         # If we get here without error, the key mapping is working
 
+    def test_display_article_shows_category_when_enabled(self):
+        """Test category line is shown when category display is enabled."""
+        self.control_loop.show_category = True
+        mock_article = Mock()
+        mock_article.title = "AI headline"
+        mock_article.link = "https://example.com"
+        mock_article.author = "Author"
+        mock_article.published_date = "2026-01-01"
+        mock_article.tags = ["ai"]
+        mock_article.feedpath = ["root", "news"]
+        mock_article.content = "Some content"
+        self.control_loop.current_article = mock_article
+        self.mock_article_manager.categorize_article.return_value = "Technology"
+
+        self.control_loop._display_article(self.mock_stdscr)
+
+        rendered_strings = [call[0][2] for call in self.mock_stdscr.addstr.call_args_list]
+        self.assertIn("Category: Technology", rendered_strings)
+
 
 if __name__ == '__main__':
     unittest.main()

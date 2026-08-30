@@ -154,6 +154,25 @@ def test_cli_feed_argument_functionality(test_config_dir):
         assert tech_feed.disabled_in_session      # Should be disabled
 
 
+def test_cli_category_flag_passes_to_control_loop(test_config_dir):
+    """Test that --category enables category display in control loop."""
+    with patch('fof.cli.ControlLoop') as mock_control_loop:
+        mock_instance = mock_control_loop.return_value
+        mock_instance.start.return_value = None
+
+        with patch(
+            'sys.argv',
+            ['fof', '--config', test_config_dir, '--feed', 'news', '--category']
+        ):
+            try:
+                main()
+            except SystemExit:
+                pass
+
+        args, kwargs = mock_control_loop.call_args
+        assert kwargs["show_category"] is True
+
+
 def test_cli_without_feed_argument(test_config_dir):
     """Test that the CLI works correctly without --feed argument."""
     # Mock the ControlLoop to avoid curses issues in tests
@@ -183,3 +202,4 @@ def test_cli_without_feed_argument(test_config_dir):
         assert tech_feed is not None
         assert not news_feed.disabled_in_session  # Should be enabled
         assert not tech_feed.disabled_in_session  # Should be enabled
+        assert kwargs["show_category"] is False

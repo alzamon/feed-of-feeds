@@ -66,6 +66,11 @@ eval "$(register-python-argcomplete fof)"
    fof cache clear --feed <feed_id>
    ```
 
+5. **Generate a 24h digest summary**:
+   ```bash
+   fof digest --feed <feed_id>
+   ```
+
 ## Configuration
 
 FoF uses directory-based configuration stored in `~/.config/fof/` by default. You can specify a different path with the `--config` option.
@@ -256,6 +261,25 @@ fof cache clear --feed tech_news
 View the application log file:
 ```bash
 fof logs
+```
+
+#### Digest Summary (Last 24h)
+
+Fetch all articles from syndication sources under a selected feed into cache,
+then print a category overview for unread articles published in the last 24h:
+
+```bash
+fof digest --feed tech_news
+```
+
+Example output:
+```text
+Good morning! Your feed has 112 unread articles from the last 24h.
+Fetched 154 articles from 6 source feeds into cache.
+Here is the breakdown:
+12 about sports
+8 about technology
+4 about science
 ```
 
 #### Configuration Path

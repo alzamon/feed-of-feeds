@@ -179,6 +179,21 @@ def main():
               "all syndication feeds")
     )
 
+    # Digest subcommand
+    digest_parser = subparsers.add_parser(
+        "digest", help="Fetch and summarize recent unread articles"
+    )
+    digest_parser.add_argument(
+        "--config", "-c",
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to config file (default: ~/.config/fof)"
+    )
+    digest_parser.add_argument(
+        "--feed",
+        default=None,
+        help="Only include feeds under the selected feed id"
+    )
+
     # Global arguments for default mode (control loop)
     parser.add_argument(
         "--config", "-c",
@@ -194,6 +209,11 @@ def main():
         "--feed",
         default=None,
         help="Scope down to the selected feed and its descendants"
+    )
+    parser.add_argument(
+        "--category",
+        action="store_true",
+        help="Show category for each sampled article"
     )
     parser.add_argument(
         "--session-timeout",
@@ -314,9 +334,68 @@ def main():
         print(f"Total articles cleared: {total_deleted}")
         sys.exit(0)
 
+    if args.command == "digest":
+        from .models.syndication_feed.models import SyndicationFeed
+
+        digest_feed_id = getattr(args, "feed", None)
+        if digest_feed_id:
+            selected_feed = feed_manager.get_feed_by_id(digest_feed_id)
+            if selected_feed is None:
+                print(f"Feed with id '{digest_feed_id}' not found.")
+                sys.exit(1)
+        else:
+            selected_feed = feed_manager.root_feed
+
+        syndication_feeds = []
+        feedpaths = []
+
+        def collect_syndication_feeds(feed, ctx):
+            if isinstance(feed, SyndicationFeed):
+                syndication_feeds.append(feed)
+                feedpaths.append(feed.feedpath)
+
+        feed_manager.perform_on_feeds(selected_feed, collect_syndication_feeds)
+
+        total_fetched = 0
+        for feed in syndication_feeds:
+            total_fetched += article_manager.fetch_and_cache_all_articles(
+                feedpath=feed.feedpath,
+                url=feed.url,
+                feed_id=feed.id,
+                max_age=feed.max_age
+            )
+
+        total_recent, breakdown = (
+            article_manager.get_recent_unread_category_counts(
+                feedpaths=feedpaths, hours=24
+            )
+        )
+        sorted_breakdown = sorted(
+            breakdown.items(), key=lambda item: (-item[1], item[0])
+        )
+
+        print(
+            f"Good morning! Your feed has {total_recent} unread "
+            "articles from the last 24h."
+        )
+        print(
+            f"Fetched {total_fetched} articles from "
+            f"{len(syndication_feeds)} source feeds into cache."
+        )
+        if not sorted_breakdown:
+            print("No unread articles published in the last 24h.")
+        else:
+            print("Here is the breakdown:")
+            for category, count in sorted_breakdown:
+                print(f"{count} about {category.lower()}")
+        sys.exit(0)
+
     # Initialize control loop to handle interactions
     control_loop = ControlLoop(
-        feed_manager, article_manager, session_timeout=session_timeout_seconds
+        feed_manager,
+        article_manager,
+        session_timeout=session_timeout_seconds,
+        show_category=getattr(args, "category", False)
     )
     control_loop.start()
 

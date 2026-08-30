@@ -12,12 +12,18 @@ TOP_OFFSET = 2
 class ControlLoop:
     """Manages display and keyboard interactions for navigating articles."""
 
-    def __init__(self, feed_manager, article_manager, session_timeout=300):
+    def __init__(
+            self,
+            feed_manager,
+            article_manager,
+            session_timeout=300,
+            show_category=False):
         self.feed_manager = feed_manager
         self.article_manager = article_manager
         self.current_article = None
         self.browsing_read_history = False
         self.session_timeout = session_timeout
+        self.show_category = show_category
         self.last_activity_time = time.time()
 
     def _make_content_win(self, stdscr):
@@ -42,6 +48,11 @@ class ControlLoop:
                 lines.append(f"Tags: {tag_str}")
             else:
                 lines.append("Tags: None")
+            if self.show_category:
+                category = self.article_manager.categorize_article(
+                    self.current_article
+                )
+                lines.append(f"Category: {category}")
             lines.extend([
                 "",
                 "Feed Path:",
